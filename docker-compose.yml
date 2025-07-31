@@ -1,0 +1,42 @@
+services:
+  backend:
+    container_name: aatmun-api
+    image: aatmun-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - ollama
+    volumes:
+      - ./api:/code/api
+      - ./static:/code/static
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - aatmun
+
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    ports:
+      - 11434:11434
+    volumes:
+      - ./static/ollama:/root/.ollama
+      - ./static/scripts/entrypoint.sh:/entrypoint.sh
+    tty: true
+    restart: unless-stopped
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - aatmun
+
+networks:
+  aatmun:
+    name: aatmun
+    external: false

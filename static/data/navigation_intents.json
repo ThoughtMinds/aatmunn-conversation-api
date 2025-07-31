@@ -1,0 +1,535 @@
+[
+    {
+        "intent": "navigate_to_login_page",
+        "description": "Directs the user to the login page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/login_page",
+            "android": "ActivityLogin",
+            "ios": "ActivityLogin"
+        }
+    },
+    {
+        "intent": "navigate_to_main_dashboard",
+        "description": "Navigates to the main dashboard",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/main_dashboard",
+            "android": "MenuMainActivity",
+            "ios": "MenuMainActivity"
+        }
+    },
+    {
+        "intent": "navigate_to_application_dashboard",
+        "description": "Navigates to the the application dashboard",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/application_dashboard_view",
+            "android": "ActivityApplicationDashboard",
+            "ios": "ActivityApplicationDashboard"
+        }
+    },
+    {
+        "intent": "navigate_to_tab_list",
+        "description": "Directs to the tab list page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/tab_list_page",
+            "android": "ActivityTabList",
+            "ios": "ActivityTabList"
+        }
+    },
+    {
+        "intent": "navigate_to_worker_event_detail",
+        "description": "Navigates to a detailed view of a specific worker or event",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/page_layout_template",
+            "android": "ActivityWorkerEventDetail",
+            "ios": "ActivityWorkerEventDetail"
+        }
+    },
+    {
+        "intent": "navigate_to_resolve_event",
+        "description": "Navigates to the the event resolution page.",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/events_action_bottom_bar",
+            "android": "ActivityResolveEvent",
+            "ios": "ActivityResolveEvent"
+        }
+    },
+    {
+        "intent": "navigate_to_biometric_snapshot",
+        "description": "Directs to the biometric snapshot list page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/biometric_snapshot_list",
+            "android": "ActivityBiometricSnapshot",
+            "ios": "ActivityBiometricSnapshot"
+        }
+    },
+    {
+        "intent": "navigate_to_fleet_gas_readings",
+        "description": "Navigates to the fleet gas readings page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/fleet_gas_readings_list",
+            "android": "ActivityFleetGasReadings",
+            "ios": "ActivityFleetGasReadings"
+        }
+    },
+    {
+        "intent": "navigate_to_user_list",
+        "description": "Directs to user list page. This is the listing page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/user_list_page",
+            "android": "ActivityUserList",
+            "ios": "ActivityUserList"
+        }
+    },
+    {
+        "intent": "navigate_to_map_view",
+        "description": "Directs to the full-page map view",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/full_page_map_view",
+            "android": "ActivityMapView",
+            "ios": "ActivityMapView"
+        }
+    },
+    {
+        "intent": "navigate_to_device_onboarding",
+        "description": "Navigates to the device onboarding view",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/device_onboarding_view",
+            "android": "ActivityDeviceOnboarding",
+            "ios": "ActivityDeviceOnboarding"
+        }
+    },
+    {
+        "intent": "navigate_to_device_model_vertical",
+        "description": "Navigates to the the device model vertical page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/device_model_vertical_view",
+            "android": "ActivityDeviceModelVertical",
+            "ios": "ActivityDeviceModelVertical"
+        }
+    },
+    {
+        "intent": "navigate_to_device_model_detail",
+        "description": "Directs to the device model detail screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/device_model_detail_view",
+            "android": "ActivityDeviceModelDetail",
+            "ios": "ActivityDeviceModelDetail"
+        }
+    },
+    {
+        "intent": "navigate_to_entity_listing",
+        "description": "Navigates to the entity listing screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/entity_listing_view",
+            "android": "ActivityEntityListing",
+            "ios": "ActivityEntityListing"
+        }
+    },
+    {
+        "intent": "navigate_to_entity_search",
+        "description": "Navigates to entity search screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/entity_search_view",
+            "android": "ActivityEntitySearch",
+            "ios": "ActivityEntitySearch"
+        }
+    },
+    {
+        "intent": "navigate_to_user_add",
+        "description": "Directs to the User add page. Not product, task related",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/user_add_view",
+            "android": "ActivityUserAdd",
+            "ios": "ActivityUserAdd"
+        }
+    },
+    {
+        "intent": "navigate_to_user_preview",
+        "description": "Navigates to the user preview page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/user_preview_view",
+            "android": "ActivityUserPreview",
+            "ios": "ActivityUserPreview"
+        }
+    },
+    {
+        "intent": "navigate_to_user_edit",
+        "description": "Navigates to the the user EDIT page. This is NOT login or list page",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/user_edit_view",
+            "android": "ActivityUserEdit",
+            "ios": "ActivityUserEdit"
+        }
+    },
+    {
+        "intent": "navigate_to_product_add",
+        "description": "Directs to the product add view",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/product_add_view",
+            "android": "ActivityProductAdd",
+            "ios": "ActivityProductAdd"
+        }
+    },
+    {
+        "intent": "navigate_to_product_preview",
+        "description": "Navigates to the product preview view",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/product_preview_view",
+            "android": "ActivityProductPreview",
+            "ios": "ActivityProductPreview"
+        }
+    },
+    {
+        "intent": "navigate_to_product_edit",
+        "description": "Navigates to the the product edit view.",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/product_edit_view",
+            "android": "ActivityProductEdit",
+            "ios": "ActivityProductEdit"
+        }
+    },
+    {
+        "intent": "navigate_to_entity_filter",
+        "description": "Directs to the user or product filter screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/entity_filter_view",
+            "android": "ActivityEntityFilter",
+            "ios": "ActivityEntityFilter"
+        }
+    },
+    {
+        "intent": "navigate_to_tasks_list",
+        "description": "Navigates to the tasks list screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/tasks_list",
+            "android": "ActivityTasksList",
+            "ios": "ActivityTasksList"
+        }
+    },
+    {
+        "intent": "navigate_to_task_preview",
+        "description": "Navigates to the the issue preview screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/task_preview_screen",
+            "android": "ActivityTaskPreview",
+            "ios": "ActivityTaskPreview"
+        }
+    },
+    {
+        "intent": "navigate_to_new_issue",
+        "description": "Directs to the issue add screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/new_issue_screen",
+            "android": "ActivityNewIssue",
+            "ios": "ActivityNewIssue"
+        }
+    },
+    {
+        "intent": "navigate_to_task_filter",
+        "description": "Navigates to the issue filter view",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/task_filter_view",
+            "android": "ActivityTaskFilter",
+            "ios": "ActivityTaskFilter"
+        }
+    },
+    {
+        "intent": "navigate_to_identifiers",
+        "description": "Navigates to the identifiers screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/identifiers",
+            "android": "ActivityIdentifiers",
+            "ios": "ActivityIdentifiers"
+        }
+    },
+    {
+        "intent": "navigate_to_identifiers_complete",
+        "description": "Directs to the identifiers complete screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/identifiers_update_complete_screen",
+            "android": "ActivityIdentifiersComplete",
+            "ios": "ActivityIdentifiersComplete"
+        }
+    },
+    {
+        "intent": "navigate_to_form_executions",
+        "description": "Navigates to the form executions view",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/form_executions_listing_view",
+            "android": "ActivityFormExecutions",
+            "ios": "ActivityFormExecutions"
+        }
+    },
+    {
+        "intent": "navigate_to_questions_component",
+        "description": "Navigates to the questions component screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/questions_component",
+            "android": "ActivityQuestionsComponent",
+            "ios": "ActivityQuestionsComponent"
+        }
+    },
+    {
+        "intent": "navigate_to_worker_fit_test",
+        "description": "Directs to the worker fit test",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/worker_fit_test_view",
+            "android": "ActivityWorkerFitTest",
+            "ios": "ActivityWorkerFitTest"
+        }
+    },
+    {
+        "intent": "navigate_to_question_inflater",
+        "description": "Navigates to the questions inflater screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/question_inflater",
+            "android": "ActivityQuestionInflater",
+            "ios": "ActivityQuestionInflater"
+        }
+    },
+    {
+        "intent": "navigate_to_checklist_complete",
+        "description": "Navigates to the checklist complete screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/checklist_complete_screen",
+            "android": "ActivityChecklistComplete",
+            "ios": "ActivityChecklistComplete"
+        }
+    },
+    {
+        "intent": "navigate_to_commission_screen",
+        "description": "Navigates to comissions screen. Not same as commission complete",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/commission_screen",
+            "android": "ActivityPPECommission",
+            "ios": "Commission"
+        }
+    },
+    {
+        "intent": "navigate_to_commission_complete",
+        "description": "Navigates to the commission complete screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/commission_complete_screen",
+            "android": "ActivityCommissionComplete",
+            "ios": "ActivityCommissionComplete"
+        }
+    },
+    {
+        "intent": "navigate_to_assign_screen",
+        "description": "Navigates to the the assignment screen ",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/assign_screen",
+            "android": "ActivityAssign",
+            "ios": "ActivityAssign"
+        }
+    },
+    {
+        "intent": "navigate_to_assignment_component",
+        "description": "Directs to the assignment component",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/assignment_component",
+            "android": "ActivityAssignmentComponent",
+            "ios": "ActivityAssignmentComponent"
+        }
+    },
+    {
+        "intent": "navigate_to_search_worker",
+        "description": "Navigates to the search worker screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/search_worker_screen",
+            "android": "ActivitySearchWorker",
+            "ios": "ActivitySearchWorker"
+        }
+    },
+    {
+        "intent": "navigate_to_assignment_complete",
+        "description": "Navigates to the the assignment complete screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/assignment_complete_screen",
+            "android": "ActivityAssignmentComplete",
+            "ios": "ActivityAssignmentComplete"
+        }
+    },
+    {
+        "intent": "navigate_to_quick_scan_summary",
+        "description": "Directs to the quick scan summary screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/quick_scan_summary",
+            "android": "ActivityQuickScanSummary",
+            "ios": "Quick Scan Equipment"
+        }
+    },
+    {
+        "intent": "navigate_to_form_listing",
+        "description": "Navigates to the form list screen",
+        "parameters": {
+            "app_id": "integer"
+        },
+        "required": ["app_id"],
+        "responses": {
+            "web": "https://qa.sim.guardhat.com/form_listing_view",
+            "android": "ActivityFormListing",
+            "ios": "ActivityFormListing"
+        }
+    }
+]

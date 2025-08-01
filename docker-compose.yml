@@ -1,7 +1,7 @@
 services:
   backend:
-    container_name: aatmun-api
-    image: aatmun-api:latest
+    container_name: aatmunn-api
+    image: aatmunn-api:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -18,7 +18,7 @@ services:
       - "8000:8000"
     restart: unless-stopped
     networks:
-      - aatmun
+      - aatmunn
 
   ollama:
     container_name: ollama
@@ -34,9 +34,27 @@ services:
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_HOST=0.0.0.0
     networks:
-      - aatmun
+      - aatmunn
+
+  frontend:
+    container_name: aatmunn-frontend
+    image: aatmunn-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    # volumes:
+    #   - ./frontend:/app
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - aatmunn
 
 networks:
-  aatmun:
-    name: aatmun
+  aatmunn:
+    name: aatmunn
     external: false

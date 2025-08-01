@@ -117,13 +117,13 @@ npm run dev
 ```
 
 ## Checklist
-- [ ] Update OpenAI schema for database -> navigation_intents
+- [x] Update OpenAI schema for database -> navigation_intents
 - [ ] Implement Summarization
 - [ ] Implement Task Execution
 - [ ] Test Framework
     - [x] Navigation
     - [ ] Summarization
     - [ ] Task Execution
-- [ ] Complete flow Orchestrator to identify intent, invoke sub-graph based on intent
-- [ ] Add mock tables to emulate Task Execution, Summarization
-- [ ] Add Orchestrator Frontend
+- [ ] Add mock tables for Task Execution, Summarization data
+- [x] Add Orchestrator Frontend
+    - [ ] Orchestrator flow to identify intent and invoke sub-graph based on intent

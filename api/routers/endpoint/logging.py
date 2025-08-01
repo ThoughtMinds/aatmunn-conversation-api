@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from api import agent, db, schema
-import pandas as pd
+from fastapi import APIRouter, Depends
+from api import db, schema
 from typing import Annotated, List
 from sqlmodel import Session
-from time import time
 
 
 router = APIRouter()
@@ -14,6 +12,7 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 def get_audit_log(session: SessionDep) -> List[schema.AuditLog]:
 
     # fetch audit log from db
+    # Dynamic data field based on Intent type with their own metadata for UI
     audit_logs = [
         schema.AuditLog(
             intent_type="navigation",
@@ -37,4 +36,4 @@ def get_audit_log(session: SessionDep) -> List[schema.AuditLog]:
         ),
     ]
 
-    raise audit_logs
+    return audit_logs

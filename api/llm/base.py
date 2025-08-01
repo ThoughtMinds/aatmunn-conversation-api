@@ -13,30 +13,6 @@ docs_store = LocalFileStore("./static/cache/docs_cache")
 query_store = LocalFileStore("./static/cache/query_cache")
 
 
-def with_navigation_output(func):
-    """
-    Decorator to wrap a ChatOllama model with structured Navigation output.
-
-    This decorator takes a function that returns a ChatOllama model and modifies
-    it to include structured output for navigation using the schema.Navigation model.
-
-    Args:
-        func (function): The function that returns a ChatOllama model.
-
-    Returns:
-        function: The wrapped function that returns a model with structured output.
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        chat_model: BaseChatModel = func(*args, **kwargs)
-        return chat_model.with_structured_output(
-            schema.Navigation, method="json_schema"
-        )
-
-    return wrapper
-
-
 def with_cached_embeddings(func):
     """
     Decorator to wrap an OllamaEmbeddings model with caching.
@@ -66,7 +42,6 @@ def with_cached_embeddings(func):
     return wrapper
 
 
-@with_navigation_output
 def get_ollama_chat_model():
     """Initialize an Ollama Chat Model for LLM inference
 
@@ -80,7 +55,6 @@ def get_ollama_chat_model():
     )
 
 
-@with_navigation_output
 def get_ollama_chat_fallback_model():
     """Initialize a fallback Ollama Chat Model for LLM inference
 

@@ -29,7 +29,7 @@ def get_navigation(
     """
     query = intent.query
     print(f"Request: {query}")
-    response = agent.graph.invoke({"question": query})
+    response = agent.navigation_graph.invoke({"query": query})
     print(f"Response: {response}")
     navigation: schema.Navigation = response["navigation"]
 
@@ -91,7 +91,7 @@ async def upload_navigation_excel(
                     continue
 
                 start_time = time()
-                response = agent.graph.invoke({"question": query})
+                response = agent.navigation_graph.invoke({"query": query})
                 end_time = time()
 
                 elapsed_time = end_time - start_time

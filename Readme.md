@@ -124,4 +124,5 @@ npm run dev
     - [x] Navigation
     - [ ] Summarization
     - [ ] Task Execution
-
+- [ ] Complete flow Orchestrator to identify intent, invoke sub-graph based on intent
+- [ ] Add mock tables to emulate Task Execution, Summarization

@@ -1,0 +1,47 @@
+[
+  {
+    "query": "I would like to resolve events",
+    "actual_intent": "navigate_to_resolve_event",
+    "predicted_intent": "navigate_to_tasks_list"
+  },
+  {
+    "query": "Show me fleet gas readings",
+    "actual_intent": "navigate_to_fleet_gas_readings",
+    "predicted_intent": "navigate_to_fleet_gas_readings"
+  },
+  {
+    "query": "I want to see device model information",
+    "actual_intent": "navigate_to_device_model_detail",
+    "predicted_intent": "navigate_to_device_model_vertical"
+  },
+  {
+    "query": "Show me user preview",
+    "actual_intent": "navigate_to_user_preview",
+    "predicted_intent": "navigate_to_user_preview"
+  },
+  {
+    "query": "I would like to edit product information",
+    "actual_intent": "navigate_to_product_edit",
+    "predicted_intent": "navigate_to_product_edit"
+  },
+  {
+    "query": "Show me list of tasks",
+    "actual_intent": "navigate_to_tasks_list",
+    "predicted_intent": "navigate_to_task_preview"
+  },
+  {
+    "query": "Let me manage identifiers data",
+    "actual_intent": "navigate_to_identifiers",
+    "predicted_intent": "navigate_to_worker_event_detail"
+  },
+  {
+    "query": "Take me to form executions",
+    "actual_intent": "navigate_to_form_executions",
+    "predicted_intent": "navigate_to_form_executions"
+  },
+  {
+    "query": "Show me commission complete screen",
+    "actual_intent": "navigate_to_commission_complete",
+    "predicted_intent": "navigate_to_commission_complete"
+  }
+]

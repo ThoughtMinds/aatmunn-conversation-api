@@ -1,0 +1,319 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "REST API", "version": "v0.0.1" },
+  "paths": {
+    "/api/navigation_intents/intents/": {
+      "post": {
+        "tags": ["navigation-intents"],
+        "summary": "Create Intent",
+        "description": "Create a new intent with associated parameters, required parameters, and responses.\n\nArgs:\n    intent (schema.IntentCreate): The intent data including name, description, parameters, required parameters, and responses.\n    session (SessionDep): The database session dependency for executing queries.\n\nReturns:\n    schema.IntentResponse: The created intent with its ID, name, description, parameters, required parameters, and responses.\n\nRaises:\n    HTTPException: If there is a database error (e.g., unique constraint violation).",
+        "operationId": "create_intent_api_navigation_intents_intents__post",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IntentCreate" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IntentResponse" } } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HTTPValidationError" } } }
+          }
+        }
+      },
+      "get": {
+        "tags": ["navigation-intents"],
+        "summary": "Read Intents",
+        "description": "Retrieve a paginated list of all intents with their parameters, required parameters, and responses.\n\nArgs:\n    session (SessionDep): The database session dependency for executing queries.\n    offset (int, optional): The number of records to skip for pagination. Defaults to 0.\n    limit (Optional[int], optional): The maximum number of records to return, capped at 100. Defaults to None (fetch all).\n\nReturns:\n    List[schema.IntentResponse]: A list of intents, each including ID, name, description, parameters, required parameters, and responses.",
+        "operationId": "read_intents_api_navigation_intents_intents__get",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 0, "title": "Offset" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "anyOf": [{ "type": "integer", "maximum": 100 }, { "type": "null" }], "title": "Limit" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/IntentResponse" },
+                  "title": "Response Read Intents Api Navigation Intents Intents  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HTTPValidationError" } } }
+          }
+        }
+      }
+    },
+    "/api/navigation_intents/intents/{intent_id}": {
+      "get": {
+        "tags": ["navigation-intents"],
+        "summary": "Read Intent",
+        "description": "Retrieve an intent by its ID, including its parameters, required parameters, and responses.\n\nArgs:\n    intent_id (int): The ID of the intent to retrieve.\n    session (SessionDep): The database session dependency for executing queries.\n\nReturns:\n    schema.IntentResponse: The intent data including ID, name, description, parameters, required parameters, and responses.\n\nRaises:\n    HTTPException: If the intent with the specified ID is not found (404).",
+        "operationId": "read_intent_api_navigation_intents_intents__intent_id__get",
+        "parameters": [
+          { "name": "intent_id", "in": "path", "required": true, "schema": { "type": "integer", "title": "Intent Id" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IntentResponse" } } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HTTPValidationError" } } }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["navigation-intents"],
+        "summary": "Delete Intent",
+        "description": "Delete an intent by its ID, including its associated parameters, required parameters, and responses.\n\nArgs:\n    intent_id (int): The ID of the intent to delete.\n    session (SessionDep): The database session dependency for executing queries.\n\nReturns:\n    Dict[str, bool]: A dictionary with a key 'ok' set to True indicating successful deletion.\n\nRaises:\n    HTTPException: If the intent with the specified ID is not found (404).",
+        "operationId": "delete_intent_api_navigation_intents_intents__intent_id__delete",
+        "parameters": [
+          { "name": "intent_id", "in": "path", "required": true, "schema": { "type": "integer", "title": "Intent Id" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": { "type": "boolean" },
+                  "title": "Response Delete Intent Api Navigation Intents Intents  Intent Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HTTPValidationError" } } }
+          }
+        }
+      },
+      "put": {
+        "tags": ["navigation-intents"],
+        "summary": "Update Intent",
+        "description": "Update an existing intent by ID.\n\nArgs:\n    intent_id (int): The ID of the intent to update.\n    intent_update (schema.IntentCreate): The updated intent data.\n    session (Session): The database session.\n\nReturns:\n    schema.IntentResponse: The updated intent data.\n\nRaises:\n    HTTPException: If the intent is not found (404) or if there's a database error (400).",
+        "operationId": "update_intent_api_navigation_intents_intents__intent_id__put",
+        "parameters": [
+          { "name": "intent_id", "in": "path", "required": true, "schema": { "type": "integer", "title": "Intent Id" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IntentCreate" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IntentResponse" } } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HTTPValidationError" } } }
+          }
+        }
+      }
+    },
+    "/api/navigation_intents/get_intent_count": {
+      "get": {
+        "tags": ["navigation-intents"],
+        "summary": "Get Intent Count",
+        "description": "Get the total number of intents in the database.\n\nArgs:\n    session (SessionDep): The database session dependency.\n\nReturns:\n    Dict[str, int]: A dictionary with the key 'total_intents' and the count of intents.",
+        "operationId": "get_intent_count_api_navigation_intents_get_intent_count_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": { "type": "integer" },
+                  "type": "object",
+                  "title": "Response Get Intent Count Api Navigation Intents Get Intent Count Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/navigation/get_navigation/": {
+      "post": {
+        "tags": ["navigation"],
+        "summary": "Get Navigation",
+        "description": "Get navigation information for a given query.\n\nThis endpoint takes a user's query, invokes the agent graph to determine the\nappropriate navigation, and enriches the response with the intent name from the database.\n\nArgs:\n    intent (schema.NavigationQuery): The user's query for navigation.\n    session (SessionDep): The database session dependency.\n\nReturns:\n    schema.NavigationResponse: The navigation response, including the predicted intent.",
+        "operationId": "get_navigation_api_navigation_get_navigation__post",
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NavigationQuery" } } },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NavigationResponse" } } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HTTPValidationError" } } }
+          }
+        }
+      }
+    },
+    "/api/navigation/test_navigation/": {
+      "post": {
+        "tags": ["navigation"],
+        "summary": "Upload Navigation Excel",
+        "description": "Test navigation intents by uploading an Excel file.\n\nThis endpoint allows for batch testing of navigation intents. It accepts an\nExcel file containing 'Query' and 'Intent' columns. It processes each query,\nruns it through the navigation agent, and compares the predicted intent with\nthe actual intent.\n\nArgs:\n    session (SessionDep): The database session dependency.\n    file (UploadFile): The Excel file containing test data.\n\nReturns:\n    List[schema.NavigationTestResult]: A list of test results, including the query,\n                                       actual intent, predicted intent, and response time.\n\nRaises:\n    HTTPException: If the file is not a valid Excel file, is missing the\n                   'Query' column, or if any other processing error occurs.",
+        "operationId": "upload_navigation_excel_api_navigation_test_navigation__post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_navigation_excel_api_navigation_test_navigation__post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": { "$ref": "#/components/schemas/NavigationTestResult" },
+                  "type": "array",
+                  "title": "Response Upload Navigation Excel Api Navigation Test Navigation  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HTTPValidationError" } } }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Index",
+        "description": "Root endpoint for the application.\n\nReturns:\n    dict: A dictionary containing the application's version.",
+        "operationId": "index__get",
+        "responses": {
+          "200": { "description": "Successful Response", "content": { "application/json": { "schema": {} } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_upload_navigation_excel_api_navigation_test_navigation__post": {
+        "properties": { "file": { "type": "string", "format": "binary", "title": "File" } },
+        "type": "object",
+        "required": ["file"],
+        "title": "Body_upload_navigation_excel_api_navigation_test_navigation__post"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": { "items": { "$ref": "#/components/schemas/ValidationError" }, "type": "array", "title": "Detail" }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IntentCreate": {
+        "properties": {
+          "chroma_id": { "anyOf": [{ "type": "string" }, { "type": "null" }], "title": "Chroma Id" },
+          "intent": { "type": "string", "title": "Intent" },
+          "description": { "type": "string", "title": "Description" },
+          "parameters": { "additionalProperties": { "type": "string" }, "type": "object", "title": "Parameters" },
+          "required": { "items": { "type": "string" }, "type": "array", "title": "Required" },
+          "responses": { "additionalProperties": { "type": "string" }, "type": "object", "title": "Responses" }
+        },
+        "type": "object",
+        "required": ["intent", "description", "parameters", "required", "responses"],
+        "title": "IntentCreate",
+        "description": "Pydantic model for creating a new intent.\n\nAttributes:\n    chroma_id (Optional[str]): The Chroma ID of the intent (optional).\n    intent (str): The name of the intent.\n    description (str): A description of the intent.\n    parameters (Dict[str, str]): A dictionary of parameters for the intent.\n    required (List[str]): A list of required parameters.\n    responses (Dict[str, str]): A dictionary of responses for the intent."
+      },
+      "IntentResponse": {
+        "properties": {
+          "intent_id": { "type": "integer", "title": "Intent Id" },
+          "intent": { "type": "string", "title": "Intent" },
+          "description": { "type": "string", "title": "Description" },
+          "parameters": { "additionalProperties": { "type": "string" }, "type": "object", "title": "Parameters" },
+          "required": { "items": { "type": "string" }, "type": "array", "title": "Required" },
+          "responses": { "additionalProperties": { "type": "string" }, "type": "object", "title": "Responses" }
+        },
+        "type": "object",
+        "required": ["intent_id", "intent", "description", "parameters", "required", "responses"],
+        "title": "IntentResponse",
+        "description": "Pydantic model for the response when an intent is retrieved.\n\nAttributes:\n    intent_id (int): The ID of the intent.\n    intent (str): The name of the intent.\n    description (str): A description of the intent.\n    parameters (Dict[str, str]): A dictionary of parameters for the intent.\n    required (List[str]): A list of required parameters.\n    responses (Dict[str, str]): A dictionary of responses for the intent."
+      },
+      "NavigationQuery": {
+        "properties": {
+          "query": { "type": "string", "title": "Query" },
+          "source": { "anyOf": [{ "type": "string" }, { "type": "null" }], "title": "Source" }
+        },
+        "type": "object",
+        "required": ["query"],
+        "title": "NavigationQuery",
+        "description": "Pydantic model for a navigation query.\n\nAttributes:\n    query (str): The user's query for navigation.\n    source (Optional[str]): The source of the query (optional)."
+      },
+      "NavigationResponse": {
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "reasoning": { "type": "string", "title": "Reasoning" },
+          "intent_name": { "type": "string", "title": "Intent Name" }
+        },
+        "type": "object",
+        "required": ["id", "reasoning", "intent_name"],
+        "title": "NavigationResponse",
+        "description": "Pydantic model for the navigation response API endpoint.\n\nAttributes:\n    id (str): The Chroma ID of the predicted intent.\n    reasoning (str): The reasoning behind the prediction.\n    intent_name (str): The name of the predicted intent."
+      },
+      "NavigationTestResult": {
+        "properties": {
+          "query": { "type": "string", "title": "Query" },
+          "actual_intent": { "type": "string", "title": "Actual Intent" },
+          "predicted_intent": { "type": "string", "title": "Predicted Intent" },
+          "response_time": { "type": "number", "title": "Response Time" }
+        },
+        "type": "object",
+        "required": ["query", "actual_intent", "predicted_intent", "response_time"],
+        "title": "NavigationTestResult",
+        "description": "Pydantic model for the result of a navigation test.\n\nAttributes:\n    query (str): The query that was tested.\n    actual_intent (str): The expected intent.\n    predicted_intent (str): The intent predicted by the model.\n    response_time (float): The time taken to get the response."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

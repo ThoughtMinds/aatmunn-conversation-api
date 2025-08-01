@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoint import logging, metadata, navigation, navigation_intents, summarization, task_execution
+from .endpoint import logging, metadata, navigation, navigation_intents, orchestrator, summarization, task_execution
 
 api_router = APIRouter()
 
@@ -10,4 +10,6 @@ api_router.include_router(navigation_intents.router, prefix="/navigation_intents
 api_router.include_router(navigation.router, prefix="/navigation", tags=["navigation"])
 api_router.include_router(summarization.router, prefix="/summarization", tags=["summarization"])
 api_router.include_router(task_execution.router, prefix="/task_execution", tags=["task_execution"])
+api_router.include_router(orchestrator.router, prefix="/orchestrator", tags=["orchestrator"])
+
 

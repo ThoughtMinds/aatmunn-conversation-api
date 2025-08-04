@@ -75,9 +75,9 @@ def create_vector_store() -> None:
         print("No navigation data was loaded, databases will be empty!")
         return
 
-    print(f"Creating documents for {len(sample_navigation_intents)} Intents")
+    print(f"Creating Intents ({len(sample_navigation_intents)})")
     documents = get_documents(navigation_intents=sample_navigation_intents)
-    print(f"Creatied {len(documents)} Documents")
+    print(f"Created {len(documents)} Intents")
 
     vectorstore = Chroma.from_documents(
         documents=documents,

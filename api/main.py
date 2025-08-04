@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI):
     """
     db.create_db_and_tables()
     rag.ensure_vectorstore_exists()
+    db.populate_summarization_tables()
     yield
     # Clean up
 

@@ -29,6 +29,7 @@ help:
 	@echo "  make init                    - Pulls models inside the Ollama container"
 	@echo "  make dev                     - Run development environment with logs"
 	@echo "  make test                    - Test API endpoints using NewMan"
+	@echo "  make cleardb                 - Clear local Sqlite database files"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make up env=dev     - Use development compose file"
@@ -47,6 +48,9 @@ init:
 
 test:
 	docker run --rm -v ./static/tests:/etc/newman --network aatmun -t postman/newman run aatmunn_api_collection
+
+cleardb:
+	yes | sudo rm -r ./static/db/chroma/ ./static/db/database.db 
 
 # Standard Docker Compose commands
 up:

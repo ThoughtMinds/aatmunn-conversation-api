@@ -15,7 +15,8 @@ class Settings(BaseSettings):
         OLLAMA_CHAT_MODEL (str): The primary chat model to use.
         OLLAMA_CHAT_FALLBACK_MODEL (str): The fallback chat model.
         OLLAMA_EMBEDDINGS_MODEL (str): The model for generating embeddings.
-        DATABASE_INIT_DATA (str): The path to the database initialization data.
+        DATABASE_NAVIGATION_DATA (str): The path to the database navigation data.
+        DATABASE_SUMMARIZATION_DATA (str): The path to the database summarization data.
         CHROMA_PERSIST_DIRECTORY (str): The directory for ChromaDB persistence.
         PROJECT_NAME (Optional[str]): The name of the project.
         VERSION (Optional[str]): The version of the project.
@@ -29,7 +30,8 @@ class Settings(BaseSettings):
     OLLAMA_CHAT_FALLBACK_MODEL: str
     OLLAMA_EMBEDDINGS_MODEL: str
 
-    DATABASE_INIT_DATA: str
+    DATABASE_NAVIGATION_DATA: str
+    DATABASE_SUMMARIZATION_DATA: str
     CHROMA_PERSIST_DIRECTORY: str
 
     PROJECT_NAME: Optional[str] = "REST API"

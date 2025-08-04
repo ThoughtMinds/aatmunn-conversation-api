@@ -16,14 +16,27 @@ def load_sample_navigation_data() -> List[Dict]:
         List[Dict]: A list of dictionaries, where each dictionary represents a
                     navigation intent.
     """
-    if not path.isfile(settings.DATABASE_INIT_DATA):
+    if not path.isfile(settings.DATABASE_NAVIGATION_DATA):
         return []
 
     try:
-        with open(settings.DATABASE_INIT_DATA) as f:
+        with open(settings.DATABASE_NAVIGATION_DATA) as f:
             sample_navigation_intents = load(f)
     except Exception as e:
         print(f"Failed to load navigation intents due to: {e}")
         sample_navigation_intents = []
 
     return sample_navigation_intents
+
+
+def load_sample_summarization_data() -> List[Dict]:
+    if not path.isfile(settings.DATABASE_SUMMARIZATION_DATA):
+        return []
+
+    try:
+        with open(settings.DATABASE_SUMMARIZATION_DATA) as f:
+            sample_summarization_data = load(f)
+    except Exception as e:
+        print(f"Failed to load navigation intents due to: {e}")
+        sample_summarization_data = []
+    return sample_summarization_data

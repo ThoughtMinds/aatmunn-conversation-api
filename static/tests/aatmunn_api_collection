@@ -18,15 +18,15 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"\r",
-									"pm.test(\"Check if key exists\", function () {\r",
-									"    const responseData = pm.response.json();\r",
-									"    pm.expect(responseData).to.have.keys(['version'])\r",
-									"});\r",
-									"\r",
+									"pm.test(\"Status code\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Check if key exists\", function () {",
+									"    const responseData = pm.response.json();",
+									"    pm.expect(responseData).to.have.keys(['version'])",
+									"});",
+									"",
 									"pm.execution.setNextRequest(\"List Intents\");"
 								],
 								"type": "text/javascript",
@@ -39,44 +39,116 @@
 						"header": [],
 						"url": "{{baseUrl}}"
 					},
-					"response": [
-						{
-							"name": "Example",
-							"originalRequest": {
-								"method": "GET",
-								"header": [],
-								"url": "{{baseUrl}}"
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "date",
-									"value": "Fri, 11 Jul 2025 07:54:52 GMT"
-								},
-								{
-									"key": "server",
-									"value": "uvicorn"
-								},
-								{
-									"key": "content-length",
-									"value": "20"
-								},
-								{
-									"key": "content-type",
-									"value": "application/json"
-								}
-							],
-							"cookie": [],
-							"body": "{\n    \"version\": \"v0.0.1\"\n}"
-						}
-					]
+					"response": []
 				}
 			]
 		},
 		{
-			"name": "Database",
+			"name": "Orchestrator",
+			"item": [
+				{
+					"name": "Identify Intent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"query\": \"go to the home page\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{baseUrl}}/api/orchestrator/identify_intent/"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Navigation",
+			"item": [
+				{
+					"name": "Get Navigation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"query\": \"go to the home page\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{baseUrl}}/api/navigation/get_navigation/"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Navigation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/path/to/your/test_cases.xlsx"
+								}
+							]
+						},
+						"url": "{{baseUrl}}/api/navigation/test_navigation/"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Navigation Intents",
 			"item": [
 				{
 					"name": "List Intents",
@@ -85,63 +157,63 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Test for status code 200\r",
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"\r",
-									"// Parse JSON safely\r",
-									"let responseData;\r",
-									"try {\r",
-									"    responseData = pm.response.json();\r",
-									"} catch (e) {\r",
-									"    pm.test(\"Response is valid JSON\", function () {\r",
-									"        pm.expect(e).to.be.null;\r",
-									"    });\r",
-									"    throw new Error(\"Response is not valid JSON\");\r",
-									"}\r",
-									"\r",
-									"// Test if response is an array\r",
-									"pm.test(\"Response is an array\", function () {\r",
-									"    pm.expect(responseData).to.be.an('array');\r",
-									"});\r",
-									"\r",
-									"// Test each item in the array for required keys and types\r",
-									"pm.test(\"Check if each item has required keys and types\", function () {\r",
-									"    responseData.forEach(item => {\r",
-									"        // Check required keys\r",
-									"        pm.expect(item).to.include.keys('intent_id', 'intent', 'description', 'parameters', 'required', 'responses');\r",
-									"        \r",
-									"        // Validate types\r",
-									"        pm.expect(item.intent_id).to.be.a('number');\r",
-									"        pm.expect(item.intent).to.be.a('string');\r",
-									"        pm.expect(item.description).to.be.a('string');\r",
-									"        pm.expect(item.parameters).to.be.an('object');\r",
-									"        pm.expect(item.required).to.be.an('array');\r",
-									"        pm.expect(item.responses).to.be.an('object');\r",
-									"        \r",
-									"        // Validate parameters object\r",
-									"        \r",
-									"        // Validate required array\r",
-									"        \r",
-									"        // Validate responses object\r",
-									"        pm.expect(item.responses).to.include.keys('web', 'android', 'ios');\r",
-									"        pm.expect(item.responses.web).to.be.a('string');\r",
-									"        pm.expect(item.responses.android).to.be.a('string');\r",
-									"        pm.expect(item.responses.ios).to.be.a('string');\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"// Store first intent_id as environment variable if tests pass\r",
-									"pm.test(\"Store first intent_id\", function () {\r",
-									"    if (responseData.length > 0) {\r",
-									"        pm.collectionVariables.set(\"intent_id\", responseData[0].intent_id);\r",
-									"    } else {\r",
-									"        pm.expect.fail(\"No intents found in response\");\r",
-									"    }\r",
-									"});\r",
-									"\r",
-									"pm.execution.setNextRequest(\"Get Intent By ID\");\r",
+									"// Test for status code 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Parse JSON safely",
+									"let responseData;",
+									"try {",
+									"    responseData = pm.response.json();",
+									"} catch (e) {",
+									"    pm.test(\"Response is valid JSON\", function () {",
+									"        pm.expect(e).to.be.null;",
+									"    });",
+									"    throw new Error(\"Response is not valid JSON\");",
+									"}",
+									"",
+									"// Test if response is an array",
+									"pm.test(\"Response is an array\", function () {",
+									"    pm.expect(responseData).to.be.an('array');",
+									"});",
+									"",
+									"// Test each item in the array for required keys and types",
+									"pm.test(\"Check if each item has required keys and types\", function () {",
+									"    responseData.forEach(item => {",
+									"        // Check required keys",
+									"        pm.expect(item).to.include.keys('intent_id', 'intent', 'description', 'parameters', 'required', 'responses');",
+									"        ",
+									"        // Validate types",
+									"        pm.expect(item.intent_id).to.be.a('number');",
+									"        pm.expect(item.intent).to.be.a('string');",
+									"        pm.expect(item.description).to.be.a('string');",
+									"        pm.expect(item.parameters).to.be.an('object');",
+									"        pm.expect(item.required).to.be.an('array');",
+									"        pm.expect(item.responses).to.be.an('object');",
+									"        ",
+									"        // Validate parameters object",
+									"        ",
+									"        // Validate required array",
+									"        ",
+									"        // Validate responses object",
+									"        pm.expect(item.responses).to.include.keys('web', 'android', 'ios');",
+									"        pm.expect(item.responses.web).to.be.a('string');",
+									"        pm.expect(item.responses.android).to.be.a('string');",
+									"        pm.expect(item.responses.ios).to.be.a('string');",
+									"    });",
+									"});",
+									"",
+									"// Store first intent_id as environment variable if tests pass",
+									"pm.test(\"Store first intent_id\", function () {",
+									"    if (responseData.length > 0) {",
+									"        pm.collectionVariables.set(\"intent_id\", responseData[0].intent_id);",
+									"    } else {",
+									"        pm.expect.fail(\"No intents found in response\");",
+									"    }",
+									"});",
+									"",
+									"pm.execution.setNextRequest(\"Get Intent By ID\");",
 									""
 								],
 								"type": "text/javascript",
@@ -162,7 +234,7 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": "{{baseUrl}}/api/navigation_intents/intents"
+						"url": "{{baseUrl}}/api/navigation_intents/intents/"
 					},
 					"response": []
 				},
@@ -173,55 +245,55 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Test for status code 200\r",
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"\r",
-									"// Parse JSON safely\r",
-									"let responseData;\r",
-									"try {\r",
-									"    responseData = pm.response.json();\r",
-									"} catch (e) {\r",
-									"    pm.test(\"Response is valid JSON\", function () {\r",
-									"        pm.expect(e).to.be.null;\r",
-									"    });\r",
-									"    throw new Error(\"Response is not valid JSON\");\r",
-									"}\r",
-									"\r",
-									"// Test if response is an object\r",
-									"pm.test(\"Response is an object\", function () {\r",
-									"    pm.expect(responseData).to.be.an('object');\r",
-									"});\r",
-									"\r",
-									"// Test for required keys and types\r",
-									"pm.test(\"Check if response has required keys and types\", function () {\r",
-									"    // Check required keys\r",
-									"    pm.expect(responseData).to.include.keys('intent_id', 'intent', 'description', 'parameters', 'required', 'responses');\r",
-									"    \r",
-									"    // Validate types\r",
-									"    pm.expect(responseData.intent_id).to.be.a('number');\r",
-									"    pm.expect(responseData.intent).to.be.a('string');\r",
-									"    pm.expect(responseData.description).to.be.a('string');\r",
-									"    pm.expect(responseData.parameters).to.be.an('object');\r",
-									"    pm.expect(responseData.required).to.be.an('array');\r",
-									"    pm.expect(responseData.responses).to.be.an('object');\r",
-									"    \r",
-									"    // Validate parameters object\r",
-									"    pm.expect(responseData.parameters).to.include.keys('app_id');\r",
-									"    pm.expect(responseData.parameters.app_id).to.equal('integer');\r",
-									"    \r",
-									"    // Validate required array\r",
-									"    pm.expect(responseData.required).to.include('app_id');\r",
-									"    \r",
-									"    // Validate responses object\r",
-									"    pm.expect(responseData.responses).to.include.keys('web', 'android', 'ios');\r",
-									"    pm.expect(responseData.responses.web).to.be.a('string');\r",
-									"    pm.expect(responseData.responses.android).to.be.a('string');\r",
-									"    pm.expect(responseData.responses.ios).to.be.a('string');\r",
-									"});\r",
-									"\r",
-									"pm.execution.setNextRequest(\"Create Intent\");\r",
+									"// Test for status code 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Parse JSON safely",
+									"let responseData;",
+									"try {",
+									"    responseData = pm.response.json();",
+									"} catch (e) {",
+									"    pm.test(\"Response is valid JSON\", function () {",
+									"        pm.expect(e).to.be.null;",
+									"    });",
+									"    throw new Error(\"Response is not valid JSON\");",
+									"}",
+									"",
+									"// Test if response is an object",
+									"pm.test(\"Response is an object\", function () {",
+									"    pm.expect(responseData).to.be.an('object');",
+									"});",
+									"",
+									"// Test for required keys and types",
+									"pm.test(\"Check if response has required keys and types\", function () {",
+									"    // Check required keys",
+									"    pm.expect(responseData).to.include.keys('intent_id', 'intent', 'description', 'parameters', 'required', 'responses');",
+									"    ",
+									"    // Validate types",
+									"    pm.expect(responseData.intent_id).to.be.a('number');",
+									"    pm.expect(responseData.intent).to.be.a('string');",
+									"    pm.expect(responseData.description).to.be.a('string');",
+									"    pm.expect(responseData.parameters).to.be.an('object');",
+									"    pm.expect(responseData.required).to.be.an('array');",
+									"    pm.expect(responseData.responses).to.be.an('object');",
+									"    ",
+									"    // Validate parameters object",
+									"    pm.expect(responseData.parameters).to.include.keys('app_id');",
+									"    pm.expect(responseData.parameters.app_id).to.equal('integer');",
+									"    ",
+									"    // Validate required array",
+									"    pm.expect(responseData.required).to.include('app_id');",
+									"    ",
+									"    // Validate responses object",
+									"    pm.expect(responseData.responses).to.include.keys('web', 'android', 'ios');",
+									"    pm.expect(responseData.responses.web).to.be.a('string');",
+									"    pm.expect(responseData.responses.android).to.be.a('string');",
+									"    pm.expect(responseData.responses.ios).to.be.a('string');",
+									"});",
+									"",
+									"pm.execution.setNextRequest(\"Create Intent\");",
 									""
 								],
 								"type": "text/javascript",
@@ -243,53 +315,53 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Fixed syntax error in the test script\r",
-									"// Test for status code 200\r",
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"\r",
-									"// Parse JSON safely\r",
-									"let responseData;\r",
-									"try {\r",
-									"    responseData = pm.response.json();\r",
-									"} catch (e) {\r",
-									"    pm.test(\"Response is valid JSON\", function () {\r",
-									"        pm.expect(e).to.be.null;\r",
-									"    });\r",
-									"    throw new Error(\"Response is not valid JSON\");\r",
-									"}\r",
-									"\r",
-									"// Test if response is an object\r",
-									"pm.test(\"Response is an object\", function () {\r",
-									"    pm.expect(responseData).to.be.an('object');\r",
-									"});\r",
-									"\r",
-									"// Test for required keys and types\r",
-									"pm.test(\"Check if response has required keys and types\", function () {\r",
-									"    // Check required keys\r",
-									"    pm.expect(responseData).to.include.keys('intent_id', 'intent', 'description', 'parameters', 'required', 'responses');\r",
-									"    \r",
-									"    // Validate types\r",
-									"    pm.expect(responseData.intent_id).to.be.a('number');\r",
-									"    pm.expect(responseData.intent).to.be.a('string');\r",
-									"    pm.expect(responseData.description).to.be.a('string');\r",
-									"    pm.expect(responseData.parameters).to.be.an('object');\r",
-									"    pm.expect(responseData.required).to.be.an('array');\r",
-									"    pm.expect(responseData.responses).to.be.an('object');\r",
-									"    \r",
-									"});\r",
-									"\r",
-									"// Store ephemeral_intent_id as environment variable if tests pass\r",
-									"pm.test(\"Store ephemeral_intent_id\", function () {\r",
-									"    if (responseData.intent_id) {\r",
-									"        pm.collectionVariables.set(\"ephemeral_intent_id\", responseData.intent_id);\r",
-									"    } else {\r",
-									"        pm.expect.fail(\"No intent_id found in response\");\r",
-									"    }\r",
-									"});\r",
-									"\r",
-									"pm.execution.setNextRequest(\"Delete Intent By ID\");\r",
+									"// Fixed syntax error in the test script",
+									"// Test for status code 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Parse JSON safely",
+									"let responseData;",
+									"try {",
+									"    responseData = pm.response.json();",
+									"} catch (e) {",
+									"    pm.test(\"Response is valid JSON\", function () {",
+									"        pm.expect(e).to.be.null;",
+									"    });",
+									"    throw new Error(\"Response is not valid JSON\");",
+									"}",
+									"",
+									"// Test if response is an object",
+									"pm.test(\"Response is an object\", function () {",
+									"    pm.expect(responseData).to.be.an('object');",
+									"});",
+									"",
+									"// Test for required keys and types",
+									"pm.test(\"Check if response has required keys and types\", function () {",
+									"    // Check required keys",
+									"    pm.expect(responseData).to.include.keys('intent_id', 'intent', 'description', 'parameters', 'required', 'responses');",
+									"    ",
+									"    // Validate types",
+									"    pm.expect(responseData.intent_id).to.be.a('number');",
+									"    pm.expect(responseData.intent).to.be.a('string');",
+									"    pm.expect(responseData.description).to.be.a('string');",
+									"    pm.expect(responseData.parameters).to.be.an('object');",
+									"    pm.expect(responseData.required).to.be.an('array');",
+									"    pm.expect(responseData.responses).to.be.an('object');",
+									"    ",
+									"});",
+									"",
+									"// Store ephemeral_intent_id as environment variable if tests pass",
+									"pm.test(\"Store ephemeral_intent_id\", function () {",
+									"    if (responseData.intent_id) {",
+									"        pm.collectionVariables.set(\"ephemeral_intent_id\", responseData.intent_id);",
+									"    } else {",
+									"        pm.expect.fail(\"No intent_id found in response\");",
+									"    }",
+									"});",
+									"",
+									"pm.execution.setNextRequest(\"Delete Intent By ID\");",
 									""
 								],
 								"type": "text/javascript",
@@ -312,7 +384,7 @@
 								}
 							}
 						},
-						"url": "{{baseUrl}}/api/navigation_intents/intents"
+						"url": "{{baseUrl}}/api/navigation_intents/intents/"
 					},
 					"response": []
 				},
@@ -354,18 +426,18 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Test for status code 200\r",
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"\r",
-									"// Test for JSON response containing \"ok\": true\r",
-									"pm.test(\"Response body contains ok: true\", function () {\r",
-									"    const response = pm.response.json();\r",
-									"    pm.expect(response.ok).to.be.true;\r",
-									"});\r",
-									"\r",
-									"pm.execution.setNextRequest(null);\r",
+									"// Test for status code 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Test for JSON response containing \"ok\": true",
+									"pm.test(\"Response body contains ok: true\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.ok).to.be.true;",
+									"});",
+									"",
+									"pm.execution.setNextRequest(null);",
 									""
 								],
 								"type": "text/javascript",
@@ -383,6 +455,7 @@
 				{
 					"name": "Get Intent Count",
 					"event": [
+
 						{
 							"listen": "test",
 							"script": {
@@ -399,6 +472,78 @@
 						"method": "GET",
 						"header": [],
 						"url": "{{baseUrl}}/api/navigation_intents/get_intent_count"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Summarization",
+			"item": [
+				{
+					"name": "Get Summary",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"query\": \"Summarize the latest news\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{baseUrl}}/api/summarization/get_summary/"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Task Execution",
+			"item": [
+				{
+					"name": "Execute Task",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"query\": \"Book a flight to New York\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "{{baseUrl}}/api/task_execution/execute_task/"
 					},
 					"response": []
 				}
@@ -425,17 +570,17 @@
 					"request": {
 						"method": "GET",
 						"header": [],
-						"url": "{{baseUrl}}/api/logging/get_audit_log"
+						"url": "{{baseUrl}}/api/logging/get_audit_log/"
 					},
 					"response": []
 				}
 			]
 		},
 		{
-			"name": "Navigation",
+			"name": "Metadata",
 			"item": [
 				{
-					"name": "Get Navigation",
+					"name": "Get Dashboard Stats",
 					"event": [
 						{
 							"listen": "test",
@@ -450,50 +595,9 @@
 						}
 					],
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n    \"query\": \"go to the home page\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": "{{baseUrl}}/api/navigation/get_navigation"
-					},
-					"response": []
-				},
-				{
-					"name": "Test Navigation",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": "/path/to/your/test_cases.xlsx"
-								}
-							]
-						},
-						"url": "{{baseUrl}}/api/navigation/test_navigation"
+						"url": "{{baseUrl}}/api/metadata/get_dashboard_stats/"
 					},
 					"response": []
 				}
@@ -509,10 +613,9 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									""
+									"pm.test(\"Status code\", function () {",
+									"    pm.response.to.have.status(200);",
+									"}"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -533,13 +636,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"\r",
-									"pm.test(\"Ollama has at least two models\", function () {\r",
-									"    var jsonData = pm.response.json();\r",
-									"    pm.expect(jsonData.models).to.be.an('array').that.has.lengthOf(2);\r",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Ollama has at least two models\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.models).to.be.an('array').that.has.lengthOf(2);",
 									"});"
 								],
 								"type": "text/javascript",

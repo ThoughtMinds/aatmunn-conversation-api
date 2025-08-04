@@ -1,8 +1,12 @@
 from sqlmodel import Session, SQLModel, create_engine
-from .models import Intent, Parameter, RequiredParameter, Response
+from .navigation import Intent, Parameter, RequiredParameter, Response
+from langchain_community.utilities import SQLDatabase
+from sqlmodel import Session
+from api import db, rag
+
 
 # Database setup
-sqlite_file_name = "./static/db/navigation_intents.db"
+sqlite_file_name = "./static/db/database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 connect_args = {"check_same_thread": False}
 engine = create_engine(sqlite_url, connect_args=connect_args)

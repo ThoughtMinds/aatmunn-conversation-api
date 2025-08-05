@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     DATABASE_SUMMARIZATION_DATA: str
     CHROMA_PERSIST_DIRECTORY: str
 
-    PROJECT_NAME: Optional[str] = "REST API"
-    VERSION: Optional[str] = "v0.0.1"
+    PROJECT_NAME: str = "Aatmanunn Conversation API"
+    VERSION: str = "0.1.0"
 
 
 settings = Settings()

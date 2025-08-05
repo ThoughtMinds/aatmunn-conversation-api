@@ -51,7 +51,6 @@ def get_ollama_chat_model():
     return ChatOllama(
         base_url=settings.OLLAMA_BASE_URL,
         model=settings.OLLAMA_CHAT_MODEL,
-        # temperature=0.2
     )
 
 

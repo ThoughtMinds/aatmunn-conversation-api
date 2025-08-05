@@ -129,6 +129,8 @@ npm run dev
     - [ ] Orchestrator flow to identify intent and invoke sub-graph based on intent
 - [ ] Insert dummy Summarization data during db creation
 - [ ] Let llm fetch data on its own based on Schema
+- [ ] Ensure Tool based SQL Execution returns query
+- [ ] Integrate other DB Functions as well with description (custom tools)
 
 > TODO: Add function to init db with Summarization tables
 

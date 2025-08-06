@@ -1,144 +1,93 @@
-from typing import Literal
-from langchain_core.messages import AIMessage
-from langgraph.graph import END, START, MessagesState, StateGraph
-from langgraph.prebuilt import ToolNode
+from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langgraph.graph import StateGraph, START, END
+from langgraph.prebuilt import create_react_agent
+from typing import TypedDict, List
 from api import db, llm
 
+# Define the state to track the workflow
+class AgentState(TypedDict):
+    messages: List[dict]
+    query: str
+    table_names: str
+    schema: str
+    checked_query: str
+    query_result: str
+    summary: str
 
 chat_model = llm.get_ollama_chat_model()
 
 toolkit = SQLDatabaseToolkit(db=db.sqlite_db, llm=chat_model)
-
 tools = toolkit.get_tools()
 
+# Define system prompt for query generation and execution
+system_prompt = """You are a SQL expert designed to interact with a SQL database. Given an input question, follow these steps:
+1. List available tables using sql_db_list_tables.
+2. Get the schema of relevant tables using sql_db_schema.
+3. Generate a syntactically correct {dialect} query, limiting to 5 results unless specified.
+4. Check the query using sql_db_query_checker before execution.
+5. Execute the query using sql_db_query.
+6. Summarize the results in natural language.
+Never query all columns; select only relevant ones. Do not make DML statements (INSERT, UPDATE, DELETE, DROP).
+Always start by listing tables and querying schemas of relevant tables.
+If an error occurs, rewrite the query and try again.
+Dialect: {dialect}
+Top K: 5
+"""
 
-get_schema_tool = next(tool for tool in tools if tool.name == "sql_db_schema")
-get_schema_node = ToolNode([get_schema_tool], name="get_schema")
+# Create the agent
+agent_executor = create_react_agent(chat_model, tools, prompt=system_prompt.format(dialect=db.sqlite_db.dialect, top_k=5))
 
-run_query_tool = next(tool for tool in tools if tool.name == "sql_db_query")
-run_query_node = ToolNode([run_query_tool], name="run_query")
+# Define nodes
+def list_tables_node(state: AgentState) -> AgentState:
+    result = agent_executor.invoke({"messages": [("user", "List all tables in the database")]}).get("messages")[-1].content
+    return {"table_names": result, "messages": state["messages"] + [{"role": "assistant", "content": result}]}
 
+def get_schema_node(state: AgentState) -> AgentState:
+    table_names = state["table_names"]
+    result = agent_executor.invoke({"messages": [("user", f"Get schema for {table_names}")]}).get("messages")[-1].content
+    return {"schema": result, "messages": state["messages"] + [{"role": "assistant", "content": result}]}
 
-# Example: create a predetermined tool call
-def list_tables(state: MessagesState):
-    tool_call = {
-        "name": "sql_db_list_tables",
-        "args": {},
-        "id": "abc123",
-        "type": "tool_call",
-    }
-    tool_call_message = AIMessage(content="", tool_calls=[tool_call])
+def generate_query_node(state: AgentState) -> AgentState:
+    query = state["query"]
+    schema = state["schema"]
+    prompt = f"Given the schema:\n{schema}\nGenerate a SQL query for: {query}"
+    result = agent_executor.invoke({"messages": [("user", prompt)]}).get("messages")[-1].content
+    return {"checked_query": result, "messages": state["messages"] + [{"role": "assistant", "content": result}]}
 
-    list_tables_tool = next(tool for tool in tools if tool.name == "sql_db_list_tables")
-    tool_message = list_tables_tool.invoke(tool_call)
-    response = AIMessage(f"Available tables: {tool_message.content}")
+def check_query_node(state: AgentState) -> AgentState:
+    query = state["checked_query"]
+    result = agent_executor.invoke({"messages": [("user", f"Check this query: {query}")]}).get("messages")[-1].content
+    return {"checked_query": result, "messages": state["messages"] + [{"role": "assistant", "content": result}]}
 
-    return {"messages": [tool_call_message, tool_message, response]}
+def execute_query_node(state: AgentState) -> AgentState:
+    query = state["checked_query"]
+    result = agent_executor.invoke({"messages": [("user", f"Execute this query: {query}")]}).get("messages")[-1].content
+    return {"query_result": result, "messages": state["messages"] + [{"role": "assistant", "content": result}]}
 
+def summarize_result_node(state: AgentState) -> AgentState:
+    result = state["query_result"]
+    prompt = f"Summarize the following SQL query result in natural language:\n{result}"
+    summary = agent_executor.invoke({"messages": [("user", prompt)]}).get("messages")[-1].content
+    return {"summary": summary, "messages": state["messages"] + [{"role": "assistant", "content": summary}]}
 
-# Example: force a model to create a tool call
-def call_get_schema(state: MessagesState):
-    # Note that LangChain enforces that all models accept `tool_choice="any"`
-    # as well as `tool_choice=<string name of tool>`.
-    llm_with_tools = chat_model.bind_tools([get_schema_tool], tool_choice="any")
-    response = llm_with_tools.invoke(state["messages"])
+# Define the workflow
+workflow = StateGraph(AgentState)
+workflow.add_node("list_tables", list_tables_node)
+workflow.add_node("get_schema", get_schema_node)
+workflow.add_node("generate_query", generate_query_node)
+workflow.add_node("check_query", check_query_node)
+workflow.add_node("execute_query", execute_query_node)
+workflow.add_node("summarize_result", summarize_result_node)
 
-    return {"messages": [response]}
+# Define edges
+workflow.add_edge(START, "list_tables")
+workflow.add_edge("list_tables", "get_schema")
+workflow.add_edge("get_schema", "generate_query")
+workflow.add_edge("generate_query", "check_query")
+workflow.add_edge("check_query", "execute_query")
+workflow.add_edge("execute_query", "summarize_result")
+workflow.add_edge("summarize_result", END)
 
-
-generate_query_system_prompt = """
-You are an agent designed to interact with a SQL database.
-Given an input question, create a syntactically correct {dialect} query to run,
-then look at the results of the query and return the answer. Unless the user
-specifies a specific number of examples they wish to obtain, always limit your
-query to at most {top_k} results.
-
-You can order the results by a relevant column to return the most interesting
-examples in the database. Never query for all the columns from a specific table,
-only ask for the relevant columns given the question.
-
-DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
-""".format(
-    dialect=db.sqlite_db.dialect,
-    top_k=5,
-)
-
-
-def generate_query(state: MessagesState):
-    system_message = {
-        "role": "system",
-        "content": generate_query_system_prompt,
-    }
-    # We do not force a tool call here, to allow the model to
-    # respond naturally when it obtains the solution.
-    llm_with_tools = chat_model.bind_tools([run_query_tool])
-    response = llm_with_tools.invoke([system_message] + state["messages"])
-
-    return {"messages": [response]}
-
-
-check_query_system_prompt = """
-You are a SQL expert with a strong attention to detail.
-Double check the {dialect} query for common mistakes, including:
-- Using NOT IN with NULL values
-- Using UNION when UNION ALL should have been used
-- Using BETWEEN for exclusive ranges
-- Data type mismatch in predicates
-- Properly quoting identifiers
-- Using the correct number of arguments for functions
-- Casting to the correct data type
-- Using the proper columns for joins
-
-If there are any of the above mistakes, rewrite the query. If there are no mistakes,
-just reproduce the original query.
-
-You will call the appropriate tool to execute the query after running this check.
-""".format(dialect=db.sqlite_db.dialect)
-
-
-def check_query(state: MessagesState):
-    system_message = {
-        "role": "system",
-        "content": check_query_system_prompt,
-    }
-
-    # Generate an artificial user message to check
-    tool_call = state["messages"][-1].tool_calls[0]
-    user_message = {"role": "user", "content": tool_call["args"]["query"]}
-    llm_with_tools = chat_model.bind_tools([run_query_tool], tool_choice="any")
-    response = llm_with_tools.invoke([system_message, user_message])
-    response.id = state["messages"][-1].id
-
-    return {"messages": [response]}
-
-
-def should_continue(state: MessagesState) -> Literal[END, "check_query"]:
-    messages = state["messages"]
-    last_message = messages[-1]
-    if not last_message.tool_calls:
-        return END
-    else:
-        return "check_query"
-
-
-builder = StateGraph(MessagesState)
-builder.add_node(list_tables)
-builder.add_node(call_get_schema)
-builder.add_node(get_schema_node, "get_schema")
-builder.add_node(generate_query)
-builder.add_node(check_query)
-builder.add_node(run_query_node, "run_query")
-
-builder.add_edge(START, "list_tables")
-builder.add_edge("list_tables", "call_get_schema")
-builder.add_edge("call_get_schema", "get_schema")
-builder.add_edge("get_schema", "generate_query")
-builder.add_conditional_edges(
-    "generate_query",
-    should_continue,
-)
-builder.add_edge("check_query", "run_query")
-builder.add_edge("run_query", "generate_query")
-
-summarization_graph = builder.compile()
+# Compile the graph
+summarization_graph = workflow.compile()

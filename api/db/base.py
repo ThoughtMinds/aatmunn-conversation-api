@@ -41,8 +41,11 @@ def populate_summarization_tables():
         print("No summarization data was loaded, databases will be empty!")
         return
     try:
-        inserted_counts = db.populate_db_from_json(json_data=sample_summarization_data, session=session)
-        print(f"Populated Summarization tables {inserted_counts}")
+        inserted_stats = db.populate_db_from_json(json_data=sample_summarization_data, session=session)
+        if len(inserted_stats.keys()) == 0:
+            print("Summarization data already present")
+        else:
+            print(f"Populated Summarization tables {inserted_stats}")
     except Exception as e:
         print(f"Failed to initialize Summarization tables due to: {e}")
     

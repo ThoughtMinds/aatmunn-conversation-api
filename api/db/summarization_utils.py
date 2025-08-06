@@ -188,7 +188,7 @@ def populate_db_from_json(json_data: Dict, session: Session) -> Dict[str, int]:
         existing_records = session.exec(count_query).one()
 
         if existing_records > 0:
-            inserted_counts[table_name] = 0
+            # inserted_counts[table_name] = 0
             continue
 
         records = json_data[table_name]

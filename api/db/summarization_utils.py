@@ -222,9 +222,6 @@ def populate_db_from_json(json_data: Dict, session: Session) -> Dict[str, int]:
     return inserted_counts
 
 
-# Tools
-
-
 @tool
 def fetch_employee_by_id_db(session: Any, employee_id: int) -> Dict[str, Any]:
     """

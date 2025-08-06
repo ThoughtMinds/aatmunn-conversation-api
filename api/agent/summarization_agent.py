@@ -17,8 +17,27 @@ class ToolCall(BaseModel):
 
 chat_model = llm.get_ollama_chat_model()
 
-tool_list = [db.fetch_employee_by_id_db]
-tool_dict = {"fetch_employee_by_id_db": db.fetch_employee_by_id_db}
+tool_list = [
+    db.fetch_employee_by_id_db,
+    db.list_employees_by_skill_level_db,
+    db.list_employees_by_performance_rating_db,
+    db.list_employees_by_skill_db,
+    db.list_employees_by_department_db,
+    db.list_employees_by_project_db,
+    db.list_employees_by_shift_db,
+    db.list_employees_by_hire_year_db
+]
+
+tool_dict = {
+    "fetch_employee_by_id_db": db.fetch_employee_by_id_db,
+    "list_employees_by_skill_level_db": db.list_employees_by_skill_level_db,
+    "list_employees_by_performance_rating_db": db.list_employees_by_performance_rating_db,
+    "list_employees_by_skill_db": db.list_employees_by_skill_db,
+    "list_employees_by_department_db": db.list_employees_by_department_db,
+    "list_employees_by_project_db": db.list_employees_by_project_db,
+    "list_employees_by_shift_db": db.list_employees_by_shift_db,
+    "list_employees_by_hire_year_db": db.list_employees_by_hire_year_db
+}
 
 rendered_tools = render_text_description(tool_list)
 
@@ -34,6 +53,8 @@ Return your response as a JSON blob with 'name' and 'arguments' keys.
 The `arguments` should be a dictionary, with keys corresponding 
 to the argument names and the values corresponding to the requested values.
 """
+
+# TODO: This method doesn't invoke tools, just tells you how to call the tool
 
 tool_call_prompt = ChatPromptTemplate(
     [
@@ -94,9 +115,11 @@ def get_summarized_response(messages: List[HumanMessage]):
 
                 json_tool_resp = dumps(resp)
 
-                tool_message =  HumanMessage(content=f"Database Response: {json_tool_resp}")
+                tool_message = HumanMessage(
+                    content=f"Database Response: {json_tool_resp}"
+                )
                 messages.append(tool_message)
-                
+
                 logger.info(f"Messages: {messages}")
 
                 response = summarize_chain.invoke({"messages": messages})
@@ -109,3 +132,4 @@ def get_summarized_response(messages: List[HumanMessage]):
 
     except Exception as e:
         logger.info(f"Failed to convert to ToolCall due to: {e}")
+        return content

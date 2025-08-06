@@ -6,10 +6,11 @@ from datetime import date, time
 from api import db
 from pydantic import BaseModel
 from sqlalchemy import inspect
+from langchain_core.tools import tool
 
 
-# TODO: SQL Rag for generic questions based on Schema
-# TODO: Get Schema for LLM
+# Make your logic (with tool calls)
+# List table, Get table schema, Get query, Run Query, Summarize/Error
 def get_db_schema(session) -> Dict:
     """
     Generate a JSON-compatible schema description of the database tables.
@@ -199,7 +200,9 @@ def populate_db_from_json(json_data: Dict, session: Session) -> Dict[str, int]:
             for key, value in record.items():
                 if isinstance(value, str) and key.endswith("_date"):
                     record[key] = date.fromisoformat(value)
-                if isinstance(value, str) and (key == "start_time" or key == "end_time"):
+                if isinstance(value, str) and (
+                    key == "start_time" or key == "end_time"
+                ):
                     record[key] = time.fromisoformat(value)
 
             db_record = model(**record)
@@ -218,179 +221,12 @@ def populate_db_from_json(json_data: Dict, session: Session) -> Dict[str, int]:
 
     return inserted_counts
 
-def count_records_db(
-    table: str, session: Session, filters: Optional[Dict[str, str]] = None
-) -> int:
-    """
-    Count the number of records in the specified table with optional filters.
 
-    Args:
-        table (str): The table to count records from.
-        session (Session): The database session for executing queries.
-        filters (Optional[Dict[str, str]]): Key-value pairs for filtering data.
-
-    Returns:
-        int: The total number of records.
-
-    Raises:
-        HTTPException: If the table is invalid (400).
-    """
-    table_map = {
-        "Employee": db.Employee,
-        "Department": db.Department,
-        "Role": db.Role,
-        "Shift": db.Shift,
-        "EmployeeShift": db.EmployeeShift,
-        "Project": db.Project,
-        "EmployeeProject": db.EmployeeProject,
-        "Skill": db.Skill,
-        "EmployeeSkill": db.EmployeeSkill,
-        "PerformanceReview": db.PerformanceReview,
-    }
-
-    if table not in table_map:
-        raise HTTPException(status_code=400, detail="Invalid table name")
-
-    model = table_map[table]
-    query = select(func.count()).select_from(model)
-
-    if filters:
-        for key, value in filters.items():
-            if not hasattr(model, key):
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid filter field: {key}"
-                )
-            query = query.where(getattr(model, key) == value)
-
-    return session.exec(query).one()
+# Tools
 
 
-def fetch_table_data_db(
-    request: SummarizationRequest, session: Session
-) -> SummarizationResponse:
-    """
-    Fetch data from a specific table with optional filtering, grouping, and metrics.
-
-    Args:
-        request (SummarizationRequest): The request specifying table, filters, group_by, and metrics.
-        session (Session): The database session for executing queries.
-
-    Returns:
-        SummarizationResponse: The fetched data and total count.
-
-    Raises:
-        HTTPException: If the table or fields are invalid (400) or no data is found (404).
-    """
-    table_map = {
-        "Employee": db.Employee,
-        "Department": db.Department,
-        "Role": db.Role,
-        "Shift": db.Shift,
-        "EmployeeShift": db.EmployeeShift,
-        "Project": db.Project,
-        "EmployeeProject": db.EmployeeProject,
-        "Skill": db.Skill,
-        "EmployeeSkill": db.EmployeeSkill,
-        "PerformanceReview": db.PerformanceReview,
-    }
-
-    if request.table not in table_map:
-        raise HTTPException(status_code=400, detail="Invalid table name")
-
-    model = table_map[request.table]
-    query = select(model)
-
-    # Apply filters
-    if request.filters:
-        for key, value in request.filters.items():
-            if not hasattr(model, key):
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid filter field: {key}"
-                )
-            query = query.where(getattr(model, key) == value)
-
-    # Apply group_by and metrics
-    select_columns = [model]
-    if request.group_by:
-        if not hasattr(model, request.group_by):
-            raise HTTPException(
-                status_code=400, detail=f"Invalid group_by field: {request.group_by}"
-            )
-        group_by_field = getattr(model, request.group_by)
-        query = query.group_by(group_by_field)
-
-    if request.metrics:
-        supported_metrics = {
-            "count": func.count().label("count"),
-            "avg_rating": func.avg(db.PerformanceReview.rating).label("avg_rating"),
-            "total_employees": func.count(db.Employee.employee_id).label(
-                "total_employees"
-            ),
-            "active_projects": func.count(db.Project.project_id)
-            .filter(db.Project.status == "active")
-            .label("active_projects"),
-        }
-        for metric in request.metrics:
-            if metric in supported_metrics:
-                select_columns.append(supported_metrics[metric])
-            elif hasattr(model, metric):
-                select_columns.append(getattr(model, metric))
-            else:
-                raise HTTPException(status_code=400, detail=f"Invalid metric: {metric}")
-
-        if "avg_rating" in request.metrics and request.table != "PerformanceReview":
-            query = query.join(
-                db.PerformanceReview,
-                db.PerformanceReview.employee_id == db.Employee.employee_id,
-                isouter=True,
-            )
-        if "total_employees" in request.metrics and request.table != "Employee":
-            query = query.join(
-                db.Employee,
-                db.Employee.department_id == db.Department.department_id,
-                isouter=True,
-            )
-        if "active_projects" in request.metrics and request.table != "Project":
-            query = query.join(
-                db.Project,
-                db.Project.department_id == db.Department.department_id,
-                isouter=True,
-            )
-
-    # Apply pagination
-    if request.limit:
-        query = query.limit(request.limit)
-    query = query.offset(request.offset)
-
-    # Execute query
-    results = session.exec(query).all()
-    if not results:
-        raise HTTPException(
-            status_code=404, detail="No data found for the given criteria"
-        )
-
-    # Format results
-    formatted_results = []
-    for row in results:
-        result_dict = {}
-        if isinstance(row, tuple):
-            # Handle grouped results with metrics
-            model_instance = row[0]
-            result_dict.update(model_instance.dict())
-            for i, metric in enumerate(request.metrics, 1):
-                result_dict[metric] = row[i]
-        else:
-            result_dict.update(row.dict())
-        formatted_results.append(result_dict)
-
-    # Get total count
-    total_query = select(func.count()).select_from(query.subquery())
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
-
-
-def fetch_employee_by_id_db(employee_id: int, session: Session) -> Dict[str, Any]:
+@tool
+def fetch_employee_by_id_db(session: Any, employee_id: int) -> Dict[str, Any]:
     """
     Fetch an employee by ID, including related department and role data.
 
@@ -404,6 +240,7 @@ def fetch_employee_by_id_db(employee_id: int, session: Session) -> Dict[str, Any
     Raises:
         HTTPException: If the employee is not found (404).
     """
+    employee_id = int(employee_id)
     employee = session.get(db.Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")

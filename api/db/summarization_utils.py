@@ -256,11 +256,11 @@ def fetch_employee_by_id_db(session: Any, employee_id: int) -> Dict[str, Any]:
     }
 
 
+@tool
 def list_employees_by_skill_level_db(
     skill_level: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
 ) -> SummarizationResponse:
     """
     List employees with a specific skill proficiency level, including their department.
@@ -269,7 +269,6 @@ def list_employees_by_skill_level_db(
         skill_level (str): The proficiency level to filter by (e.g., 'expert', 'intermediate').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
         SummarizationResponse: List of employees with the specified skill level and total count.
@@ -293,7 +292,6 @@ def list_employees_by_skill_level_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -320,14 +318,13 @@ def list_employees_by_skill_level_db(
     )
     total = session.exec(total_query).one()
 
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results
 
-
+@tool
 def list_employees_by_performance_rating_db(
     rating: int,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
 ) -> SummarizationResponse:
     """
     List employees with a specific performance rating, including their department and role.
@@ -336,7 +333,6 @@ def list_employees_by_performance_rating_db(
         rating (int): The performance rating to filter by (1-5).
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
         SummarizationResponse: List of employees with the specified rating and total count.
@@ -360,7 +356,6 @@ def list_employees_by_performance_rating_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -390,12 +385,11 @@ def list_employees_by_performance_rating_db(
 
     return SummarizationResponse(results=formatted_results, total=total)
 
-
+@tool
 def list_employees_by_skill_db(
     skill_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
 ) -> SummarizationResponse:
     """
     List employees with a specific skill, including their department and skill proficiency.
@@ -404,7 +398,6 @@ def list_employees_by_skill_db(
         skill_name (str): The skill name to filter by (e.g., 'Python').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
         SummarizationResponse: List of employees with the specified skill and total count.
@@ -426,7 +419,6 @@ def list_employees_by_skill_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -457,12 +449,11 @@ def list_employees_by_skill_db(
 
     return SummarizationResponse(results=formatted_results, total=total)
 
-
+@tool
 def list_employees_by_department_db(
     department_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
 ) -> SummarizationResponse:
     """
     List employees in a specific department, including their roles.
@@ -471,7 +462,6 @@ def list_employees_by_department_db(
         department_name (str): The department name to filter by (e.g., 'Engineering').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
         SummarizationResponse: List of employees in the specified department and total count.
@@ -488,7 +478,6 @@ def list_employees_by_department_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -517,12 +506,11 @@ def list_employees_by_department_db(
 
     return SummarizationResponse(results=formatted_results, total=total)
 
-
+@tool
 def list_employees_by_project_db(
     project_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
 ) -> SummarizationResponse:
     """
     List employees assigned to a specific project, including their role in the project and department.
@@ -531,7 +519,6 @@ def list_employees_by_project_db(
         project_name (str): The project name to filter by (e.g., 'Product Launch').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
         SummarizationResponse: List of employees assigned to the project and total count.
@@ -556,7 +543,6 @@ def list_employees_by_project_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -588,11 +574,11 @@ def list_employees_by_project_db(
     return SummarizationResponse(results=formatted_results, total=total)
 
 
+@tool
 def list_employees_by_shift_db(
     shift_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
 ) -> SummarizationResponse:
     """
     List employees assigned to a specific shift, including their department.
@@ -601,7 +587,6 @@ def list_employees_by_shift_db(
         shift_name (str): The shift name to filter by (e.g., 'Morning').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
         SummarizationResponse: List of employees assigned to the shift and total count.
@@ -620,7 +605,6 @@ def list_employees_by_shift_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -651,9 +635,9 @@ def list_employees_by_shift_db(
 
     return SummarizationResponse(results=formatted_results, total=total)
 
-
+@tool
 def list_employees_by_hire_year_db(
-    year: int, session: Session, limit: Optional[int] = None, offset: Optional[int] = 0
+    year: int, session: Any, limit: Optional[int] = None
 ) -> SummarizationResponse:
     """
     List employees hired in a specific year, including their department and role.
@@ -662,7 +646,6 @@ def list_employees_by_hire_year_db(
         year (int): The hire year to filter by (e.g., 2023).
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
         SummarizationResponse: List of employees hired in the specified year and total count.
@@ -684,7 +667,6 @@ def list_employees_by_hire_year_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:

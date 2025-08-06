@@ -127,13 +127,15 @@ npm run dev
 - [ ] Add mock tables for Task Execution, Summarization data
 - [x] Add Orchestrator Frontend
     - [ ] Orchestrator flow to identify intent and invoke sub-graph based on intent
-- [ ] Insert dummy Summarization data during db creation
-- [ ] Let llm fetch data on its own based on Schema
+- [x] Insert dummy Summarization data during db creation
+
+- [ ] Let llm fetch data on its own based on Schema (WIP, Fallback to regular Tool Calling)
+
 - [ ] Ensure Tool based SQL Execution returns query
 - [ ] Integrate other DB Functions as well with description (custom tools)
+- [ ] 6-8-2025 Task Executor with fixed tools
 
 > TODO: Add function to init db with Summarization tables
 
 > TODO: Add more tools for fetching employee data
 
-> Consdier supporting SQL RAG (Node)

@@ -1,4 +1,4 @@
-from api import db, llm
+from api import db, llm, tools
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema import SystemMessage
 from langchain_core.tools import render_text_description
@@ -18,26 +18,28 @@ class ToolCall(BaseModel):
 chat_model = llm.get_ollama_chat_model()
 
 tool_list = [
-    db.fetch_employee_by_id_db,
-    db.list_employees_by_skill_level_db,
-    db.list_employees_by_performance_rating_db,
-    db.list_employees_by_skill_db,
-    db.list_employees_by_department_db,
-    db.list_employees_by_project_db,
-    db.list_employees_by_shift_db,
-    db.list_employees_by_hire_year_db
+    tools.summarization.fetch_employee_by_id_db,
+    tools.summarization.list_employees_by_skill_level_db,
+    tools.summarization.list_employees_by_performance_rating_db,
+    tools.summarization.list_employees_by_skill_db,
+    tools.summarization.list_employees_by_department_db,
+    tools.summarization.list_employees_by_project_db,
+    tools.summarization.list_employees_by_shift_db,
+    tools.summarization.list_employees_by_hire_year_db
 ]
 
 tool_dict = {
-    "fetch_employee_by_id_db": db.fetch_employee_by_id_db,
-    "list_employees_by_skill_level_db": db.list_employees_by_skill_level_db,
-    "list_employees_by_performance_rating_db": db.list_employees_by_performance_rating_db,
-    "list_employees_by_skill_db": db.list_employees_by_skill_db,
-    "list_employees_by_department_db": db.list_employees_by_department_db,
-    "list_employees_by_project_db": db.list_employees_by_project_db,
-    "list_employees_by_shift_db": db.list_employees_by_shift_db,
-    "list_employees_by_hire_year_db": db.list_employees_by_hire_year_db
+    "fetch_employee_by_id_db": tools.summarization.fetch_employee_by_id_db,
+    "list_employees_by_skill_level_db": tools.summarization.list_employees_by_skill_level_db,
+    "list_employees_by_performance_rating_db": tools.summarization.list_employees_by_performance_rating_db,
+    "list_employees_by_skill_db": tools.summarization.list_employees_by_skill_db,
+    "list_employees_by_department_db": tools.summarization.list_employees_by_department_db,
+    "list_employees_by_project_db": tools.summarization.list_employees_by_project_db,
+    "list_employees_by_shift_db": tools.summarization.list_employees_by_shift_db,
+    "list_employees_by_hire_year_db": tools.summarization.list_employees_by_hire_year_db
 }
+
+logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 
 rendered_tools = render_text_description(tool_list)
 
@@ -111,9 +113,9 @@ def get_summarized_response(messages: List[HumanMessage]):
             params["session"] = session
 
             try:
+                logger.info(f"Tool Call {tool_name}")
                 resp = func.invoke(params)
-                logger.info(f"Tool Call {tool_name} | Response: {resp}")
-
+                logger.info(f"Tool Response: {resp}")
                 json_tool_resp = dumps(resp)
 
                 tool_message = HumanMessage(
@@ -133,4 +135,5 @@ def get_summarized_response(messages: List[HumanMessage]):
 
     except Exception as e:
         logger.info(f"Failed to convert to ToolCall due to: {e}")
+        logger.info(f"Content: {content}")
         return content

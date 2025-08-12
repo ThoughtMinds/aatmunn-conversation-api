@@ -1,4 +1,4 @@
-from api import db, llm
+from api import db, llm, tools
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema import SystemMessage
 from langchain_core.tools import render_text_description
@@ -18,28 +18,30 @@ class ToolCall(BaseModel):
 chat_model = llm.get_ollama_chat_model()
 
 tool_list = [
-    db.add_employee_db,
-    db.update_employee_first_name_db,
-    db.update_employee_last_name_db,
-    db.update_employee_email_db,
-    db.update_employee_hire_date_db,
-    db.update_employee_department_db,
-    db.update_employee_role_db,
-    db.update_employee_status_db,
-    db.delete_employee_db
+    tools.task_execution.add_employee_db,
+    tools.task_execution.update_employee_first_name_db,
+    tools.task_execution.update_employee_last_name_db,
+    tools.task_execution.update_employee_email_db,
+    tools.task_execution.update_employee_hire_date_db,
+    tools.task_execution.update_employee_department_db,
+    tools.task_execution.update_employee_role_db,
+    tools.task_execution.update_employee_status_db,
+    tools.task_execution.delete_employee_db
 ]
 
 tool_dict = {
-    "add_employee_db": db.add_employee_db,
-    "update_employee_first_name_db": db.update_employee_first_name_db,
-    "update_employee_last_name_db": db.update_employee_last_name_db,
-    "update_employee_email_db": db.update_employee_email_db,
-    "update_employee_hire_date_db": db.update_employee_hire_date_db,
-    "update_employee_department_db": db.update_employee_department_db,
-    "update_employee_role_db": db.update_employee_role_db,
-    "update_employee_status_db": db.update_employee_status_db,
-    "delete_employee_db": db.delete_employee_db
+    "add_employee_db": tools.task_execution.add_employee_db,
+    "update_employee_first_name_db": tools.task_execution.update_employee_first_name_db,
+    "update_employee_last_name_db": tools.task_execution.update_employee_last_name_db,
+    "update_employee_email_db": tools.task_execution.update_employee_email_db,
+    "update_employee_hire_date_db": tools.task_execution.update_employee_hire_date_db,
+    "update_employee_department_db": tools.task_execution.update_employee_department_db,
+    "update_employee_role_db": tools.task_execution.update_employee_role_db,
+    "update_employee_status_db": tools.task_execution.update_employee_status_db,
+    "delete_employee_db": tools.task_execution.delete_employee_db
 }
+
+logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 
 rendered_tools = render_text_description(tool_list)
 

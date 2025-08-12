@@ -2,6 +2,8 @@
 
 ![Stack](https://skillicons.dev/icons?i=ubuntu,bash,py)
 
+## [Features](./static/docs/Endpoints.md)
+
 
 ## Models
 
@@ -65,38 +67,23 @@ make tests
 Get pipenv
 
 ```bash
-# install pipenv
 pip install pipenv
 ```
 
 Create a virtual environment
 
 ```bash
-# create a pipenv shell/virtualenv
 pipenv shell
 ```
 
 Install packages with pipenv
+
 ```bash
-# install packages
 pipenv install
 ```
 
-### R&D
-All R&D has been documented as jupter [notebooks](./notebooks/). They can be explored by installing `jupter`
-
-```bash
-pip install jupyter
-```
-
-and run:
-
-```bash
-jupyter notebook
-```
-
 ### Frontend
-Mount the local directory by uncommenting the following in [comopose](./docker-compose.yml)
+Mount the local directory by uncommenting the following in [compose](./docker-compose.yml)
 
 ```yml
 volumes:
@@ -110,31 +97,34 @@ cd frontend
 npm i --force
 ```
 
-Run the React application
+Run the React app
 
 ```bash
 npm run dev
 ```
 
 ## Checklist
-- [x] Update OpenAI schema for database -> navigation_intents
-- [x] Implement Summarization
-- [ ] Implement Task Execution (WIP, Add basic functions grok)
+- [x] Update Collection for Newman
+- [x] Add mock tables for Task Execution, Summarization data
+- [x] Orchestrator
+    - [x] Frontend
+    - [ ] Create flow to identify intent and invoke sub-graph
+- [x] Insert dummy data for Summarization & Task Execution
+    - [x] Integrate DB queries as Tools
+- [x] Summrization Agent
+    - [x] Frontend
+    - [x] Single Tool Call
+    - [ ] Chained Tool Call
+- [x] Task Execution Agent
+    - [x] Frontend
+    - [x] Single Tool Call
+    - [ ] Chained Tool Call
 - [ ] Test Framework
     - [x] Navigation
     - [ ] Summarization
     - [ ] Task Execution
-- [ ] Add mock tables for Task Execution, Summarization data
-- [x] Add Orchestrator Frontend
-    - [ ] Orchestrator flow to identify intent and invoke sub-graph based on intent
-- [x] Insert dummy Summarization data during db creation
-- [x] Create minimal Summrization Agent with Tool Calling
-- [x] Integrate DB Functions as custom tools
-- [ ] Integration with Aatmunn APIs
-    - [ ] Read APIs
-        - [ ] Prepare documentation of them
-
-
-## Paused
-- [ ] Let llm fetch data on its own based on Schema (WIP, Fallback to regular Tool Calling)
+- [x] Integration with Aatmunn APIs
+    - [x] Read APIs
+        - [ ] Integrate Navigation Options API
+- [ ] ~~LLM can create SQL queries and fetch data from db~~
 

@@ -1,0 +1,416 @@
+from typing import Dict, Any, Optional, List
+from fastapi import HTTPException
+from sqlmodel import select
+from langchain_core.tools import tool
+from api import db
+from sqlalchemy.sql import extract
+
+
+@tool
+def fetch_employee_by_id_db(session: Any, employee_id: int) -> Dict[str, Any]:
+    """
+    Fetch an employee by ID, including related department and role data.
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
+
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "status": employee.status,
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+    }
+
+
+@tool
+def list_employees_by_skill_level_db(
+    skill_level: str,
+    session: Any,
+    limit: Optional[int] = None,
+) -> List[Dict]:
+    """
+    List employees with a specific skill proficiency level, including their department.
+
+    Args:
+        skill_level (str): The proficiency level to filter by (e.g., 'expert', 'intermediate').
+        session (Session): The database session for executing queries.
+        limit (Optional[int]): Maximum number of results to return.
+
+    Returns:
+        List[Dict]: List of employees with the specified skill level.
+
+    Raises:
+        HTTPException: If no employees are found (404) or invalid skill level (400).
+    """
+    valid_levels = ["beginner", "intermediate", "expert"]
+    if skill_level not in valid_levels:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid skill level. Must be one of {valid_levels}",
+        )
+
+    query = (
+        select(db.Employee, db.Department.department_name)
+        .join(db.EmployeeSkill, db.EmployeeSkill.employee_id == db.Employee.employee_id)
+        .join(db.Department, db.Department.department_id == db.Employee.department_id)
+        .where(db.EmployeeSkill.proficiency_level == skill_level)
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    results = session.exec(query).all()
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No employees found with the specified skill level"
+        )
+
+    formatted_results = [
+        {
+            "employee_id": employee.employee_id,
+            "name": f"{employee.first_name} {employee.last_name}",
+            "email": employee.email,
+            "department": department_name,
+            "skill_level": skill_level,
+        }
+        for employee, department_name in results
+    ]
+
+    return formatted_results
+
+
+@tool
+def list_employees_by_performance_rating_db(
+    rating: int,
+    session: Any,
+    limit: Optional[int] = None,
+) -> List[Dict]:
+    """
+    List employees with a specific performance rating, including their department and role.
+
+    Args:
+        rating (int): The performance rating to filter by (1-5).
+        session (Session): The database session for executing queries.
+        limit (Optional[int]): Maximum number of results to return.
+
+    Returns:
+        List[Dict]: List of employees with the specified rating.
+
+    Raises:
+        HTTPException: If no employees are found (404) or invalid rating (400).
+    """
+    if not 1 <= rating <= 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+
+    query = (
+        select(db.Employee, db.Department.department_name, db.Role.role_name)
+        .join(
+            db.PerformanceReview,
+            db.PerformanceReview.employee_id == db.Employee.employee_id,
+        )
+        .join(db.Department, db.Department.department_id == db.Employee.department_id)
+        .join(db.Role, db.Role.role_id == db.Employee.role_id)
+        .where(db.PerformanceReview.rating == rating)
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    results = session.exec(query).all()
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No employees found with the specified rating"
+        )
+
+    formatted_results = [
+        {
+            "employee_id": employee.employee_id,
+            "name": f"{employee.first_name} {employee.last_name}",
+            "email": employee.email,
+            "department": department_name,
+            "role": role_name,
+            "rating": rating,
+        }
+        for employee, department_name, role_name in results
+    ]
+
+    return formatted_results
+
+
+@tool
+def list_employees_by_skill_db(
+    skill_name: str,
+    session: Any,
+    limit: Optional[int] = None,
+) -> List[Dict]:
+    """
+    List employees with a specific skill, including their department and skill proficiency.
+
+    Args:
+        skill_name (str): The skill name to filter by (e.g., 'Python').
+        session (Session): The database session for executing queries.
+        limit (Optional[int]): Maximum number of results to return.
+
+    Returns:
+        List[Dict]: List of employees with the specified skill.
+
+    Raises:
+        HTTPException: If no employees are found (404).
+    """
+    query = (
+        select(
+            db.Employee,
+            db.Department.department_name,
+            db.EmployeeSkill.proficiency_level,
+        )
+        .join(db.EmployeeSkill, db.EmployeeSkill.employee_id == db.Employee.employee_id)
+        .join(db.Skill, db.Skill.skill_id == db.EmployeeSkill.skill_id)
+        .join(db.Department, db.Department.department_id == db.Employee.department_id)
+        .where(db.Skill.skill_name == skill_name)
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    results = session.exec(query).all()
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No employees found with the specified skill"
+        )
+
+    formatted_results = [
+        {
+            "employee_id": employee.employee_id,
+            "name": f"{employee.first_name} {employee.last_name}",
+            "email": employee.email,
+            "department": department_name,
+            "skill_name": skill_name,
+            "proficiency_level": proficiency_level,
+        }
+        for employee, department_name, proficiency_level in results
+    ]
+
+    return formatted_results
+
+
+@tool
+def list_employees_by_department_db(
+    department_name: str,
+    session: Any,
+    limit: Optional[int] = None,
+) -> List[Dict]:
+    """
+    List employees in a specific department, including their roles.
+
+    Args:
+        department_name (str): The department name to filter by (e.g., 'Engineering').
+        session (Session): The database session for executing queries.
+        limit (Optional[int]): Maximum number of results to return.
+
+    Returns:
+        List[Dict]: List of employees in the specified department.
+
+    Raises:
+        HTTPException: If no employees are found (404).
+    """
+    query = (
+        select(db.Employee, db.Department.department_name, db.Role.role_name)
+        .join(db.Department, db.Department.department_id == db.Employee.department_id)
+        .join(db.Role, db.Role.role_id == db.Employee.role_id)
+        .where(db.Department.department_name == department_name)
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    results = session.exec(query).all()
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No employees found in the specified department"
+        )
+
+    formatted_results = [
+        {
+            "employee_id": employee.employee_id,
+            "name": f"{employee.first_name} {employee.last_name}",
+            "email": employee.email,
+            "department": department_name,
+            "role": role_name,
+        }
+        for employee, department_name, role_name in results
+    ]
+
+    return formatted_results
+
+
+@tool
+def list_employees_by_project_db(
+    project_name: str,
+    session: Any,
+    limit: Optional[int] = None,
+) -> List[Dict]:
+    """
+    List employees assigned to a specific project, including their role in the project and department.
+
+    Args:
+        project_name (str): The project name to filter by (e.g., 'Product Launch').
+        session (Session): The database session for executing queries.
+        limit (Optional[int]): Maximum number of results to return.
+
+    Returns:
+        List[Dict]: List of employees assigned to the project.
+
+    Raises:
+        HTTPException: If no employees are found (404).
+    """
+    query = (
+        select(
+            db.Employee,
+            db.Department.department_name,
+            db.EmployeeProject.role_in_project,
+        )
+        .join(
+            db.EmployeeProject,
+            db.EmployeeProject.employee_id == db.Employee.employee_id,
+        )
+        .join(db.Project, db.Project.project_id == db.EmployeeProject.project_id)
+        .join(db.Department, db.Department.department_id == db.Employee.department_id)
+        .where(db.Project.project_name == project_name)
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    results = session.exec(query).all()
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No employees found for the specified project"
+        )
+
+    formatted_results = [
+        {
+            "employee_id": employee.employee_id,
+            "name": f"{employee.first_name} {employee.last_name}",
+            "email": employee.email,
+            "department": department_name,
+            "project_name": project_name,
+            "role_in_project": role_in_project,
+        }
+        for employee, department_name, role_in_project in results
+    ]
+
+    return formatted_results
+
+
+@tool
+def list_employees_by_shift_db(
+    shift_name: str,
+    session: Any,
+    limit: Optional[int] = None,
+) -> List[Dict]:
+    """
+    List employees assigned to a specific shift, including their department.
+
+    Args:
+        shift_name (str): The shift name to filter by (e.g., 'Morning').
+        session (Session): The database session for executing queries.
+        limit (Optional[int]): Maximum number of results to return.
+
+    Returns:
+        List[Dict]: List of employees assigned to the shift.
+
+    Raises:
+        HTTPException: If no employees are found (404).
+    """
+    query = (
+        select(db.Employee, db.Department.department_name, db.Shift.shift_name)
+        .join(db.EmployeeShift, db.EmployeeShift.employee_id == db.Employee.employee_id)
+        .join(db.Shift, db.Shift.shift_id == db.EmployeeShift.shift_id)
+        .join(db.Department, db.Department.department_id == db.Employee.department_id)
+        .where(db.Shift.shift_name == shift_name)
+        .where(db.EmployeeShift.end_date.is_(None))
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    results = session.exec(query).all()
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No employees found for the specified shift"
+        )
+
+    formatted_results = [
+        {
+            "employee_id": employee.employee_id,
+            "name": f"{employee.first_name} {employee.last_name}",
+            "email": employee.email,
+            "department": department_name,
+            "shift_name": shift_name,
+        }
+        for employee, department_name, shift_name in results
+    ]
+
+    return formatted_results
+
+
+@tool
+def list_employees_by_hire_year_db(
+    year: int, session: Any, limit: Optional[int] = None
+) -> List[Dict]:
+    """
+    List employees hired in a specific year, including their department and role.
+
+    Args:
+        year (int): The hire year to filter by (e.g., 2023).
+        session (Session): The database session for executing queries.
+        limit (Optional[int]): Maximum number of results to return.
+
+    Returns:
+        List[Dict]: List of employees hired in the specified year.
+
+    Raises:
+        HTTPException: If no employees are found (404) or invalid year (400).
+    """
+    if year < 1900 or year > 2025:
+        raise HTTPException(
+            status_code=400, detail="Invalid year. Must be between 1900 and 2025"
+        )
+
+    query = (
+        select(db.Employee, db.Department.department_name, db.Role.role_name)
+        .join(db.Department, db.Department.department_id == db.Employee.department_id)
+        .join(db.Role, db.Role.role_id == db.Employee.role_id)
+        .where(extract("year", db.Employee.hire_date) == year)
+    )
+
+    if limit:
+        query = query.limit(limit)
+
+    results = session.exec(query).all()
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No employees found for the specified hire year"
+        )
+
+    formatted_results = [
+        {
+            "employee_id": employee.employee_id,
+            "name": f"{employee.first_name} {employee.last_name}",
+            "email": employee.email,
+            "department": department_name,
+            "role": role_name,
+            "hire_year": year,
+        }
+        for employee, department_name, role_name in results
+    ]
+
+    return formatted_results

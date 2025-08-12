@@ -119,7 +119,7 @@ npm run dev
 ## Checklist
 - [x] Update OpenAI schema for database -> navigation_intents
 - [x] Implement Summarization
-- [ ] Implement Task Execution
+- [ ] Implement Task Execution (WIP, Add basic functions grok)
 - [ ] Test Framework
     - [x] Navigation
     - [ ] Summarization
@@ -130,6 +130,9 @@ npm run dev
 - [x] Insert dummy Summarization data during db creation
 - [x] Create minimal Summrization Agent with Tool Calling
 - [x] Integrate DB Functions as custom tools
+- [ ] Integration with Aatmunn APIs
+    - [ ] Read APIs
+        - [ ] Prepare documentation of them
 
 
 ## Paused

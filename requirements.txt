@@ -14,8 +14,11 @@ chromadb==1.0.15
 click==8.2.1
 coloredlogs==15.0.1
 dataclasses-json==0.6.7
+distlib==0.4.0
 distro==1.9.0
+dnspython==2.7.0
 durationpy==0.10
+email_validator==2.2.0
 et_xmlfile==2.0.0
 fastapi==0.116.0
 filelock==3.18.0
@@ -76,6 +79,8 @@ ormsgpack==1.10.0
 overrides==7.7.0
 packaging==24.2
 pandas==2.3.1
+pipenv==2025.0.4
+platformdirs==4.3.8
 posthog==5.4.0
 propcache==0.3.2
 protobuf==5.29.5
@@ -119,6 +124,7 @@ tzdata==2025.2
 urllib3==2.5.0
 uvicorn==0.35.0
 uvloop==0.21.0
+virtualenv==20.33.0
 watchfiles==1.1.0
 websocket-client==1.8.0
 websockets==15.0.1

@@ -2,6 +2,8 @@
 
 ![Stack](https://skillicons.dev/icons?i=ubuntu,bash,py)
 
+## [Features](./static/docs/Endpoints.md)
+
 
 ## Models
 
@@ -65,38 +67,23 @@ make tests
 Get pipenv
 
 ```bash
-# install pipenv
 pip install pipenv
 ```
 
 Create a virtual environment
 
 ```bash
-# create a pipenv shell/virtualenv
 pipenv shell
 ```
 
 Install packages with pipenv
+
 ```bash
-# install packages
 pipenv install
 ```
 
-### R&D
-All R&D has been documented as jupter [notebooks](./notebooks/). They can be explored by installing `jupter`
-
-```bash
-pip install jupyter
-```
-
-and run:
-
-```bash
-jupyter notebook
-```
-
 ### Frontend
-Mount the local directory by uncommenting the following in [comopose](./docker-compose.yml)
+Mount the local directory by uncommenting the following in [compose](./docker-compose.yml)
 
 ```yml
 volumes:
@@ -110,7 +97,7 @@ cd frontend
 npm i --force
 ```
 
-Run the React application
+Run the React app
 
 ```bash
 npm run dev
@@ -139,8 +126,5 @@ npm run dev
 - [x] Integration with Aatmunn APIs
     - [x] Read APIs
         - [ ] Integrate Navigation Options API
-
-
-## Unplanned
-- [ ] LLM can create SQL queries and fetch data from db
+- [ ] ~~LLM can create SQL queries and fetch data from db~~
 

@@ -140,3 +140,4 @@ def execute_task(messages: List[HumanMessage]):
 
 # TODO: Prompt user for missing details?
 # TODO: Task Content is empty, try tool call OpenAI style? (non ad-hoc)
+# TODO: Define a chained tool calling agent

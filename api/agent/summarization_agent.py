@@ -91,6 +91,7 @@ summarize_chain = summarize_prompt | chat_model
 
 
 def get_summarized_response(messages: List[HumanMessage]):
+    logger.info("Generating summary")
     response = tool_call_chain.invoke({"messages": messages})
     content = response.content
 

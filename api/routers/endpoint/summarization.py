@@ -20,6 +20,3 @@ def get_summary(
 
     response = schema.SummaryResponse(summary=content, content_moderated=False)
     return response
-
-
-# Make it call the tool properly

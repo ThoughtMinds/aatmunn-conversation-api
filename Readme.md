@@ -118,8 +118,8 @@ npm run dev
 
 ## Checklist
 - [x] Update OpenAI schema for database -> navigation_intents
-- [ ] Implement Summarization
-- [ ] Implement Task Execution
+- [x] Implement Summarization
+- [ ] Implement Task Execution (WIP, Add basic functions grok)
 - [ ] Test Framework
     - [x] Navigation
     - [ ] Summarization
@@ -128,14 +128,13 @@ npm run dev
 - [x] Add Orchestrator Frontend
     - [ ] Orchestrator flow to identify intent and invoke sub-graph based on intent
 - [x] Insert dummy Summarization data during db creation
+- [x] Create minimal Summrization Agent with Tool Calling
+- [x] Integrate DB Functions as custom tools
+- [ ] Integration with Aatmunn APIs
+    - [ ] Read APIs
+        - [ ] Prepare documentation of them
 
+
+## Paused
 - [ ] Let llm fetch data on its own based on Schema (WIP, Fallback to regular Tool Calling)
-
-- [ ] Ensure Tool based SQL Execution returns query
-- [ ] Integrate other DB Functions as well with description (custom tools)
-- [ ] 6-8-2025 Task Executor with fixed tools
-
-> TODO: Add function to init db with Summarization tables
-
-> TODO: Add more tools for fetching employee data
 

@@ -1,135 +1,11 @@
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any, Optional, List
 from fastapi import HTTPException
 from sqlmodel import Session, select
-from sqlalchemy.sql import func, extract
 from datetime import date, time
-from api import db
-from pydantic import BaseModel
-from sqlalchemy import inspect
-
-
-# TODO: SQL Rag for generic questions based on Schema
-# TODO: Get Schema for LLM
-def get_db_schema(session) -> Dict:
-    """
-    Generate a JSON-compatible schema description of the database tables.
-
-    Args:
-        session: The database session for inspecting the database.
-
-    Returns:
-        Dict: A dictionary containing the schema description of all tables, including fields,
-              data types, constraints, and relationships.
-
-    Raises:
-        Exception: If there is an error accessing the database metadata.
-    """
-    schema = {"tables": {}}
-
-    # Define the table models
-    table_models = {
-        "Department": db.Department,
-        "Employee": db.Employee,
-        "Role": db.Role,
-        "Shift": db.Shift,
-        "EmployeeShift": db.EmployeeShift,
-        "Project": db.Project,
-        "EmployeeProject": db.EmployeeProject,
-        "Skill": db.Skill,
-        "EmployeeSkill": db.EmployeeSkill,
-        "PerformanceReview": db.PerformanceReview,
-    }
-
-    # Get the SQLAlchemy inspector from the session
-    inspector = inspect(session.get_bind())
-
-    for table_name, model in table_models.items():
-        table_schema = {
-            "fields": [],
-            "primary_key": [],
-            "foreign_keys": [],
-            "unique_constraints": [],
-            "indexes": [],
-        }
-
-        # Get fields from SQLModel
-        for field_name, field in model.__fields__.items():
-            field_info = {
-                "name": field_name,
-                "type": str(field.outer_type_)
-                .replace("typing.", "")
-                .replace("NoneType", "Optional"),
-                "nullable": field.allow_none,
-                "default": str(field.default) if field.default is not None else None,
-            }
-            table_schema["fields"].append(field_info)
-
-        # Primary keys
-        table_schema["primary_key"] = inspector.get_pk_constraint(table_name.lower())[
-            "constrained_columns"
-        ]
-
-        # Foreign keys
-        for fk in inspector.get_foreign_keys(table_name.lower()):
-            table_schema["foreign_keys"].append(
-                {
-                    "columns": fk["constrained_columns"],
-                    "referenced_table": fk["referred_table"],
-                    "referenced_columns": fk["referred_columns"],
-                }
-            )
-
-        # Unique constraints
-        for unique in inspector.get_unique_constraints(table_name.lower()):
-            table_schema["unique_constraints"].append(unique["column_names"])
-
-        # Indexes
-        for index in inspector.get_indexes(table_name.lower()):
-            table_schema["indexes"].append(
-                {
-                    "name": index["name"],
-                    "columns": index["column_names"],
-                    "unique": index["unique"],
-                }
-            )
-
-        schema["tables"][table_name] = table_schema
-
-    return schema
-
-
-class SummarizationRequest(BaseModel):
-    """
-    Pydantic model for requesting a data summarization or fetch.
-
-    Attributes:
-        table (str): The primary table to query (e.g., 'Employee', 'Department').
-        group_by (Optional[str]): The field to group by (e.g., 'department_id').
-        filters (Optional[Dict[str, str]]): Key-value pairs for filtering data.
-        metrics (Optional[List[str]]): Metrics to compute (e.g., ['count', 'avg_rating']).
-        limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
-    """
-
-    table: str
-    group_by: Optional[str] = None
-    filters: Optional[Dict[str, str]] = None
-    metrics: Optional[List[str]] = None
-    limit: Optional[int] = None
-    offset: Optional[int] = 0
-
-
-class SummarizationResponse(BaseModel):
-    """
-    Pydantic model for summarization results.
-
-    Attributes:
-        results (List[Dict]): List of summarized or fetched data.
-        total (int): Total number of records or groups.
-    """
-
-    results: List[Dict]
-    total: int
+from langchain_core.tools import tool
+from api import db, schema
+from sqlalchemy.sql import func, extract
+from pydantic import EmailStr
 
 
 def populate_db_from_json(json_data: Dict, session: Session) -> Dict[str, int]:
@@ -199,7 +75,9 @@ def populate_db_from_json(json_data: Dict, session: Session) -> Dict[str, int]:
             for key, value in record.items():
                 if isinstance(value, str) and key.endswith("_date"):
                     record[key] = date.fromisoformat(value)
-                if isinstance(value, str) and (key == "start_time" or key == "end_time"):
+                if isinstance(value, str) and (
+                    key == "start_time" or key == "end_time"
+                ):
                     record[key] = time.fromisoformat(value)
 
             db_record = model(**record)
@@ -218,192 +96,504 @@ def populate_db_from_json(json_data: Dict, session: Session) -> Dict[str, int]:
 
     return inserted_counts
 
-def count_records_db(
-    table: str, session: Session, filters: Optional[Dict[str, str]] = None
-) -> int:
+
+@tool
+def add_employee_db(employee_data: Dict[str, Any], session: Any) -> Dict[str, Any]:
     """
-    Count the number of records in the specified table with optional filters.
+    Add a new employee to the database, ensuring department and role exist.
 
     Args:
-        table (str): The table to count records from.
-        session (Session): The database session for executing queries.
-        filters (Optional[Dict[str, str]]): Key-value pairs for filtering data.
-
-    Returns:
-        int: The total number of records.
-
-    Raises:
-        HTTPException: If the table is invalid (400).
-    """
-    table_map = {
-        "Employee": db.Employee,
-        "Department": db.Department,
-        "Role": db.Role,
-        "Shift": db.Shift,
-        "EmployeeShift": db.EmployeeShift,
-        "Project": db.Project,
-        "EmployeeProject": db.EmployeeProject,
-        "Skill": db.Skill,
-        "EmployeeSkill": db.EmployeeSkill,
-        "PerformanceReview": db.PerformanceReview,
-    }
-
-    if table not in table_map:
-        raise HTTPException(status_code=400, detail="Invalid table name")
-
-    model = table_map[table]
-    query = select(func.count()).select_from(model)
-
-    if filters:
-        for key, value in filters.items():
-            if not hasattr(model, key):
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid filter field: {key}"
-                )
-            query = query.where(getattr(model, key) == value)
-
-    return session.exec(query).one()
-
-
-def fetch_table_data_db(
-    request: SummarizationRequest, session: Session
-) -> SummarizationResponse:
-    """
-    Fetch data from a specific table with optional filtering, grouping, and metrics.
-
-    Args:
-        request (SummarizationRequest): The request specifying table, filters, group_by, and metrics.
+        employee_data (Dict[str, Any]): Dictionary containing employee details (first_name, last_name, email, hire_date, department_id, role_id, status).
         session (Session): The database session for executing queries.
 
     Returns:
-        SummarizationResponse: The fetched data and total count.
+        Dict[str, Any]: Details of the newly created employee.
 
     Raises:
-        HTTPException: If the table or fields are invalid (400) or no data is found (404).
+        HTTPException: If department or role doesn't exist (400), or if email is already in use (400), or other database errors (400).
     """
-    table_map = {
-        "Employee": db.Employee,
-        "Department": db.Department,
-        "Role": db.Role,
-        "Shift": db.Shift,
-        "EmployeeShift": db.EmployeeShift,
-        "Project": db.Project,
-        "EmployeeProject": db.EmployeeProject,
-        "Skill": db.Skill,
-        "EmployeeSkill": db.EmployeeSkill,
-        "PerformanceReview": db.PerformanceReview,
+    try:
+        employee_input = schema.EmployeeCreate(**employee_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid input data: {str(e)}")
+
+    # Check if department exists
+    department = session.get(db.Department, employee_input.department_id)
+    if not department:
+        raise HTTPException(status_code=400, detail="Department not found")
+
+    # Check if role exists
+    role = session.get(db.Role, employee_input.role_id)
+    if not role:
+        raise HTTPException(status_code=400, detail="Role not found")
+
+    # Check if email is unique
+    existing_employee = session.exec(
+        select(db.Employee).where(db.Employee.email == employee_input.email)
+    ).first()
+    if existing_employee:
+        raise HTTPException(status_code=400, detail="Email already in use")
+
+    # Create new employee
+    new_employee = db.Employee(
+        first_name=employee_input.first_name,
+        last_name=employee_input.last_name,
+        email=employee_input.email,
+        hire_date=employee_input.hire_date,
+        department_id=employee_input.department_id,
+        role_id=employee_input.role_id,
+        status=employee_input.status,
+    )
+
+    session.add(new_employee)
+    try:
+        session.commit()
+        session.refresh(new_employee)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=f"Error adding employee: {str(e)}")
+
+    return {
+        "employee_id": new_employee.employee_id,
+        "name": f"{new_employee.first_name} {new_employee.last_name}",
+        "email": new_employee.email,
+        "hire_date": str(new_employee.hire_date),
+        "department": department.department_name,
+        "role": role.role_name,
+        "status": new_employee.status,
     }
 
-    if request.table not in table_map:
-        raise HTTPException(status_code=400, detail="Invalid table name")
 
-    model = table_map[request.table]
-    query = select(model)
+@tool
+def update_employee_first_name_db(
+    employee_id: int, first_name: str, session: Any
+) -> Dict[str, Any]:
+    """
+    Update an employee's first name in the database.
 
-    # Apply filters
-    if request.filters:
-        for key, value in request.filters.items():
-            if not hasattr(model, key):
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid filter field: {key}"
-                )
-            query = query.where(getattr(model, key) == value)
+    Args:
+        employee_id (int): The ID of the employee to update.
+        first_name (str): The new first name.
+        session (Session): The database session for executing queries.
 
-    # Apply group_by and metrics
-    select_columns = [model]
-    if request.group_by:
-        if not hasattr(model, request.group_by):
-            raise HTTPException(
-                status_code=400, detail=f"Invalid group_by field: {request.group_by}"
-            )
-        group_by_field = getattr(model, request.group_by)
-        query = query.group_by(group_by_field)
+    Returns:
+        Dict[str, Any]: Updated employee details.
 
-    if request.metrics:
-        supported_metrics = {
-            "count": func.count().label("count"),
-            "avg_rating": func.avg(db.PerformanceReview.rating).label("avg_rating"),
-            "total_employees": func.count(db.Employee.employee_id).label(
-                "total_employees"
-            ),
-            "active_projects": func.count(db.Project.project_id)
-            .filter(db.Project.status == "active")
-            .label("active_projects"),
-        }
-        for metric in request.metrics:
-            if metric in supported_metrics:
-                select_columns.append(supported_metrics[metric])
-            elif hasattr(model, metric):
-                select_columns.append(getattr(model, metric))
-            else:
-                raise HTTPException(status_code=400, detail=f"Invalid metric: {metric}")
+    Raises:
+        HTTPException: If employee doesn't exist (404), or other database errors (400).
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
 
-        if "avg_rating" in request.metrics and request.table != "PerformanceReview":
-            query = query.join(
-                db.PerformanceReview,
-                db.PerformanceReview.employee_id == db.Employee.employee_id,
-                isouter=True,
-            )
-        if "total_employees" in request.metrics and request.table != "Employee":
-            query = query.join(
-                db.Employee,
-                db.Employee.department_id == db.Department.department_id,
-                isouter=True,
-            )
-        if "active_projects" in request.metrics and request.table != "Project":
-            query = query.join(
-                db.Project,
-                db.Project.department_id == db.Department.department_id,
-                isouter=True,
-            )
+    if not first_name or not first_name.strip():
+        raise HTTPException(status_code=400, detail="First name cannot be empty")
 
-    # Apply pagination
-    if request.limit:
-        query = query.limit(request.limit)
-    query = query.offset(request.offset)
+    employee.first_name = first_name.strip()
 
-    # Execute query
-    results = session.exec(query).all()
-    if not results:
+    try:
+        session.commit()
+        session.refresh(employee)
+    except Exception as e:
+        session.rollback()
         raise HTTPException(
-            status_code=404, detail="No data found for the given criteria"
+            status_code=400, detail=f"Error updating first name: {str(e)}"
         )
 
-    # Format results
-    formatted_results = []
-    for row in results:
-        result_dict = {}
-        if isinstance(row, tuple):
-            # Handle grouped results with metrics
-            model_instance = row[0]
-            result_dict.update(model_instance.dict())
-            for i, metric in enumerate(request.metrics, 1):
-                result_dict[metric] = row[i]
-        else:
-            result_dict.update(row.dict())
-        formatted_results.append(result_dict)
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
 
-    # Get total count
-    total_query = select(func.count()).select_from(query.subquery())
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+        "status": employee.status,
+    }
 
 
-def fetch_employee_by_id_db(employee_id: int, session: Session) -> Dict[str, Any]:
+@tool
+def update_employee_last_name_db(
+    employee_id: int, last_name: str, session: Any
+) -> Dict[str, Any]:
     """
-    Fetch an employee by ID, including related department and role data.
+    Update an employee's last name in the database.
 
     Args:
-        employee_id (int): The ID of the employee to fetch.
+        employee_id (int): The ID of the employee to update.
+        last_name (str): The new last name.
         session (Session): The database session for executing queries.
 
     Returns:
-        Dict[str, Any]: Employee details with department and role information.
+        Dict[str, Any]: Updated employee details.
 
     Raises:
-        HTTPException: If the employee is not found (404).
+        HTTPException: If employee doesn't exist (404), or other database errors (400).
     """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    if not last_name or not last_name.strip():
+        raise HTTPException(status_code=400, detail="Last name cannot be empty")
+
+    employee.last_name = last_name.strip()
+
+    try:
+        session.commit()
+        session.refresh(employee)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=400, detail=f"Error updating last name: {str(e)}"
+        )
+
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
+
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+        "status": employee.status,
+    }
+
+
+@tool
+def update_employee_email_db(
+    employee_id: int, email: str, session: Any
+) -> Dict[str, Any]:
+    """
+    Update an employee's email in the database.
+
+    Args:
+        employee_id (int): The ID of the employee to update.
+        email (str): The new email address.
+        session (Session): The database session for executing queries.
+
+    Returns:
+        Dict[str, Any]: Updated employee details.
+
+    Raises:
+        HTTPException: If employee doesn't exist (404), email is already in use (400), or other database errors (400).
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    try:
+        validated_email = EmailStr(email)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
+    if validated_email != employee.email:
+        existing_employee = session.exec(
+            select(db.Employee).where(db.Employee.email == validated_email)
+        ).first()
+        if existing_employee:
+            raise HTTPException(status_code=400, detail="Email already in use")
+
+    employee.email = validated_email
+
+    try:
+        session.commit()
+        session.refresh(employee)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=f"Error updating email: {str(e)}")
+
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
+
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+        "status": employee.status,
+    }
+
+
+@tool
+def update_employee_hire_date_db(
+    employee_id: int, hire_date: str, session: Any
+) -> Dict[str, Any]:
+    """
+    Update an employee's hire date in the database.
+
+    Args:
+        employee_id (int): The ID of the employee to update.
+        hire_date (str): The new hire date in ISO format (YYYY-MM-DD).
+        session (Session): The database session for executing queries.
+
+    Returns:
+        Dict[str, Any]: Updated employee details.
+
+    Raises:
+        HTTPException: If employee doesn't exist (404), invalid date format (400), or other database errors (400).
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    try:
+        validated_date = date.fromisoformat(hire_date)
+    except ValueError:
+        raise HTTPException(
+            status_code=400, detail="Invalid date format. Use YYYY-MM-DD"
+        )
+
+    if validated_date.year < 1900 or validated_date.year > 2025:
+        raise HTTPException(
+            status_code=400, detail="Hire date must be between 1900 and 2025"
+        )
+
+    employee.hire_date = validated_date
+
+    try:
+        session.commit()
+        session.refresh(employee)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=400, detail=f"Error updating hire date: {str(e)}"
+        )
+
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
+
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+        "status": employee.status,
+    }
+
+
+@tool
+def update_employee_department_db(
+    employee_id: int, department_id: int, session: Any
+) -> Dict[str, Any]:
+    """
+    Update an employee's department in the database.
+
+    Args:
+        employee_id (int): The ID of the employee to update.
+        department_id (int): The new department ID.
+        session (Session): The database session for executing queries.
+
+    Returns:
+        Dict[str, Any]: Updated employee details.
+
+    Raises:
+        HTTPException: If employee or department doesn't exist (404 or 400), or other database errors (400).
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    department = session.get(db.Department, department_id)
+    if not department:
+        raise HTTPException(status_code=400, detail="Department not found")
+
+    employee.department_id = department_id
+
+    try:
+        session.commit()
+        session.refresh(employee)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=400, detail=f"Error updating department: {str(e)}"
+        )
+
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
+
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+        "status": employee.status,
+    }
+
+
+@tool
+def update_employee_role_db(
+    employee_id: int, role_id: int, session: Any
+) -> Dict[str, Any]:
+    """
+    Update an employee's role in the database.
+
+    Args:
+        employee_id (int): The ID of the employee to update.
+        role_id (int): The new role ID.
+        session (Session): The database session for executing queries.
+
+    Returns:
+        Dict[str, Any]: Updated employee details.
+
+    Raises:
+        HTTPException: If employee or role doesn't exist (404 or 400), or other database errors (400).
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    role = session.get(db.Role, role_id)
+    if not role:
+        raise HTTPException(status_code=400, detail="Role not found")
+
+    employee.role_id = role_id
+
+    try:
+        session.commit()
+        session.refresh(employee)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=f"Error updating role: {str(e)}")
+
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
+
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+        "status": employee.status,
+    }
+
+
+@tool
+def update_employee_status_db(
+    employee_id: int, status: str, session: Any
+) -> Dict[str, Any]:
+    """
+    Update an employee's status in the database.
+
+    Args:
+        employee_id (int): The ID of the employee to update.
+        status (str): The new status (e.g., 'active', 'inactive').
+        session (Session): The database session for executing queries.
+
+    Returns:
+        Dict[str, Any]: Updated employee details.
+
+    Raises:
+        HTTPException: If employee doesn't exist (404), invalid status (400), or other database errors (400).
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    valid_statuses = ["active", "inactive"]
+    if status not in valid_statuses:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}"
+        )
+
+    employee.status = status
+
+    try:
+        session.commit()
+        session.refresh(employee)
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail=f"Error updating status: {str(e)}")
+
+    department = session.get(db.Department, employee.department_id)
+    role = session.get(db.Role, employee.role_id)
+
+    return {
+        "employee_id": employee.employee_id,
+        "name": f"{employee.first_name} {employee.last_name}",
+        "email": employee.email,
+        "hire_date": str(employee.hire_date),
+        "department": department.department_name if department else None,
+        "role": role.role_name if role else None,
+        "status": employee.status,
+    }
+
+
+@tool
+def delete_employee_db(employee_id: int, session: Any) -> Dict[str, str]:
+    """
+    Delete an employee from the database, checking for dependent records.
+
+    Args:
+        employee_id (int): The ID of the employee to delete.
+        session (Session): The database session for executing queries.
+
+    Returns:
+        Dict[str, str]: Confirmation message of deletion.
+
+    Raises:
+        HTTPException: If employee doesn't exist (404), or if dependent records exist (400), or other database errors (400).
+    """
+    employee_id = int(employee_id)
+    employee = session.get(db.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Check for dependent records
+    dependent_tables = [
+        (db.EmployeeShift, db.EmployeeShift.employee_id),
+        (db.EmployeeProject, db.EmployeeProject.employee_id),
+        (db.EmployeeSkill, db.EmployeeSkill.employee_id),
+        (db.PerformanceReview, db.PerformanceReview.employee_id),
+    ]
+
+    for table, column in dependent_tables:
+        count = session.exec(
+            select(func.count()).select_from(table).where(column == employee_id)
+        ).one()
+        if count > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot delete employee due to dependent records in {table.__tablename__}",
+            )
+
+    session.delete(employee)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=400, detail=f"Error deleting employee: {str(e)}"
+        )
+
+    return {"message": f"Employee {employee_id} deleted successfully"}
+
+
+@tool
+def fetch_employee_by_id_db(session: Any, employee_id: int) -> Dict[str, Any]:
+    """
+    Fetch an employee by ID, including related department and role data.
+    """
+    employee_id = int(employee_id)
     employee = session.get(db.Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -422,12 +612,12 @@ def fetch_employee_by_id_db(employee_id: int, session: Session) -> Dict[str, Any
     }
 
 
+@tool
 def list_employees_by_skill_level_db(
     skill_level: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
-) -> SummarizationResponse:
+) -> List[Dict]:
     """
     List employees with a specific skill proficiency level, including their department.
 
@@ -435,10 +625,9 @@ def list_employees_by_skill_level_db(
         skill_level (str): The proficiency level to filter by (e.g., 'expert', 'intermediate').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
-        SummarizationResponse: List of employees with the specified skill level and total count.
+        List[Dict]: List of employees with the specified skill level.
 
     Raises:
         HTTPException: If no employees are found (404) or invalid skill level (400).
@@ -459,7 +648,6 @@ def list_employees_by_skill_level_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -478,23 +666,15 @@ def list_employees_by_skill_level_db(
         for employee, department_name in results
     ]
 
-    total_query = select(func.count()).select_from(
-        select(db.Employee.employee_id)
-        .join(db.EmployeeSkill)
-        .where(db.EmployeeSkill.proficiency_level == skill_level)
-        .subquery()
-    )
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results
 
 
+@tool
 def list_employees_by_performance_rating_db(
     rating: int,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
-) -> SummarizationResponse:
+) -> List[Dict]:
     """
     List employees with a specific performance rating, including their department and role.
 
@@ -502,10 +682,9 @@ def list_employees_by_performance_rating_db(
         rating (int): The performance rating to filter by (1-5).
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
-        SummarizationResponse: List of employees with the specified rating and total count.
+        List[Dict]: List of employees with the specified rating.
 
     Raises:
         HTTPException: If no employees are found (404) or invalid rating (400).
@@ -526,7 +705,6 @@ def list_employees_by_performance_rating_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -546,23 +724,15 @@ def list_employees_by_performance_rating_db(
         for employee, department_name, role_name in results
     ]
 
-    total_query = select(func.count()).select_from(
-        select(db.Employee.employee_id)
-        .join(db.PerformanceReview)
-        .where(db.PerformanceReview.rating == rating)
-        .subquery()
-    )
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results
 
 
+@tool
 def list_employees_by_skill_db(
     skill_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
-) -> SummarizationResponse:
+) -> List[Dict]:
     """
     List employees with a specific skill, including their department and skill proficiency.
 
@@ -570,10 +740,9 @@ def list_employees_by_skill_db(
         skill_name (str): The skill name to filter by (e.g., 'Python').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
-        SummarizationResponse: List of employees with the specified skill and total count.
+        List[Dict]: List of employees with the specified skill.
 
     Raises:
         HTTPException: If no employees are found (404).
@@ -592,7 +761,6 @@ def list_employees_by_skill_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -612,24 +780,15 @@ def list_employees_by_skill_db(
         for employee, department_name, proficiency_level in results
     ]
 
-    total_query = select(func.count()).select_from(
-        select(db.Employee.employee_id)
-        .join(db.EmployeeSkill)
-        .join(db.Skill)
-        .where(db.Skill.skill_name == skill_name)
-        .subquery()
-    )
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results
 
 
+@tool
 def list_employees_by_department_db(
     department_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
-) -> SummarizationResponse:
+) -> List[Dict]:
     """
     List employees in a specific department, including their roles.
 
@@ -637,10 +796,9 @@ def list_employees_by_department_db(
         department_name (str): The department name to filter by (e.g., 'Engineering').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
-        SummarizationResponse: List of employees in the specified department and total count.
+        List[Dict]: List of employees in the specified department.
 
     Raises:
         HTTPException: If no employees are found (404).
@@ -654,7 +812,6 @@ def list_employees_by_department_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -673,23 +830,15 @@ def list_employees_by_department_db(
         for employee, department_name, role_name in results
     ]
 
-    total_query = select(func.count()).select_from(
-        select(db.Employee.employee_id)
-        .join(db.Department)
-        .where(db.Department.department_name == department_name)
-        .subquery()
-    )
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results
 
 
+@tool
 def list_employees_by_project_db(
     project_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
-) -> SummarizationResponse:
+) -> List[Dict]:
     """
     List employees assigned to a specific project, including their role in the project and department.
 
@@ -697,10 +846,9 @@ def list_employees_by_project_db(
         project_name (str): The project name to filter by (e.g., 'Product Launch').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
-        SummarizationResponse: List of employees assigned to the project and total count.
+        List[Dict]: List of employees assigned to the project.
 
     Raises:
         HTTPException: If no employees are found (404).
@@ -722,7 +870,6 @@ def list_employees_by_project_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -742,24 +889,15 @@ def list_employees_by_project_db(
         for employee, department_name, role_in_project in results
     ]
 
-    total_query = select(func.count()).select_from(
-        select(db.Employee.employee_id)
-        .join(db.EmployeeProject)
-        .join(db.Project)
-        .where(db.Project.project_name == project_name)
-        .subquery()
-    )
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results
 
 
+@tool
 def list_employees_by_shift_db(
     shift_name: str,
-    session: Session,
+    session: Any,
     limit: Optional[int] = None,
-    offset: Optional[int] = 0,
-) -> SummarizationResponse:
+) -> List[Dict]:
     """
     List employees assigned to a specific shift, including their department.
 
@@ -767,10 +905,9 @@ def list_employees_by_shift_db(
         shift_name (str): The shift name to filter by (e.g., 'Morning').
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
-        SummarizationResponse: List of employees assigned to the shift and total count.
+        List[Dict]: List of employees assigned to the shift.
 
     Raises:
         HTTPException: If no employees are found (404).
@@ -786,7 +923,6 @@ def list_employees_by_shift_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -805,22 +941,13 @@ def list_employees_by_shift_db(
         for employee, department_name, shift_name in results
     ]
 
-    total_query = select(func.count()).select_from(
-        select(db.Employee.employee_id)
-        .join(db.EmployeeShift)
-        .join(db.Shift)
-        .where(db.Shift.shift_name == shift_name)
-        .where(db.EmployeeShift.end_date.is_(None))
-        .subquery()
-    )
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results
 
 
+@tool
 def list_employees_by_hire_year_db(
-    year: int, session: Session, limit: Optional[int] = None, offset: Optional[int] = 0
-) -> SummarizationResponse:
+    year: int, session: Any, limit: Optional[int] = None
+) -> List[Dict]:
     """
     List employees hired in a specific year, including their department and role.
 
@@ -828,10 +955,9 @@ def list_employees_by_hire_year_db(
         year (int): The hire year to filter by (e.g., 2023).
         session (Session): The database session for executing queries.
         limit (Optional[int]): Maximum number of results to return.
-        offset (Optional[int]): Number of records to skip for pagination.
 
     Returns:
-        SummarizationResponse: List of employees hired in the specified year and total count.
+        List[Dict]: List of employees hired in the specified year.
 
     Raises:
         HTTPException: If no employees are found (404) or invalid year (400).
@@ -850,7 +976,6 @@ def list_employees_by_hire_year_db(
 
     if limit:
         query = query.limit(limit)
-    query = query.offset(offset)
 
     results = session.exec(query).all()
     if not results:
@@ -870,11 +995,4 @@ def list_employees_by_hire_year_db(
         for employee, department_name, role_name in results
     ]
 
-    total_query = select(func.count()).select_from(
-        select(db.Employee.employee_id)
-        .where(extract("year", db.Employee.hire_date) == year)
-        .subquery()
-    )
-    total = session.exec(total_query).one()
-
-    return SummarizationResponse(results=formatted_results, total=total)
+    return formatted_results

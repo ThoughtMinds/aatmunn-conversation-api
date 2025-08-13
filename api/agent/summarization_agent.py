@@ -45,20 +45,8 @@ rendered_tools = render_text_description(tool_list)
 
 llm_with_tools = chat_model.bind_tools(tool_list)
 
-# tool_call_chain = tool_call_prompt | llm_with_tools
 
-SUMMARIZE_PROMPT = """
-You are an assistant that has access to the user query and corresponding API/Database response to it.
-Create a summary using the available information.
-Present it to the user in a short, easy to understand format. Do not add unnecessary formatting.
-
-Query: {query}
-Response: {tool_response}
-
-Summary: 
-"""
-
-summarize_prompt = PromptTemplate.from_template(SUMMARIZE_PROMPT)
+summarize_prompt = PromptTemplate.from_template(llm.SUMMARIZE_PROMPT)
 
 summarize_chain = summarize_prompt | chat_model
 

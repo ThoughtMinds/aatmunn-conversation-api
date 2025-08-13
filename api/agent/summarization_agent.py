@@ -52,6 +52,19 @@ summarize_chain = summarize_prompt | chat_model
 
 
 def get_summarized_response(query: str):
+    """
+    Generates a summarized response for a given query.
+
+    This function takes a user's query, invokes the summarization agent with tools,
+    and returns a natural language summary of the information retrieved from the
+    database or other tools.
+
+    Args:
+        query (str): The user's query for summarization.
+
+    Returns:
+        str: The summarized response.
+    """
     session = Session(db.engine)
 
     logger.info("Generating summary")

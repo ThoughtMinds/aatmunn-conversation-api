@@ -53,6 +53,19 @@ summarize_chain = summarize_prompt | chat_model
 
 
 def execute_task(query: str):
+    """
+    Executes a task based on a given query.
+
+    This function takes a user's query, invokes the task execution agent with tools,
+    and performs the requested action, such as adding, updating, or deleting
+    data in the database.
+
+    Args:
+        query (str): The user's query for task execution.
+
+    Returns:
+        str: A response indicating the result of the task execution.
+    """
     session = Session(db.engine)
 
     logger.info("Executing task")

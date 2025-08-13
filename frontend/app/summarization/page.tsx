@@ -106,6 +106,11 @@ export default function SummarizationPage() {
               placeholder="Enter your query for summarization..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !loading) {
+                  handleSummarize()
+                }
+              }}
             />
           </div>
           <Button onClick={handleSummarize} disabled={loading || !query.trim()}>

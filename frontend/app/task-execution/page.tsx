@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Zap, Play, CheckCircle, Clock, AlertTriangle, Copy } from "lucide-react"
+import { API_BASE_URL } from "@/constants/api"
 
 interface TaskResult {
   taskName: string
@@ -23,7 +24,6 @@ interface TaskApiResponse {
   status: boolean
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
 export default function TaskExecutionPage() {
   const [taskName, setTaskName] = useState("")
@@ -151,6 +151,11 @@ export default function TaskExecutionPage() {
                 placeholder="Enter task name..."
                 value={taskName}
                 onChange={(e) => setTaskName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !loading) {
+                    handleStartTask()
+                  }
+                }}
               />
               <Button onClick={handleStartTask} disabled={loading || !taskName.trim()}>
                 {loading ? "Starting..." : "Start Task"}

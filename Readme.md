@@ -115,6 +115,9 @@ npm run dev
     - [x] Frontend
     - [x] Single Tool Call
     - [ ] Chained Tool Call
+    - [ ] Content Validation
+        - [ ] Fixed Output Schema
+        - [ ] Integrate with flow
 - [x] Task Execution Agent
     - [x] Frontend
     - [x] Single Tool Call

@@ -39,3 +39,18 @@ Response: {tool_response}
 
 Summary: 
 """
+
+CONTENT_VALIDATION_PROMPT = """
+You are an assistant that has access to the user query and machine generated summary.
+Your role is to validate whether the summary is a proper response for the query. 
+Ensure that it is not off-topic, out of context or an incorrect response for the given query
+Response Schema:
+{{
+    "content_valid": <true/false>
+}}
+
+Query: {query}
+Summary: {summary}
+
+Response: 
+"""

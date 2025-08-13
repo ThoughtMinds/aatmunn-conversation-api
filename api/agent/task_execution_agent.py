@@ -46,23 +46,26 @@ rendered_tools = render_text_description(tool_list)
 
 llm_with_tools = chat_model.bind_tools(tool_list)
 
-SUMMARIZE_PROMPT = """
-You are an assistant that has access to the user query and corresponding API/Database response to it.
-Create a summary using the available information.
-Present it to the user in a short, easy to understand format. Do not add unnecessary formatting.
 
-Query: {query}
-Response: {tool_response}
-
-Summary: 
-"""
-
-summarize_prompt = PromptTemplate.from_template(SUMMARIZE_PROMPT)
+summarize_prompt = PromptTemplate.from_template(llm.SUMMARIZE_PROMPT)
 
 summarize_chain = summarize_prompt | chat_model
 
 
 def execute_task(query: str):
+    """
+    Executes a task based on a given query.
+
+    This function takes a user's query, invokes the task execution agent with tools,
+    and performs the requested action, such as adding, updating, or deleting
+    data in the database.
+
+    Args:
+        query (str): The user's query for task execution.
+
+    Returns:
+        str: A response indicating the result of the task execution.
+    """
     session = Session(db.engine)
 
     logger.info("Executing task")

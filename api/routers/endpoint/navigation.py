@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from api import agent, db, schema
 import pandas as pd
 from typing import Annotated, List
 from sqlmodel import Session
 from time import time
+import json
 
 
 router = APIRouter()
@@ -42,26 +44,25 @@ def get_navigation(
     return navigation_response
 
 
-@router.post("/test_navigation/", response_model=List[schema.NavigationTestResult])
+@router.post("/test_navigation/")
 async def upload_navigation_excel(
     session: SessionDep,
     file: UploadFile = File(...),
-) -> List[schema.NavigationTestResult]:
+) -> StreamingResponse:
     """
     Test navigation intents by uploading an Excel file.
 
     This endpoint allows for batch testing of navigation intents. It accepts an
     Excel file containing 'Query' and 'Intent' columns. It processes each query,
     runs it through the navigation agent, and compares the predicted intent with
-    the actual intent.
+    the actual intent. The results are streamed back to the client.
 
     Args:
         session (SessionDep): The database session dependency.
         file (UploadFile): The Excel file containing test data.
 
     Returns:
-        List[schema.NavigationTestResult]: A list of test results, including the query,
-                                           actual intent, predicted intent, and response time.
+        StreamingResponse: A stream of server-sent events with the test results.
 
     Raises:
         HTTPException: If the file is not a valid Excel file, is missing the
@@ -79,13 +80,16 @@ async def upload_navigation_excel(
             raise HTTPException(
                 status_code=400, detail="Excel file must contain a 'Query' column"
             )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing Excel file: {str(e)}"
+        )
 
-        navigation_results = []
-
+    async def stream_generator():
         for _, row in df.iterrows():
             try:
                 print(f"Testing Query #{_}")
-                query, actual_intent = row["Query"], row["Intent"]
+                query, actual_intent = row["Query"], row.get("Intent")
 
                 if not query or not isinstance(query, str):
                     continue
@@ -113,19 +117,13 @@ async def upload_navigation_excel(
                 )
 
                 print(f"Result: {result}")
-                navigation_results.append(result)
-                # Measure accuracy, add score
+                yield f"data: {result.model_dump_json()}\n\n"
             except Exception as e:
-                print(f"Failed to process test due to: {e}")
+                error_result = {
+                    "error": f"Failed to process row: {e}",
+                    "query": query,
+                }
+                print(error_result)
+                yield f"data: {json.dumps(error_result)}\n\n"
 
-        if not navigation_results:
-            raise HTTPException(
-                status_code=400, detail="No valid queries found in the Excel file"
-            )
-
-        return navigation_results
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error processing Excel file: {str(e)}"
-        )
+    return StreamingResponse(stream_generator(), media_type="text/event-stream")

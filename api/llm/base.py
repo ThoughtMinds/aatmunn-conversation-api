@@ -1,12 +1,11 @@
 from api.core.config import settings
 from langchain_ollama.embeddings import OllamaEmbeddings
 from langchain_ollama.chat_models import ChatOllama
-from api import schema
 from functools import wraps
-from langchain_core.language_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import LocalFileStore
+from api.core.logging_config import logger
 
 
 docs_store = LocalFileStore("./static/cache/docs_cache")
@@ -76,3 +75,14 @@ def get_ollama_embeddings_model():
     return OllamaEmbeddings(
         base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_EMBEDDINGS_MODEL
     )
+
+
+def preload_ollama_models():
+    ollama_model = get_ollama_chat_model()
+    embed_model = get_ollama_embeddings_model()
+    
+    logger.info("Loading [Chat Model]")
+    ollama_model.invoke("Hi")
+    logger.info("Loading [Embeddings Model]")
+    embed_model.embed_query("Hi")
+    logger.info("Loaded Models into memory")

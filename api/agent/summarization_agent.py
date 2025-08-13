@@ -45,31 +45,32 @@ rendered_tools = render_text_description(tool_list)
 
 llm_with_tools = chat_model.bind_tools(tool_list)
 
-# tool_call_chain = tool_call_prompt | llm_with_tools
 
-SUMMARIZE_PROMPT = """
-You are an assistant that has access to the user query and corresponding API/Database response to it.
-Create a summary using the available information.
-Present it to the user in a short, easy to understand format. Do not add unnecessary formatting.
-
-Query: {query}
-Response: {tool_response}
-
-Summary: 
-"""
-
-summarize_prompt = PromptTemplate.from_template(SUMMARIZE_PROMPT)
+summarize_prompt = PromptTemplate.from_template(llm.SUMMARIZE_PROMPT)
 
 summarize_chain = summarize_prompt | chat_model
 
 
 def get_summarized_response(query: str):
+    """
+    Generates a summarized response for a given query.
+
+    This function takes a user's query, invokes the summarization agent with tools,
+    and returns a natural language summary of the information retrieved from the
+    database or other tools.
+
+    Args:
+        query (str): The user's query for summarization.
+
+    Returns:
+        str: The summarized response.
+    """
     session = Session(db.engine)
 
     logger.info("Generating summary")
 
     response = llm_with_tools.invoke(query)
-    
+
     logger.info(f"Response: {response}")
 
     response_content = response.content
@@ -79,7 +80,9 @@ def get_summarized_response(query: str):
 
     tool_calls = response.tool_calls
 
+    # TODO: Set flag for single and chained tool call
     try:
+        tool_response = ""
         for tool_call in tool_calls:
             name, args, _tool_id = tool_call["name"], tool_call["args"], tool_call["id"]
             func = tool_dict.get(name, None)
@@ -95,11 +98,14 @@ def get_summarized_response(query: str):
 
             logger.info(f"Tool Response: {response}")
             response_string = dumps(response)
+            tool_response += f"{name}: {response_string}"
 
-            response = summarize_chain.invoke({"query": query, "tool_response": response_string})
-            summarized_response = response.content
-            logger.info(f"Summarized Response: {summarized_response}")
-            return summarized_response
+        response = summarize_chain.invoke(
+            {"query": query, "tool_response": tool_response}
+        )
+        summarized_response = response.content
+        logger.info(f"Summarized Response: {summarized_response}")
+        return summarized_response
     except Exception as e:
         logger.info(f"Summarization failed due to: {e}")
         return response_content

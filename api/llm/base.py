@@ -80,9 +80,6 @@ def get_ollama_embeddings_model():
 def preload_ollama_models():
     ollama_model = get_ollama_chat_model()
     embed_model = get_ollama_embeddings_model()
-    ollama_model.temperature = 0
-    ollama_model.num_predict = 10
-    ollama_model.num_ctx = 10
     
     logger.info("Loading [Chat Model]")
     ollama_model.invoke("Hi")

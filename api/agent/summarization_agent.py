@@ -69,7 +69,7 @@ def get_summarized_response(query: str):
     logger.info("Generating summary")
 
     response = llm_with_tools.invoke(query)
-    
+
     logger.info(f"Response: {response}")
 
     response_content = response.content
@@ -79,7 +79,9 @@ def get_summarized_response(query: str):
 
     tool_calls = response.tool_calls
 
+    # TODO: Set flag for single and chained tool call
     try:
+        tool_response = ""
         for tool_call in tool_calls:
             name, args, _tool_id = tool_call["name"], tool_call["args"], tool_call["id"]
             func = tool_dict.get(name, None)
@@ -95,11 +97,14 @@ def get_summarized_response(query: str):
 
             logger.info(f"Tool Response: {response}")
             response_string = dumps(response)
+            tool_response += f"{name}: {response_string}"
 
-            response = summarize_chain.invoke({"query": query, "tool_response": response_string})
-            summarized_response = response.content
-            logger.info(f"Summarized Response: {summarized_response}")
-            return summarized_response
+        response = summarize_chain.invoke(
+            {"query": query, "tool_response": tool_response}
+        )
+        summarized_response = response.content
+        logger.info(f"Summarized Response: {summarized_response}")
+        return summarized_response
     except Exception as e:
         logger.info(f"Summarization failed due to: {e}")
         return response_content

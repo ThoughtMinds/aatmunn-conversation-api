@@ -179,6 +179,7 @@ export default function NavigationPage() {
     if (!file) return
 
     setLoading(true)
+    setTestResults([]) // Clear previous results
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -188,12 +189,56 @@ export default function NavigationPage() {
         body: formData,
       })
 
-      if (response.ok) {
-        const results = await response.json()
-        setTestResults(results)
+      if (!response.ok) {
+        throw new Error("Network response was not ok")
+      }
+
+      if (!response.body) {
+        throw new Error("Response body is null")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split("\n\n")
+        buffer = parts.pop() || "" // Keep the last partial part
+
+        for (const part of parts) {
+          if (part.startsWith("data: ")) {
+            const jsonString = part.substring(6)
+            try {
+              const result = JSON.parse(jsonString)
+              if (result.error) {
+                console.error("Error from stream:", result.error)
+                toast({
+                  title: "Error processing a row",
+                  description: `Query: ${result.query} - ${result.error}`,
+                  variant: "destructive",
+                })
+              } else {
+                setTestResults((prevResults) => [...prevResults, result])
+              }
+            } catch (e) {
+              console.error("Failed to parse JSON from stream:", e)
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to test navigation:", error)
+      toast({
+        title: "Failed to test navigation",
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }

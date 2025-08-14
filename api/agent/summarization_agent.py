@@ -38,7 +38,7 @@ tool_dict = {
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 
 llm_with_tools = chat_model.bind_tools(tool_list)
-summarize_chain = llm.get_summarize_chain(llm=chat_model, tools=tool_list)
+summarize_chain = llm.create_chain_for_task(task="summarization", llm=llm_with_tools)
 
 
 def get_summarized_response(query: str):

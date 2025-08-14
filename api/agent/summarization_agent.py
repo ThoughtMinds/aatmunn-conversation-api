@@ -1,7 +1,4 @@
 from api import db, llm, tools
-from langchain_core.prompts import PromptTemplate, MessagesPlaceholder
-from langchain.schema import SystemMessage
-from langchain_core.tools import render_text_description
 from typing import Dict
 from pydantic import BaseModel
 from json import dumps
@@ -40,15 +37,8 @@ tool_dict = {
 
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 
-rendered_tools = render_text_description(tool_list)
-
-
 llm_with_tools = chat_model.bind_tools(tool_list)
-
-
-summarize_prompt = PromptTemplate.from_template(llm.SUMMARIZE_PROMPT)
-
-summarize_chain = summarize_prompt | chat_model
+summarize_chain = llm.get_summarize_chain(llm=chat_model, tools=tool_list)
 
 
 def get_summarized_response(query: str):

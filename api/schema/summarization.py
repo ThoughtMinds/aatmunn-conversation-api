@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from typing_extensions import TypedDict
-from sqlmodel import Session
+from typing import Any
 
 class SummarizationCreate(BaseModel):
     """

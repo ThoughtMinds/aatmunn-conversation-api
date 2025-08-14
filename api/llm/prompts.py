@@ -1,3 +1,5 @@
+from langchain_core.prompts import PromptTemplate
+
 ORCHESTRATOR_PROMPT = """
 Your task is to analyze the user query and categorize it as belonging to one of the following categories.
 1. navigation - The user query is about wanting to be taken to, shown, redirected to a particular screen or view
@@ -15,6 +17,8 @@ Query: {query}
 Category:
 """
 
+ORCHESTRATOR_TEMPLATE = PromptTemplate.from_template(ORCHESTRATOR_PROMPT)
+
 RAG_PROMPT = """
 Context: {context}
 With the provided context, select the most relevant item that matches the query. Always give priority to matching keywords.
@@ -29,6 +33,9 @@ Schema:
 Output:
 """
 
+RAG_TEMPLATE = PromptTemplate.from_template(RAG_PROMPT)
+
+
 SUMMARIZE_PROMPT = """
 You are an assistant that has access to the user query and corresponding API/Database response to it.
 Create a summary using the available information.
@@ -39,6 +46,9 @@ Response: {tool_response}
 
 Summary: 
 """
+
+SUMMARIZE_TEMPLATE = PromptTemplate.from_template(SUMMARIZE_PROMPT)
+
 
 CONTENT_VALIDATION_PROMPT = """
 You are an assistant that has access to the user query and machine generated summary.
@@ -54,3 +64,5 @@ Summary: {summary}
 
 Response: 
 """
+
+CONTENT_VALIDATION_TEMPLATE = PromptTemplate.from_template(CONTENT_VALIDATION_PROMPT)

@@ -30,8 +30,10 @@ class SummaryResponse(BaseModel):
     content_moderated: bool
 
 
-from typing import Any
 class SummarizationState(TypedDict):
     messages: List[dict]
     session: Any #Session
     summary: str
+    
+class ContentValidation(TypedDict):
+    content_valid: bool

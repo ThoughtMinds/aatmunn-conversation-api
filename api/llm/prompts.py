@@ -5,6 +5,7 @@ Your task is to analyze the user query and categorize it as belonging to one of 
 1. navigation - The user query is about wanting to be taken to, shown, redirected to a particular screen or view
 eg: Take me to user listing, Navigate to product edit, List recent tasks
 2. summarization - The user wishes to get a summary of some particular information.
+The query will contain the term summary or a related word.
 eg: Give me summary of recent performance, Summarize student placement, Tell me about Stock Market trend in 2025
 3. task_execution - The user wishes to execute some task or perform an action.
 eg: Add a user name mike, Remove John from moderator, Set Gordon age to 45

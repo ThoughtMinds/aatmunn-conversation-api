@@ -65,8 +65,6 @@ def get_summarized_response(query: str):
 
     response = llm_with_tools.invoke(query)
 
-    logger.info(f"Response: {response}")
-
     response_content = response.content
 
     if response.tool_calls == []:
@@ -86,13 +84,13 @@ def get_summarized_response(query: str):
             if func == None:
                 raise Exception(f"Function not found")
 
-            logger.info(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
+            logger.debug(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
 
             args["session"] = session
 
             response = func.invoke(args)
 
-            logger.info(f"Tool Response: {response}")
+            logger.debug(f"Tool Response: {response}")
             response_string = dumps(response)
             tool_response += f"{name}: {response_string}"
 
@@ -114,5 +112,5 @@ def get_summarized_response(query: str):
             
         return summarized_response
     except Exception as e:
-        logger.info(f"Summarization failed due to: {e}")
+        logger.error(f"Summarization failed due to: {e}")
         return response_content

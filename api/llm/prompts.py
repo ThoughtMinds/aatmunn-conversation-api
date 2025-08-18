@@ -1,8 +1,11 @@
+from langchain_core.prompts import PromptTemplate
+
 ORCHESTRATOR_PROMPT = """
 Your task is to analyze the user query and categorize it as belonging to one of the following categories.
 1. navigation - The user query is about wanting to be taken to, shown, redirected to a particular screen or view
 eg: Take me to user listing, Navigate to product edit, List recent tasks
 2. summarization - The user wishes to get a summary of some particular information.
+The query will contain the term summary or a related word.
 eg: Give me summary of recent performance, Summarize student placement, Tell me about Stock Market trend in 2025
 3. task_execution - The user wishes to execute some task or perform an action.
 eg: Add a user name mike, Remove John from moderator, Set Gordon age to 45
@@ -14,6 +17,8 @@ Query: {query}
 
 Category:
 """
+
+ORCHESTRATOR_TEMPLATE = PromptTemplate.from_template(ORCHESTRATOR_PROMPT)
 
 RAG_PROMPT = """
 Context: {context}
@@ -29,6 +34,9 @@ Schema:
 Output:
 """
 
+RAG_TEMPLATE = PromptTemplate.from_template(RAG_PROMPT)
+
+
 SUMMARIZE_PROMPT = """
 You are an assistant that has access to the user query and corresponding API/Database response to it.
 Create a summary using the available information.
@@ -39,3 +47,23 @@ Response: {tool_response}
 
 Summary: 
 """
+
+SUMMARIZE_TEMPLATE = PromptTemplate.from_template(SUMMARIZE_PROMPT)
+
+
+CONTENT_VALIDATION_PROMPT = """
+You are an assistant that has access to the user query and machine generated summary.
+Your role is to validate whether the summary is a proper response for the given query. 
+Ensure that it is not off-topic, out of context or an incorrect response for the given query
+Response Schema:
+{{
+    "content_valid": <true/false>
+}}
+
+Query: {query}
+Summary: {summary}
+
+Response: 
+"""
+
+CONTENT_VALIDATION_TEMPLATE = PromptTemplate.from_template(CONTENT_VALIDATION_PROMPT)

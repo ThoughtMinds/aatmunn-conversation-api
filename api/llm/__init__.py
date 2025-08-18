@@ -4,5 +4,4 @@ from .base import (
     get_ollama_embeddings_model,
     preload_ollama_models
 )
-from .chain import orchestrator_chain, rag_chain
-from .prompts import SUMMARIZE_PROMPT
+from .chain import create_chain_for_task

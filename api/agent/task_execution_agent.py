@@ -1,6 +1,4 @@
 from api import db, llm, tools
-from langchain_core.prompts import PromptTemplate
-from langchain_core.tools import render_text_description
 from typing import Dict
 from pydantic import BaseModel
 from json import dumps
@@ -41,15 +39,8 @@ tool_dict = {
 
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 
-rendered_tools = render_text_description(tool_list)
-
-
 llm_with_tools = chat_model.bind_tools(tool_list)
-
-
-summarize_prompt = PromptTemplate.from_template(llm.SUMMARIZE_PROMPT)
-
-summarize_chain = summarize_prompt | chat_model
+summarize_chain = llm.create_chain_for_task(task="summarization", llm=chat_model)
 
 
 def execute_task(query: str):

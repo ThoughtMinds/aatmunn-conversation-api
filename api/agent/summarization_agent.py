@@ -1,7 +1,4 @@
-from api import db, llm, tools
-from langchain_core.prompts import PromptTemplate, MessagesPlaceholder
-from langchain.schema import SystemMessage
-from langchain_core.tools import render_text_description
+from api import db, llm, schema, tools
 from typing import Dict
 from pydantic import BaseModel
 from json import dumps
@@ -40,16 +37,13 @@ tool_dict = {
 
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 
-rendered_tools = render_text_description(tool_list)
-
-
 llm_with_tools = chat_model.bind_tools(tool_list)
+summarize_chain = llm.create_chain_for_task(task="summarization", llm=chat_model)
+content_validation_chain = llm.create_chain_for_task(
+    task="content validation", llm=chat_model, output_schema=schema.ContentValidation
+)
 
-
-summarize_prompt = PromptTemplate.from_template(llm.SUMMARIZE_PROMPT)
-
-summarize_chain = summarize_prompt | chat_model
-
+FALLBACK_SUMMARY_RESPONSE = "Summary flagged by content policy. Please rephrase or retry"
 
 def get_summarized_response(query: str):
     """
@@ -71,12 +65,12 @@ def get_summarized_response(query: str):
 
     response = llm_with_tools.invoke(query)
 
-    logger.info(f"Response: {response}")
-
     response_content = response.content
 
     if response.tool_calls == []:
-        return response_content
+        # return response_content
+        logger.info("No tool call detected!")
+        return FALLBACK_SUMMARY_RESPONSE
 
     tool_calls = response.tool_calls
 
@@ -90,13 +84,13 @@ def get_summarized_response(query: str):
             if func == None:
                 raise Exception(f"Function not found")
 
-            logger.info(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
+            logger.debug(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
 
             args["session"] = session
 
             response = func.invoke(args)
 
-            logger.info(f"Tool Response: {response}")
+            logger.debug(f"Tool Response: {response}")
             response_string = dumps(response)
             tool_response += f"{name}: {response_string}"
 
@@ -105,7 +99,18 @@ def get_summarized_response(query: str):
         )
         summarized_response = response.content
         logger.info(f"Summarized Response: {summarized_response}")
+
+        logger.info("Validating Content")
+        content_validity = content_validation_chain.invoke(
+            {"query": query, "summary": summarized_response}
+        )
+        is_valid = content_validity["content_valid"]
+        logger.info(f"Content is valid: {is_valid}")
+        
+        if not is_valid:
+            summarized_response = FALLBACK_SUMMARY_RESPONSE
+            
         return summarized_response
     except Exception as e:
-        logger.info(f"Summarization failed due to: {e}")
+        logger.error(f"Summarization failed due to: {e}")
         return response_content

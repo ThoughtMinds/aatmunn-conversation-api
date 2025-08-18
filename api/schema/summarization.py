@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from typing_extensions import TypedDict
-from sqlmodel import Session
+from typing import Any
 
 class SummarizationCreate(BaseModel):
     """
@@ -30,8 +30,10 @@ class SummaryResponse(BaseModel):
     content_moderated: bool
 
 
-from typing import Any
 class SummarizationState(TypedDict):
     messages: List[dict]
     session: Any #Session
     summary: str
+    
+class ContentValidation(TypedDict):
+    content_valid: bool

@@ -122,6 +122,9 @@ npm run dev
     - [x] Frontend
     - [x] Single Tool Call
     - [ ] Chained Tool Call
+- [ ] Chained Tool Call
+    - [ ] Integrate Xccelerate Logic
+    - [ ] Convert Agent to Graphs (chained_true flag)
 - [ ] Test Framework
     - [x] Navigation
     - [ ] Summarization
@@ -130,4 +133,4 @@ npm run dev
     - [x] Read APIs
         - [ ] Integrate Navigation Options API
 - [ ] ~~LLM can create SQL queries and fetch data from db~~
-
+- [ ] Colored logging for local dev

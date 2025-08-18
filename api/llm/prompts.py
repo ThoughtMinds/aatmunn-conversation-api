@@ -86,17 +86,18 @@ You are an expert Action Identification Agent responsible for determining the ne
 2. Review the results from all previously executed actions.
 3. Do not repeat any actions that have already been executed unless absolutely necessary.
 4. From the **available actions**, select the **single next best action** that will help progress towards a complete and accurate response.
-5. If no further actions are required to answer the user query, return an **empty JSON object**: `{{}}`.
+5. If no further actions are required to answer the user query, return an **empty JSON object**: {{}}
+6. The session parameter will be provided by the system, assign it as null
 
-## Expected Response Format:
-Return a **single JSON object** representing the next action to execute with the following fields:
+If no further action is required, return {{}}
 
-- `name`: (string) The exact action name from the available actions.
-- `category_name`: (string) The name of the tool this action belongs to.
-- `category`: (string) Always set to `"tool"`.
-- `owner`: (string) Either `"system"` or `"agent"` depending on ownership.
-- `type`: (string) The type of the tool.
-- `parameters`: (object) A dictionary of key-value pairs containing the parameters required by the action.
+Response Schema:
+{{
+    "name": (string) The exact action name from the available actions.
+    "parameters": (object) A dictionary of key-value pairs containing the parameters required by the action.
+}}
 
-If no further action is required, return `{{}}`.
+Response:
 """
+
+CHAINED_TOOL_CALL_TEMPLATE = PromptTemplate.from_template(CHAINED_TOOL_CALL_PROMPT)

@@ -2,7 +2,7 @@ import contextvars
 import logging
 import sys
 
-from pythonjsonlogger import jsonlogger
+import coloredlogs
 
 # Context variable to store request_id per request
 request_id_var = contextvars.ContextVar("request_id", default="-")
@@ -15,9 +15,16 @@ base_logger.propagate = False  # Avoid duplicate logs from parent/root logger
 # Clean existing handlers if re-running (optional)
 base_logger.handlers.clear()
 
-# JSON formatter
-log_formatter = jsonlogger.JsonFormatter(
-    "%(asctime)s %(levelname)s %(message)s %(funcName)s %(lineno)d %(filename)s request_id"
+# Colored formatter
+log_formatter = coloredlogs.ColoredFormatter(
+    fmt="%(asctime)s %(levelname)s %(message)s %(funcName)s %(lineno)d %(filename)s request_id=%(request_id)s",
+    level_styles={
+        'debug': {'color': 'green'},
+        'info': {'color': 'cyan'},
+        'warning': {'color': 'yellow'},
+        'error': {'color': 'red'},
+        'critical': {'color': 'red', 'bold': True},
+    }
 )
 
 # Stream handler with formatter
@@ -60,5 +67,4 @@ class RequestIdLoggerAdapter(logging.LoggerAdapter):
         return msg, kwargs
 
 
-# Final exported logger
-logger = RequestIdLoggerAdapter(base_logger)
+logger = logging.LoggerAdapter(base_logger)

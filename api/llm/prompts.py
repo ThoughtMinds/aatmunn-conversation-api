@@ -39,8 +39,8 @@ RAG_TEMPLATE = PromptTemplate.from_template(RAG_PROMPT)
 
 SUMMARIZE_PROMPT = """
 You are an assistant that has access to the user query and corresponding API/Database response to it.
-Create a summary using the available information.
-Present it to the user in a short, easy to understand format. Do not add unnecessary formatting.
+From this information create a brief, human readable description or summary.
+Do not add unnecessary formatting.
 
 Query: {query}
 Response: {tool_response}
@@ -67,3 +67,37 @@ Response:
 """
 
 CONTENT_VALIDATION_TEMPLATE = PromptTemplate.from_template(CONTENT_VALIDATION_PROMPT)
+
+CHAINED_TOOL_CALL_PROMPT = """
+You are an expert Action Identification Agent responsible for determining the next best action to execute based on a user query, available actions, and the history of previous actions and their results.
+
+## Available Actions:
+{available_actions}
+
+## User Query:
+{query}
+
+## Context Information:
+- Previous Action Results (if any):
+{context}
+
+## Instructions:
+1. Analyze the user's query carefully.
+2. Review the results from all previously executed actions.
+3. Do not repeat any actions that have already been executed unless absolutely necessary.
+4. From the **available actions**, select the **single next best action** that will help progress towards a complete and accurate response.
+5. If no further actions are required to answer the user query, return an **empty JSON object**: {{}}
+6. The session parameter will be provided by the system, assign it as null
+
+If no further action is required, return {{}}
+
+Response Schema:
+{{
+    "name": (string) The exact action name from the available actions.
+    "parameters": (object) A dictionary of key-value pairs containing the parameters required by the action.
+}}
+
+Response:
+"""
+
+CHAINED_TOOL_CALL_TEMPLATE = PromptTemplate.from_template(CHAINED_TOOL_CALL_PROMPT)

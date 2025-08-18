@@ -1,7 +1,8 @@
-from api import db, llm, schema, tools
-from typing import Dict
+from typing import Dict, TypedDict, Annotated
 from pydantic import BaseModel
-from json import dumps
+from json import dumps, loads
+from langgraph.graph import StateGraph, END
+from api import db, llm, schema, tools
 from api.core.logging_config import logger
 from sqlmodel import Session
 
@@ -11,8 +12,19 @@ class ToolCall(BaseModel):
     parameters: Dict
 
 
-chat_model = llm.get_ollama_chat_model()
+# Define the state for the LangGraph
+class AgentState(TypedDict):
+    query: str
+    chained: bool
+    tool_calls: list
+    tool_response: str
+    summarized_response: str
+    is_valid: bool
+    final_response: str
 
+
+# Initialize tools and models
+chat_model = llm.get_ollama_chat_model()
 tool_list = [
     tools.summarization.fetch_employee_by_id_db,
     tools.summarization.list_employees_by_skill_level_db,
@@ -23,7 +35,6 @@ tool_list = [
     tools.summarization.list_employees_by_shift_db,
     tools.summarization.list_employees_by_hire_year_db,
 ]
-
 tool_dict = {
     "fetch_employee_by_id_db": tools.summarization.fetch_employee_by_id_db,
     "list_employees_by_skill_level_db": tools.summarization.list_employees_by_skill_level_db,
@@ -35,23 +46,203 @@ tool_dict = {
     "list_employees_by_hire_year_db": tools.summarization.list_employees_by_hire_year_db,
 }
 
-logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
+TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
+logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 llm_with_tools = chat_model.bind_tools(tool_list)
 summarize_chain = llm.create_chain_for_task(task="summarization", llm=chat_model)
+chained_tool_chain = llm.create_chain_for_task(
+    task="chained tool call",
+    llm=chat_model,
+    output_schema=schema.ChainedToolCall,
+)
 content_validation_chain = llm.create_chain_for_task(
     task="content validation", llm=chat_model, output_schema=schema.ContentValidation
 )
 
-FALLBACK_SUMMARY_RESPONSE = "Summary flagged by content policy. Please rephrase or retry"
+NO_SUMMARY_RESPONSE = (
+    "We could not find any relevant information. Please rephrase the query"
+)
+FALLBACK_SUMMARY_RESPONSE = (
+    "Summary flagged by content policy. Please rephrase or retry"
+)
 
-def get_summarized_response(query: str):
+
+# Node to invoke tools based on the query
+# If 'chained' = False
+def invoke_tools(state: AgentState) -> AgentState:
+    session = Session(db.engine)
+    response = llm_with_tools.invoke(state["query"])
+    state["tool_calls"] = response.tool_calls
+    state["tool_response"] = ""
+
+    if not state["tool_calls"]:
+        logger.info("No tool call detected!")
+        logger.error(f"NoToolCall: {response.content}")
+        state["final_response"] = NO_SUMMARY_RESPONSE
+        return state
+
+    logger.info(f"Found {len(state['tool_calls'])} Tool Calls")
+    try:
+        for tool_call in state["tool_calls"]:
+            name, args, _tool_id = tool_call["name"], tool_call["args"], tool_call["id"]
+            func = tool_dict.get(name)
+            if func is None:
+                raise Exception(f"Function not found: {name}")
+            logger.info(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
+            args["session"] = session
+            response = func.invoke(args)
+            logger.info(f"Tool Response: {response}")
+            response_string = dumps(response)
+            state["tool_response"] += f"{name}: {response_string}"
+    except Exception as e:
+        logger.error(f"Tool invocation failed due to: {e}")
+        state["final_response"] = response.content
+    finally:
+        session.close()
+
+    return state
+
+
+# Chained Tool Calling Node
+# If 'chained' is True
+def chained_invoke_tools(state: AgentState) -> AgentState:
+    session = Session(db.engine)
+    action_context = {"previous_results": [], "already_executed": []}
+    user_query = state["query"]
+
+    state["tool_response"] = ""
+
+    try:
+        iter_cnt = 0
+        while True:
+            if iter_cnt == 3:
+                break
+            iter_cnt += 1
+            logger.error(
+                {
+                    "query": user_query,
+                    "context": dumps(action_context),
+                }
+            )
+            try:
+                tool_call: schema.ChainedToolCall = chained_tool_chain.invoke(
+                    {
+                        "query": user_query,
+                        "context": dumps(action_context),
+                        "available_actions": TOOL_DESCRIPTION,
+                    }
+                )
+                logger.info(f"Chained Response: {tool_call}")
+            except Exception as e:
+                logger.error(f"Invalid JSON in chained response: {e}")
+                break
+
+            if tool_call == {}:
+                break
+
+            name = tool_call.name
+            args = tool_call.parameters.copy()
+            func = tool_dict.get(name)
+            if func is None:
+                raise Exception(f"Function not found: {name}")
+            logger.info(f"Tool: {name} | Args: {args}")
+            args["session"] = session
+            tool_response = func.invoke(args)
+            logger.info(f"Tool Response: {tool_response}")
+            response_string = dumps(tool_response)
+            tool_response_str = f"{name}: {response_string}"
+
+            action_context["already_executed"].append(tool_call.model_dump())
+            action_context["previous_results"].append(tool_response_str)
+
+            state["tool_response"] += tool_response_str + "\n"
+    except Exception as e:
+        logger.error(f"Chained tool invocation failed due to: {e}")
+        state["final_response"] = FALLBACK_SUMMARY_RESPONSE
+    finally:
+        session.close()
+
+    if not state["tool_response"]:
+        state["final_response"] = NO_SUMMARY_RESPONSE
+
+    return state
+
+
+# Node to summarize the tool response
+def summarize_response(state: AgentState) -> AgentState:
+    if state["final_response"]:
+        return state  # Skip if final_response is already set (e.g., no tool calls or error)
+
+    response = summarize_chain.invoke(
+        {"query": state["query"], "tool_response": state["tool_response"]}
+    )
+    state["summarized_response"] = response.content
+    logger.info(f"Summarized Response: {state['summarized_response']}")
+    return state
+
+
+# Node to validate content
+def validate_content(state: AgentState) -> AgentState:
+    if state["final_response"]:
+        return state  # Skip if final_response is already set
+
+    logger.info("Validating Content")
+    content_validity = content_validation_chain.invoke(
+        {"query": state["query"], "summary": state["summarized_response"]}
+    )
+    state["is_valid"] = content_validity["content_valid"]
+    logger.info(f"Content is valid: {state['is_valid']}")
+
+    state["final_response"] = (
+        state["summarized_response"] if state["is_valid"] else FALLBACK_SUMMARY_RESPONSE
+    )
+    return state
+
+
+# Router function to decide between invoke_tools and chained_invoke_tools
+def tool_call_router(state: AgentState) -> str:
+    is_chained = state["chained"]
+    logger.info(f"Chained Tool Call: {is_chained}")
+
+    if is_chained:
+        return "chained_invoke_tools"
+    else:
+        return "invoke_tools"
+
+
+# Define the LangGraph workflow
+def create_summarization_graph():
+    workflow = StateGraph(AgentState)
+
+    # Add nodes
+    workflow.add_node("invoke_tools", invoke_tools)
+    workflow.add_node("chained_invoke_tools", chained_invoke_tools)
+    workflow.add_node("summarize_response", summarize_response)
+    workflow.add_node("validate_content", validate_content)
+
+    # Define conditional branching based on 'chained'
+    workflow.set_conditional_entry_point(
+        tool_call_router,
+        {
+            "invoke_tools": "invoke_tools",
+            "chained_invoke_tools": "chained_invoke_tools",
+        },
+    )
+
+    # Define edges
+    workflow.add_edge("invoke_tools", "summarize_response")
+    workflow.add_edge("chained_invoke_tools", "summarize_response")
+    workflow.add_edge("summarize_response", "validate_content")
+    workflow.add_edge("validate_content", END)
+
+    return workflow.compile()
+
+
+# Function to run the summarization agent
+def get_summarized_response(query: str, chained: bool = True) -> str:
     """
-    Generates a summarized response for a given query.
-
-    This function takes a user's query, invokes the summarization agent with tools,
-    and returns a natural language summary of the information retrieved from the
-    database or other tools.
+    Generates a summarized response for a given query using a LangGraph workflow.
 
     Args:
         query (str): The user's query for summarization.
@@ -59,58 +250,16 @@ def get_summarized_response(query: str):
     Returns:
         str: The summarized response.
     """
-    session = Session(db.engine)
-
     logger.info("Generating summary")
-
-    response = llm_with_tools.invoke(query)
-
-    response_content = response.content
-
-    if response.tool_calls == []:
-        # return response_content
-        logger.info("No tool call detected!")
-        return FALLBACK_SUMMARY_RESPONSE
-
-    tool_calls = response.tool_calls
-
-    # TODO: Set flag for single and chained tool call
-    try:
-        tool_response = ""
-        for tool_call in tool_calls:
-            name, args, _tool_id = tool_call["name"], tool_call["args"], tool_call["id"]
-            func = tool_dict.get(name, None)
-
-            if func == None:
-                raise Exception(f"Function not found")
-
-            logger.debug(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
-
-            args["session"] = session
-
-            response = func.invoke(args)
-
-            logger.debug(f"Tool Response: {response}")
-            response_string = dumps(response)
-            tool_response += f"{name}: {response_string}"
-
-        response = summarize_chain.invoke(
-            {"query": query, "tool_response": tool_response}
-        )
-        summarized_response = response.content
-        logger.info(f"Summarized Response: {summarized_response}")
-
-        logger.info("Validating Content")
-        content_validity = content_validation_chain.invoke(
-            {"query": query, "summary": summarized_response}
-        )
-        is_valid = content_validity["content_valid"]
-        logger.info(f"Content is valid: {is_valid}")
-        
-        if not is_valid:
-            summarized_response = FALLBACK_SUMMARY_RESPONSE
-            
-        return summarized_response
-    except Exception as e:
-        logger.error(f"Summarization failed due to: {e}")
-        return response_content
+    graph = create_summarization_graph()
+    initial_state = {
+        "query": query,
+        "chained": chained,  # Determines whether to use invoke_tools/chained_invoke_tools
+        "tool_calls": [],
+        "tool_response": "",
+        "summarized_response": "",
+        "is_valid": False,
+        "final_response": "",
+    }
+    result = graph.invoke(initial_state)
+    return result["final_response"]

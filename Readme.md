@@ -122,9 +122,10 @@ npm run dev
     - [x] Frontend
     - [x] Single Tool Call
     - [ ] Chained Tool Call
-- [ ] Chained Tool Call
-    - [ ] Integrate Xccelerate Logic
-    - [ ] Convert Agent to Graphs (chained_true flag)
+- [x] Chained Tool Call
+    - [x] Integrate Xccelerate Logic
+    - [x] Convert Agent to Graphs (chained_true flag)
+    - [ ] Add backend flag and front-end checkbox 
 - [ ] Test Framework
     - [x] Navigation
     - [ ] Summarization

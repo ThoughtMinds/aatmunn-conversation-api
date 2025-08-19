@@ -208,7 +208,7 @@ def moderate_content(state: AgentState) -> AgentState:
     logger.info(f"Content Moderation: {state['is_moderated']}")
 
     state["final_response"] = (
-        state["summarized_response"] if state["is_moderated"] else FALLBACK_SUMMARY_RESPONSE
+        state["summarized_response"] if content_validity["content_valid"] else FALLBACK_SUMMARY_RESPONSE
     )
     return state
 

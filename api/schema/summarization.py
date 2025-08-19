@@ -29,6 +29,7 @@ class SummaryRequest(BaseModel):
 class SummaryResponse(BaseModel):
     summary: Any#str
     content_moderated: bool
+    processing_time: float
 
 
 class SummarizationState(TypedDict):

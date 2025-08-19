@@ -25,6 +25,7 @@ class TaskResponse(BaseModel):
 
     response: str
     status: bool
+    processing_time: float
 
 class EmployeeCreate(BaseModel):
     """

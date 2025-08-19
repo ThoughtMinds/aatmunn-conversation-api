@@ -3,12 +3,11 @@ from api import db, agent, schema
 from typing import Annotated
 from sqlmodel import Session
 from api.core.logging_config import logger
+from time import time
 
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
-
-# Support single, multiple API   call operation (flag?)
 
 
 @router.post("/get_summary/", response_model=schema.SummaryResponse)
@@ -30,7 +29,21 @@ def get_summary(
     """
     query, chained = data.query, data.chained
     logger.info(f"Summarization Query: {query}")
-    summary, moderated = agent.get_summarized_response(query=query, chained=chained)
 
-    response = schema.SummaryResponse(summary=summary, content_moderated=moderated)
-    return response
+    start_time = time()
+    try:
+        summary, moderated = agent.get_summarized_response(query=query, chained=chained)
+    except Exception as e:
+        logger.error(f"Failed to generate summary due to: {e}")
+        summary = "Failed to generate summary. Please rephrase or retry"
+        moderated = False
+    finally:
+        end_time = time()
+        elapsed_time = end_time - start_time
+        elapsed_time = round(elapsed_time, 3)
+        print(f"Time taken: {elapsed_time:.4f} seconds")
+
+        response = schema.SummaryResponse(
+            summary=summary, content_moderated=moderated, processing_time=elapsed_time
+        )
+        return response

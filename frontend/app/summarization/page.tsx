@@ -14,11 +14,13 @@ import { API_BASE_URL } from "@/constants/api"
 interface SummarizationResult {
   query: string
   summary: string
+  processing_time: number
 }
 
 interface SummaryResponse {
   summary: string
   content_moderated: boolean
+  processing_time: number
 }
 
 export default function SummarizationPage() {
@@ -49,6 +51,7 @@ export default function SummarizationPage() {
         const mockResult: SummarizationResult = {
           query: query,
           summary: data.summary,
+          processing_time: data.processing_time,
         }
 
         setResult(mockResult)
@@ -158,7 +161,7 @@ export default function SummarizationPage() {
 
             {/* Metadata */}
             <div className="flex items-center gap-4 pt-2 border-t">
-              <Badge variant="outline">Processing Time: 2.3s</Badge>
+              <Badge variant="outline">Processing Time: {result.processing_time}s</Badge>
               <Badge variant="outline">Generated: {new Date().toLocaleString()}</Badge>
             </div>
           </CardContent>

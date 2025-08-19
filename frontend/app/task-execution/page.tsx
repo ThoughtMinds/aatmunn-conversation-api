@@ -17,12 +17,14 @@ interface TaskResult {
   status: "completed" | "failed" | "running"
   output?: string[]
   errorMessage?: string
+  processing_time: number
 }
 
 // Add interface for API response
 interface TaskApiResponse {
   response: string
   status: boolean
+  processing_time: number
 }
 
 
@@ -61,6 +63,7 @@ export default function TaskExecutionPage() {
           status: data.status ? "completed" : "failed",
           output: data.status ? data.response.split("\n").filter((line) => line.trim()) : undefined,
           errorMessage: !data.status ? data.response : undefined,
+          processing_time: data.processing_time,
         }
 
         setResult(mockResult)
@@ -215,6 +218,11 @@ export default function TaskExecutionPage() {
                 <Label className="text-xs text-muted-foreground">Status</Label>
                 <Badge className={getStatusColor()}>{result.status}</Badge>
               </div>
+            </div>
+
+            {/* Metadata */}
+            <div className="flex items-center gap-4 pt-2 border-t">
+              <Badge variant="outline">Processing Time: {result.processing_time}s</Badge>
             </div>
 
             {/* Task Output or Error */}

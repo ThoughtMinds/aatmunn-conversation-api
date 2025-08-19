@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date
 
+
 class TaskRequest(BaseModel):
     """
     Pydantic model for a task execution request.
@@ -26,6 +27,7 @@ class TaskResponse(BaseModel):
     response: str
     status: bool
     processing_time: float
+
 
 class EmployeeCreate(BaseModel):
     """

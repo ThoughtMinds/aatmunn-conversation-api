@@ -23,7 +23,7 @@ def get_aatmunn_access_token():
         data = response.json()
 
         os.environ["AATMUNN_CLIENT_API_TOKEN"] = data["accessToken"]
-        
+
         logger.info("Fetched Aatmunn Access Token")
         return {
             "accessToken": data["accessToken"],

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Dict, Literal
 
+
 class RequestData(BaseModel):
     """
     Pydantic model for the input and output data of a request.

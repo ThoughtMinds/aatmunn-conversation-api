@@ -204,11 +204,15 @@ def moderate_content(state: AgentState) -> AgentState:
     content_validity = content_moderation_chain.invoke(
         {"query": state["query"], "summary": state["summarized_response"]}
     )
-    state["is_moderated"] = not content_validity["content_valid"] # Valid content = Not moderated
+    state["is_moderated"] = not content_validity[
+        "content_valid"
+    ]  # Valid content = Not moderated
     logger.info(f"Content Moderation: {state['is_moderated']}")
 
     state["final_response"] = (
-        state["summarized_response"] if content_validity["content_valid"] else FALLBACK_SUMMARY_RESPONSE
+        state["summarized_response"]
+        if content_validity["content_valid"]
+        else FALLBACK_SUMMARY_RESPONSE
     )
     return state
 

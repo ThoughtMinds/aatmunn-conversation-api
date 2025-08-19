@@ -14,6 +14,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     This middleware logs incoming requests and outgoing responses, including
     the request ID, method, path, status code, and duration.
     """
+
     async def dispatch(self, request: Request, call_next):
         """
         Process and log a request and its response.

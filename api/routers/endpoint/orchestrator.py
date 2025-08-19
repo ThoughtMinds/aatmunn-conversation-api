@@ -9,7 +9,9 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
 @router.post("/identify_intent/", response_model=schema.OrchestrationResponse)
-def identify_intent(session: SessionDep, data: schema.OrchestrationQuery) -> schema.OrchestrationResponse:
+def identify_intent(
+    session: SessionDep, data: schema.OrchestrationQuery
+) -> schema.OrchestrationResponse:
     """
     Identify the intent of a user's query.
 

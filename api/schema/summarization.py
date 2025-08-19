@@ -24,6 +24,7 @@ class SummarizationCreate(BaseModel):
     
 class SummaryRequest(BaseModel):
     query: str
+    chained: bool = False
     
 class SummaryResponse(BaseModel):
     summary: Any#str

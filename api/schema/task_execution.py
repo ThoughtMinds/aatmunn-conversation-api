@@ -3,6 +3,7 @@ from datetime import date
 
 class TaskRequest(BaseModel):
     query: str
+    chained: bool = False
     
 class TaskResponse(BaseModel):
     response: str

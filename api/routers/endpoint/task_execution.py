@@ -15,9 +15,9 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 def execute_task(
     session: SessionDep, data: schema.TaskRequest
 ) -> schema.TaskResponse:
-    query = data.query
+    query, chained = data.query, data.chained
     logger.info(f"Task Execution Query: {query}")
 
-    content = agent.execute_task(query)
+    content = agent.get_task_execution_response(query=query, chained=chained)
     response = schema.TaskResponse(response=content, status=True)
     return response

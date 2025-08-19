@@ -15,9 +15,9 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 def get_summary(
     session: SessionDep, data: schema.SummaryRequest
 ) -> schema.SummaryResponse:
-    query = data.query
+    query, chained = data.query, data.chained
     logger.info(f"Summarization Query: {query}")
-    content = agent.get_summarized_response(query=query)
+    summary, moderated = agent.get_summarized_response(query=query, chained=chained)
 
-    response = schema.SummaryResponse(summary=content, content_moderated=False)
+    response = schema.SummaryResponse(summary=summary, content_moderated=moderated)
     return response

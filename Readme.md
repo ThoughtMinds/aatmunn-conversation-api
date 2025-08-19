@@ -44,8 +44,8 @@ docker ps --format '{{.Names}}'
 ```
 
 ```
-aatmun-api
-aatmun-frontend
+aatmunn-api
+aatmunn-frontend
 ollama
 ```
 
@@ -115,7 +115,7 @@ npm run dev
     - [x] Frontend
     - [x] Single Tool Call
     - [ ] Chained Tool Call
-    - [ ] Content Validation
+    - [ ] Content Moderation
         - [ ] Fixed Output Schema
         - [ ] Integrate with flow
 - [x] Task Execution Agent

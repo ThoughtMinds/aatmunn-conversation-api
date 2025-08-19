@@ -32,9 +32,26 @@ class SummaryResponse(BaseModel):
 
 
 class SummarizationState(TypedDict):
+    """
+    TypedDict for the state of the summarization agent.
+
+    Attributes:
+        messages (List[dict]): A list of messages in the conversation.
+        session (Any): The database session.
+        summary (str): The generated summary.
+    """
+
     messages: List[dict]
-    session: Any #Session
+    session: Any  # Session
     summary: str
-    
+
+
 class ContentValidation(TypedDict):
+    """
+    TypedDict for the result of content validation.
+
+    Attributes:
+        content_valid (bool): Whether the content is valid.
+    """
+
     content_valid: bool

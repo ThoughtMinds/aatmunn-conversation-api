@@ -15,6 +15,19 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 def execute_task(
     session: SessionDep, data: schema.TaskRequest
 ) -> schema.TaskResponse:
+    """
+    Execute a task for a given query.
+
+    This endpoint takes a user's query and uses the task execution agent to
+    perform an action. It supports both single and chained tool calls.
+
+    Args:
+        session (SessionDep): The database session dependency.
+        data (schema.TaskRequest): The user's query and chaining preference.
+
+    Returns:
+        schema.TaskResponse: The result of the task execution.
+    """
     query, chained = data.query, data.chained
     logger.info(f"Task Execution Query: {query}")
 

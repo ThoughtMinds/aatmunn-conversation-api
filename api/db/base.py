@@ -35,6 +35,12 @@ def get_session():
         
         
 def populate_summarization_tables():
+    """
+    Populate the summarization tables with sample data.
+
+    This function loads sample summarization data and populates the database
+    tables if they are empty. It is called during application startup.
+    """
     session = Session(engine)
     sample_summarization_data = rag.load_sample_summarization_data()
     if len(sample_summarization_data) == 0:

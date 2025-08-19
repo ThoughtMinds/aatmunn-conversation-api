@@ -4,6 +4,18 @@ import re
 
 
 def render_text_description(tools: list[BaseTool]) -> str:
+    """
+    Render a text description of a list of tools.
+
+    This function takes a list of BaseTool objects and generates a formatted
+    string containing the names, signatures, and descriptions of the tools.
+
+    Args:
+        tools (list[BaseTool]): A list of tools to describe.
+
+    Returns:
+        str: A formatted string describing the tools.
+    """
     descriptions = []
     for tool in tools:
         description = tool.name

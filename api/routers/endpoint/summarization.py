@@ -15,6 +15,19 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 def get_summary(
     session: SessionDep, data: schema.SummaryRequest
 ) -> schema.SummaryResponse:
+    """
+    Get a summary for a given query.
+
+    This endpoint takes a user's query and uses the summarization agent to
+    generate a summary. It supports both single and chained tool calls.
+
+    Args:
+        session (SessionDep): The database session dependency.
+        data (schema.SummaryRequest): The user's query and chaining preference.
+
+    Returns:
+        schema.SummaryResponse: The generated summary and content moderation status.
+    """
     query, chained = data.query, data.chained
     logger.info(f"Summarization Query: {query}")
     summary, moderated = agent.get_summarized_response(query=query, chained=chained)

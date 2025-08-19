@@ -14,6 +14,19 @@ class ToolCall(BaseModel):
 
 # Define the state for the LangGraph
 class AgentState(TypedDict):
+    """
+    Represents the state of the summarization agent.
+
+    Attributes:
+        query (str): The user's query.
+        chained (bool): Whether to use chained tool calls.
+        tool_calls (list): A list of tool calls to be executed.
+        tool_response (str): The response from the tool execution.
+        summarized_response (str): The summarized response from the language model.
+        is_moderated (bool): Whether the content has been moderated.
+        final_response (str): The final response to be returned to the user.
+    """
+
     query: str
     chained: bool
     tool_calls: list
@@ -213,6 +226,16 @@ def tool_call_router(state: AgentState) -> str:
 
 # Define the LangGraph workflow
 def create_summarization_graph():
+    """
+    Creates the LangGraph workflow for the summarization agent.
+
+    This function defines the structure of the agent, including the nodes for
+    tool invocation, summarization, and content moderation, and the edges
+    that connect them.
+
+    Returns:
+        Graph: The compiled LangGraph for the summarization agent.
+    """
     workflow = StateGraph(AgentState)
 
     # Add nodes

@@ -14,6 +14,18 @@ class ToolCall(BaseModel):
 
 # Define the state for the LangGraph
 class AgentState(TypedDict):
+    """
+    Represents the state of the task execution agent.
+
+    Attributes:
+        query (str): The user's query.
+        chained (bool): Whether to use chained tool calls.
+        tool_calls (list): A list of tool calls to be executed.
+        tool_response (str): The response from the tool execution.
+        summarized_response (str): The summarized response from the language model.
+        final_response (str): The final response to be returned to the user.
+    """
+
     query: str
     chained: bool
     tool_calls: list
@@ -193,6 +205,15 @@ def tool_call_router(state: AgentState) -> str:
 
 # Define the LangGraph workflow
 def create_task_execution_graph():
+    """
+    Creates the LangGraph workflow for the task execution agent.
+
+    This function defines the structure of the agent, including the nodes for
+    tool invocation and summarization, and the edges that connect them.
+
+    Returns:
+        Graph: The compiled LangGraph for the task execution agent.
+    """
     workflow = StateGraph(AgentState)
 
     # Add nodes

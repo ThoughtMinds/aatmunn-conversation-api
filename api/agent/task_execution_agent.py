@@ -1,7 +1,8 @@
-from api import db, llm, tools
-from typing import Dict
+from typing import Dict, TypedDict
 from pydantic import BaseModel
 from json import dumps
+from langgraph.graph import StateGraph, END
+from api import db, llm, schema, tools
 from api.core.logging_config import logger
 from sqlmodel import Session
 
@@ -11,6 +12,17 @@ class ToolCall(BaseModel):
     parameters: Dict
 
 
+# Define the state for the LangGraph
+class AgentState(TypedDict):
+    query: str
+    chained: bool
+    tool_calls: list
+    tool_response: str
+    summarized_response: str
+    final_response: str
+
+
+# Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
 
 tool_list = [
@@ -37,68 +49,199 @@ tool_dict = {
     "delete_employee_db": tools.task_execution.delete_employee_db,
 }
 
+TOOL_DESCRIPTION = tools.render_text_description(tool_list)
+
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 
 llm_with_tools = chat_model.bind_tools(tool_list)
 summarize_chain = llm.create_chain_for_task(task="summarization", llm=chat_model)
+chained_tool_chain = llm.create_chain_for_task(
+    task="chained tool call",
+    llm=chat_model,
+    output_schema=schema.ChainedToolCall,
+)
+
+NO_RESPONSE = "We could not find any relevant information. Please rephrase the query"
+FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
 
-def execute_task(query: str):
+# Node to invoke tools based on the query
+# If 'chained' = False
+def invoke_tools(state: AgentState) -> AgentState:
+    session = Session(db.engine)
+    response = llm_with_tools.invoke(state["query"])
+    state["tool_calls"] = response.tool_calls
+    state["tool_response"] = ""
+
+    if not state["tool_calls"]:
+        logger.info("No tool call detected!")
+        logger.error(f"NoToolCall: {response.content}")
+        state["final_response"] = NO_RESPONSE
+        return state
+
+    logger.info(f"Found {len(state['tool_calls'])} Tool Calls")
+    try:
+        for tool_call in state["tool_calls"]:
+            name, args, _tool_id = tool_call["name"], tool_call["args"], tool_call["id"]
+            func = tool_dict.get(name)
+            if func is None:
+                raise Exception(f"Function not found: {name}")
+            logger.info(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
+            args["session"] = session
+            response = func.invoke(args)
+            logger.info(f"Tool Response: {response}")
+            response_string = dumps(response)
+            state["tool_response"] += f"{name}: {response_string}"
+    except Exception as e:
+        logger.error(f"Tool invocation failed due to: {e}")
+        state["final_response"] = response.content
+    finally:
+        session.close()
+
+    return state
+
+
+# Chained Tool Calling Node
+# If 'chained' is True
+def chained_invoke_tools(state: AgentState) -> AgentState:
+    session = Session(db.engine)
+    action_context = {"previous_results": [], "already_executed": []}
+    user_query = state["query"]
+
+    state["tool_response"] = ""
+
+    try:
+        iter_cnt = 0
+        while True:
+            if iter_cnt == 3:
+                break
+            iter_cnt += 1
+            logger.error(
+                {
+                    "query": user_query,
+                    "context": dumps(action_context),
+                }
+            )
+            try:
+                tool_call: schema.ChainedToolCall = chained_tool_chain.invoke(
+                    {
+                        "query": user_query,
+                        "context": dumps(action_context),
+                        "available_actions": TOOL_DESCRIPTION,
+                    }
+                )
+                logger.info(f"Chained Response: {tool_call}")
+            except Exception as e:
+                logger.error(f"Invalid JSON in chained response: {e}")
+                break
+
+            if tool_call == {}:
+                break
+
+            name = tool_call.name
+            args = tool_call.parameters.copy()
+            func = tool_dict.get(name)
+            if func is None:
+                raise Exception(f"Function not found: {name}")
+            logger.info(f"Tool: {name} | Args: {args}")
+            args["session"] = session
+            tool_response = func.invoke(args)
+            logger.info(f"Tool Response: {tool_response}")
+            response_string = dumps(tool_response)
+            tool_response_str = f"{name}: {response_string}"
+
+            action_context["already_executed"].append(tool_call.model_dump())
+            action_context["previous_results"].append(tool_response_str)
+
+            state["tool_response"] += tool_response_str + "\n"
+    except Exception as e:
+        logger.error(f"Chained tool invocation failed due to: {e}")
+        state["final_response"] = FALLBACK_RESPONSE
+    finally:
+        session.close()
+
+    if not state["tool_response"]:
+        state["final_response"] = NO_RESPONSE
+
+    return state
+
+
+# Node to summarize the tool response
+def summarize_response(state: AgentState) -> AgentState:
+    if state["final_response"]:
+        return state  # Skip if final_response is already set (e.g., no tool calls or error)
+
+    response = summarize_chain.invoke(
+        {"query": state["query"], "tool_response": state["tool_response"]}
+    )
+    state["summarized_response"] = response.content
+    state["final_response"] = response.content
+    logger.info(f"Summarized Response: {state['summarized_response']}")
+    return state
+
+
+# Router function to decide between invoke_tools and chained_invoke_tools
+def tool_call_router(state: AgentState) -> str:
+    is_chained = state["chained"]
+    logger.info(f"Chained Tool Call: {is_chained}")
+
+    if is_chained:
+        return "chained_invoke_tools"
+    else:
+        return "invoke_tools"
+
+
+# Define the LangGraph workflow
+def create_task_execution_graph():
+    workflow = StateGraph(AgentState)
+
+    # Add nodes
+    workflow.add_node("invoke_tools", invoke_tools)
+    workflow.add_node("chained_invoke_tools", chained_invoke_tools)
+    workflow.add_node("summarize_response", summarize_response)
+
+    # Define conditional branching based on 'chained'
+    workflow.set_conditional_entry_point(
+        tool_call_router,
+        {
+            "invoke_tools": "invoke_tools",
+            "chained_invoke_tools": "chained_invoke_tools",
+        },
+    )
+
+    # Define edges
+    workflow.add_edge("invoke_tools", "summarize_response")
+    workflow.add_edge("chained_invoke_tools", "summarize_response")
+    workflow.add_edge("summarize_response", END)
+
+    return workflow.compile()
+
+
+# Function to run the task execution agent
+def get_task_execution_response(query: str, chained: bool = True) -> str:
     """
-    Executes a task based on a given query.
-
-    This function takes a user's query, invokes the task execution agent with tools,
-    and performs the requested action, such as adding, updating, or deleting
-    data in the database.
+    Executes a task based on a given query using a LangGraph workflow.
 
     Args:
         query (str): The user's query for task execution.
+        chained (bool): Flag to determine whether to use chained tool calls.
 
     Returns:
-        str: A response indicating the result of the task execution.
+        str: The response after executing the task.
     """
-    session = Session(db.engine)
-
     logger.info("Executing task")
-
-    response = llm_with_tools.invoke(query)
-
-    logger.info(f"Response: {response}")
-
-    response_content = response.content
-
-    if response.tool_calls == []:
-        return response_content
-
-    tool_calls = response.tool_calls
-
-    try:
-        for tool_call in tool_calls:
-            name, args, _tool_id = tool_call["name"], tool_call["args"], tool_call["id"]
-            func = tool_dict.get(name, None)
-
-            if func == None:
-                raise Exception(f"Function not found")
-
-            logger.info(f"Tool: {name} | Args: {args} | ID: {_tool_id}")
-
-            args["session"] = session
-
-            response = func.invoke(args)
-
-            logger.info(f"Tool Response: {response}")
-            response_string = dumps(response)
-
-            response = summarize_chain.invoke(
-                {"query": query, "tool_response": response_string}
-            )
-            summarized_response = response.content
-            logger.info(f"Summarized Response: {summarized_response}")
-            return summarized_response
-    except Exception as e:
-        logger.info(f"Task execution failed due to: {e}")
-        return response_content
+    graph = create_task_execution_graph()
+    initial_state = {
+        "query": query,
+        "chained": chained,
+        "tool_calls": [],
+        "tool_response": "",
+        "summarized_response": "",
+        "final_response": "",
+    }
+    result = graph.invoke(initial_state)
+    return result["final_response"]
 
 
 # TODO: Prompt user for missing details?
-# TODO: Define a chained tool calling agent
+

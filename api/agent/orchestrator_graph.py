@@ -28,7 +28,6 @@ def identify_intent(state: State) -> State:
         orchestrator_chain = llm.create_chain_for_task(task="orchestration", llm=chat_model)
         response = orchestrator_chain.invoke({"query": state["query"]})
         category = response.content.lower()
-        # TODO: Add validation
         return {"category": category}
     except Exception as e:
         print(f"Failed to get Orchestration due to: {e}")

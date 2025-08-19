@@ -134,5 +134,7 @@ npm run dev
 - [x] Integration with Aatmunn APIs
     - [x] Read APIs
         - [ ] Integrate Navigation Options API
+- [ ] Add timestamp & processing time
+- [ ] Log actions to DB
 - [ ] ~~LLM can create SQL queries and fetch data from db~~
 - [ ] Colored logging for local dev

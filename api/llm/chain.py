@@ -1,7 +1,7 @@
 from typing import Literal, Optional
 from .prompts import (
     CHAINED_TOOL_CALL_TEMPLATE,
-    CONTENT_VALIDATION_TEMPLATE,
+    CONTENT_MODERATION_TEMPLATE,
     ORCHESTRATOR_TEMPLATE,
     RAG_TEMPLATE,
     SUMMARIZE_TEMPLATE,
@@ -20,8 +20,8 @@ def create_chain_for_task(
     if output_schema:
         llm = llm.with_structured_output(output_schema, method="json_schema")
     match task:
-        case "content validation":
-            template = CONTENT_VALIDATION_TEMPLATE
+        case "content moderation":
+            template = CONTENT_MODERATION_TEMPLATE
         case "navigation":
             template = RAG_TEMPLATE
         case "orchestration":

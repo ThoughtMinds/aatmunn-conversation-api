@@ -51,7 +51,7 @@ Summary:
 SUMMARIZE_TEMPLATE = PromptTemplate.from_template(SUMMARIZE_PROMPT)
 
 
-CONTENT_VALIDATION_PROMPT = """
+CONTENT_MODERATION_PROMPT = """
 You are an assistant that has access to the user query and machine generated summary.
 Your role is to validate whether the summary is a proper response for the given query. 
 Ensure that it is not off-topic, out of context or an incorrect response for the given query
@@ -66,7 +66,7 @@ Summary: {summary}
 Response: 
 """
 
-CONTENT_VALIDATION_TEMPLATE = PromptTemplate.from_template(CONTENT_VALIDATION_PROMPT)
+CONTENT_MODERATION_TEMPLATE = PromptTemplate.from_template(CONTENT_MODERATION_PROMPT)
 
 CHAINED_TOOL_CALL_PROMPT = """
 You are an expert Action Identification Agent responsible for determining the next best action to execute based on a user query, available actions, and the history of previous actions and their results.

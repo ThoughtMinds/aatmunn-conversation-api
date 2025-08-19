@@ -18,9 +18,14 @@ class Settings(BaseSettings):
         DATABASE_NAVIGATION_DATA (str): The path to the database navigation data.
         DATABASE_SUMMARIZATION_DATA (str): The path to the database summarization data.
         CHROMA_PERSIST_DIRECTORY (str): The directory for ChromaDB persistence.
+        AATMUNN_USERNAME (str): Aatmunn portal (iiop) username
+        AATMUNN_PASSWORD (str): Aatmunn portal (iiop) password
+        AATMUNN_CLIENT_ID (str): Aatmunn portal (iiop) Client ID
+        AATMUNN_CLIENT_SECRET (str): Aatmunn portal (iiop) Client Secret
         PROJECT_NAME (Optional[str]): The name of the project.
         VERSION (Optional[str]): The version of the project.
     """
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
@@ -34,8 +39,13 @@ class Settings(BaseSettings):
     DATABASE_SUMMARIZATION_DATA: str
     CHROMA_PERSIST_DIRECTORY: str
 
-    PROJECT_NAME: str = "Aatmanunn Conversation API"
-    VERSION: str = "0.1.0"
+    AATMUNN_USERNAME: str
+    AATMUNN_PASSWORD: str
+    AATMUNN_CLIENT_ID: str
+    AATMUNN_CLIENT_SECRET: str
+
+    PROJECT_NAME: Optional[str] = "Aatmanunn Conversation API"
+    VERSION: Optional[str] = "0.1.0"
 
 
 settings = Settings()

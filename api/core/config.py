@@ -22,6 +22,7 @@ class Settings(BaseSettings):
         AATMUNN_PASSWORD (str): Aatmunn portal (iiop) password
         AATMUNN_CLIENT_ID (str): Aatmunn portal (iiop) Client ID
         AATMUNN_CLIENT_SECRET (str): Aatmunn portal (iiop) Client Secret
+        AATMUNN_ORG_ID (int): Aatmunn portal (iiop) Organization ID
         PROJECT_NAME (Optional[str]): The name of the project.
         VERSION (Optional[str]): The version of the project.
     """
@@ -43,6 +44,7 @@ class Settings(BaseSettings):
     AATMUNN_PASSWORD: str
     AATMUNN_CLIENT_ID: str
     AATMUNN_CLIENT_SECRET: str
+    AATMUNN_ORG_ID: int
 
     PROJECT_NAME: Optional[str] = "Aatmanunn Conversation API"
     VERSION: Optional[str] = "0.1.0"

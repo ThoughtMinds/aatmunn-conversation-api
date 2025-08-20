@@ -212,7 +212,8 @@ def moderate_content(state: AgentState) -> AgentState:
     )
     state["is_moderated"] = not content_validity[
         "content_valid"
-    ]  # Valid content = Not moderated
+    ]
+    
     logger.info(f"Content Moderation: {state['is_moderated']}")
 
     state["final_response"] = (

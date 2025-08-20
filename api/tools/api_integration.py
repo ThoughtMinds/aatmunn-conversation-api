@@ -1,11 +1,24 @@
-import os
 import requests
+from typing import Dict, Optional, Any
 from api.core.config import settings
 from api.core.logging_config import logger
+from api import schema
+from langchain_core.tools import tool
 
 
-def get_aatmunn_access_token():
+def get_aatmunn_access_token() -> Optional[Dict[str, Any]]:
+    """
+    Fetches an access token from the Aatmunn authentication API.
 
+    This function sends a POST request with credentials to the Aatmunn login
+    endpoint to obtain an access token. If successful, it stores the token
+    in an environment variable and returns the token details.
+
+    Returns:
+        Optional[Dict[str, Any]]: A dictionary containing the access token
+                                  and other authentication details if the
+                                  request is successful, otherwise None.
+    """
     payload = {
         "userName": settings.AATMUNN_USERNAME,
         "password": settings.AATMUNN_PASSWORD,

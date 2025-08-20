@@ -47,6 +47,9 @@ tool_list = [
     tools.summarization.list_employees_by_project_db,
     tools.summarization.list_employees_by_shift_db,
     tools.summarization.list_employees_by_hire_year_db,
+    tools.api_integration.get_issues, 
+    tools.api_integration.get_navigation_points, 
+    tools.api_integration.get_users
 ]
 tool_dict = {
     "fetch_employee_by_id_db": tools.summarization.fetch_employee_by_id_db,
@@ -57,6 +60,9 @@ tool_dict = {
     "list_employees_by_project_db": tools.summarization.list_employees_by_project_db,
     "list_employees_by_shift_db": tools.summarization.list_employees_by_shift_db,
     "list_employees_by_hire_year_db": tools.summarization.list_employees_by_hire_year_db,
+    "get_issues": tools.api_integration.get_issues, 
+    "get_navigation_points": tools.api_integration.get_navigation_points, 
+    "get_users": tools.api_integration.get_users
 }
 
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)

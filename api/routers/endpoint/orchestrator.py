@@ -26,7 +26,18 @@ def identify_intent(
         schema.OrchestrationResponse: The identified category of the query.
     """
     query = data.query
-    response = agent.orchestrator_graph.invoke({"query": query})
-    category = response["category"]
-    response = schema.OrchestrationResponse(category=category)
+    response = agent.get_orchestrator_response(query=query)
     return response
+
+
+@router.post("/invoke_agent")
+def invoke_agent(session: SessionDep, data: schema.InvokeAgentRequest) -> Optional[str]:
+    agent_name = data.agent
+    query = data.query
+    match agent_name:
+        case "navigation":
+            ...
+        case "summarization":
+            ...
+        case "task_execution":
+            ...

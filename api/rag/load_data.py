@@ -30,6 +30,17 @@ def load_sample_navigation_data() -> List[Dict]:
 
 
 def load_sample_summarization_data() -> List[Dict]:
+    """
+    Load sample summarization data from a JSON file.
+
+    This function loads a list of sample summarization data from the JSON file
+    specified in the `DATABASE_SUMMARIZATION_DATA` setting. This data is used for
+    database initialization.
+
+    Returns:
+        List[Dict]: A list of dictionaries, where each dictionary represents
+                    a table with its corresponding data.
+    """
     if not path.isfile(settings.DATABASE_SUMMARIZATION_DATA):
         return []
 

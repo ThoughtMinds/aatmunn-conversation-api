@@ -12,6 +12,7 @@ class Intent(SQLModel, table=True):
         description (str, optional): A description of the intent.
         chroma_id (str, optional): The ID of the corresponding entry in ChromaDB.
     """
+
     intent_id: int | None = Field(default=None, primary_key=True)
     intent_name: str = Field(index=True, unique=True)
     description: str | None = Field(default=None)
@@ -28,6 +29,7 @@ class Parameter(SQLModel, table=True):
         parameter_name (str): The name of the parameter, indexed for quick lookup.
         parameter_type (str): The data type of the parameter.
     """
+
     parameter_id: int | None = Field(default=None, primary_key=True)
     intent_id: int = Field(foreign_key="intent.intent_id")
     parameter_name: str = Field(index=True)
@@ -49,6 +51,7 @@ class RequiredParameter(SQLModel, table=True):
         intent_id (int): The foreign key linking to the intent.
         parameter_name (str): The name of the required parameter.
     """
+
     required_id: int | None = Field(default=None, primary_key=True)
     intent_id: int = Field(foreign_key="intent.intent_id")
     parameter_name: str
@@ -70,6 +73,7 @@ class Response(SQLModel, table=True):
         platform (str): The platform for which this response is intended.
         response_value (str): The actual response text.
     """
+
     response_id: int | None = Field(default=None, primary_key=True)
     intent_id: int = Field(foreign_key="intent.intent_id")
     platform: str

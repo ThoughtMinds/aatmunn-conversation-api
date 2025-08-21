@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Zap, Play, CheckCircle, Clock, AlertTriangle, Copy } from "lucide-react"
@@ -16,17 +17,20 @@ interface TaskResult {
   status: "completed" | "failed" | "running"
   output?: string[]
   errorMessage?: string
+  processing_time: number
 }
 
 // Add interface for API response
 interface TaskApiResponse {
   response: string
   status: boolean
+  processing_time: number
 }
 
 
 export default function TaskExecutionPage() {
   const [taskName, setTaskName] = useState("")
+  const [chained, setChained] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<TaskResult | null>(null)
   const { toast } = useToast()
@@ -46,6 +50,7 @@ export default function TaskExecutionPage() {
         },
         body: JSON.stringify({
           query: taskName,
+          chained: chained,
         }),
       })
 
@@ -58,6 +63,7 @@ export default function TaskExecutionPage() {
           status: data.status ? "completed" : "failed",
           output: data.status ? data.response.split("\n").filter((line) => line.trim()) : undefined,
           errorMessage: !data.status ? data.response : undefined,
+          processing_time: data.processing_time,
         }
 
         setResult(mockResult)
@@ -161,6 +167,15 @@ export default function TaskExecutionPage() {
                 {loading ? "Starting..." : "Start Task"}
               </Button>
             </div>
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox id="chained" checked={chained} onCheckedChange={(checked) => setChained(Boolean(checked))} />
+              <label
+                htmlFor="chained"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Chained
+              </label>
+            </div>
             {loading && (
               <div className="flex items-center gap-2">
                 <Badge variant="default" className="bg-blue-500">
@@ -175,6 +190,7 @@ export default function TaskExecutionPage() {
 
       {/* Task Result */}
       {result && (
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -202,6 +218,11 @@ export default function TaskExecutionPage() {
                 <Label className="text-xs text-muted-foreground">Status</Label>
                 <Badge className={getStatusColor()}>{result.status}</Badge>
               </div>
+            </div>
+
+            {/* Metadata */}
+            <div className="flex items-center gap-4 pt-2 border-t">
+              <Badge variant="outline">Processing Time: {result.processing_time}s</Badge>
             </div>
 
             {/* Task Output or Error */}

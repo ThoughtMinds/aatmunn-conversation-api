@@ -1,12 +1,33 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date
 
+
 class TaskRequest(BaseModel):
+    """
+    Pydantic model for a task execution request.
+
+    Attributes:
+        query (str): The user's query for task execution.
+        chained (bool): Whether to use chained tool calls.
+    """
+
     query: str
-    
+    chained: bool = False
+
+
 class TaskResponse(BaseModel):
+    """
+    Pydantic model for a task execution response.
+
+    Attributes:
+        response (str): The response from the task execution.
+        status (bool): The status of the task execution.
+    """
+
     response: str
     status: bool
+    processing_time: float
+
 
 class EmployeeCreate(BaseModel):
     """

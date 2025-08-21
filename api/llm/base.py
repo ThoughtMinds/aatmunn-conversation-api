@@ -78,9 +78,15 @@ def get_ollama_embeddings_model():
 
 
 def preload_ollama_models():
+    """
+    Preload the Ollama models into memory.
+
+    This function preloads the chat and embeddings models to avoid delays
+    on the first request. It is called during application startup.
+    """
     ollama_model = get_ollama_chat_model()
     embed_model = get_ollama_embeddings_model()
-    
+
     logger.info("Loading [Chat Model]")
     ollama_model.invoke("Hi")
     logger.info("Loading [Embeddings Model]")

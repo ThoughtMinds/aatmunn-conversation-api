@@ -10,6 +10,7 @@ class Navigation(BaseModel):
         id (Union[str, int]): The ID of the predicted intent.
         reasoning (str): The reasoning behind the prediction.
     """
+
     id: Union[str, int]
     reasoning: str
 
@@ -23,6 +24,7 @@ class NavigationResponse(BaseModel):
         reasoning (str): The reasoning behind the prediction.
         intent_name (str): The name of the predicted intent.
     """
+
     id: str
     reasoning: str
     intent_name: str

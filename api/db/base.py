@@ -32,21 +32,30 @@ def get_session():
     """
     with Session(engine) as session:
         yield session
-        
-        
+
+
 def populate_summarization_tables():
+    """
+    Populate the summarization tables with sample data.
+
+    This function loads sample summarization data and populates the database
+    tables if they are empty. It is called during application startup.
+    """
     session = Session(engine)
     sample_summarization_data = rag.load_sample_summarization_data()
     if len(sample_summarization_data) == 0:
         print("No summarization data was loaded, databases will be empty!")
         return
     try:
-        inserted_stats = db.populate_db_from_json(json_data=sample_summarization_data, session=session)
+        inserted_stats = db.populate_db_from_json(
+            json_data=sample_summarization_data, session=session
+        )
         if len(inserted_stats.keys()) == 0:
             print("Summarization data already present")
         else:
             print(f"Populated Summarization tables {inserted_stats}")
     except Exception as e:
         print(f"Failed to initialize Summarization tables due to: {e}")
-    
+
+
 sqlite_db = SQLDatabase.from_uri(sqlite_url)

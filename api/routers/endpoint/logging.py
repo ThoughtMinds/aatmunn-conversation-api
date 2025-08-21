@@ -10,6 +10,18 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 @router.get("/get_audit_log/", response_model=schema.AuditLog)
 def get_audit_log(session: SessionDep) -> List[schema.AuditLog]:
+    """
+    Retrieve the audit log.
+
+    This endpoint fetches the audit log from the database, which contains
+    information about past requests and their outcomes.
+
+    Args:
+        session (SessionDep): The database session dependency.
+
+    Returns:
+        List[schema.AuditLog]: A list of audit log entries.
+    """
 
     # fetch audit log from db
     # Dynamic data field based on Intent type with their own metadata for UI

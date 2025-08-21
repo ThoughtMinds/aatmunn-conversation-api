@@ -1,14 +1,13 @@
 from langchain_core.prompts import PromptTemplate
 
 ORCHESTRATOR_PROMPT = """
-Your task is to analyze the user query and categorize it as belonging to one of the following categories.
-1. navigation - The user query is about wanting to be taken to, shown, redirected to a particular screen or view
-eg: Take me to user listing, Navigate to product edit, List recent tasks
-2. summarization - The user wishes to get a summary of some particular information.
-The query will contain the term summary or a related word.
-eg: Give me summary of recent performance, Summarize student placement, Tell me about Stock Market trend in 2025
-3. task_execution - The user wishes to execute some task or perform an action.
-eg: Add a user name mike, Remove John from moderator, Set Gordon age to 45
+Your task is to analyze the user query and categorize it as belonging to one of the following Categories.
+
+1. navigation - User wants to go to a specific page or screen (e.g., "Go to employee add page", "Show product list", "Navigate to user selection").
+
+2. summarization - User seeks summarized or detailed information, possibly using terms like "summary" (e.g., "Summarize Mike's performance last quarter", "Details for employee Bob", "Top 5 expert employees").
+
+3. task_execution - User requests an action that modifies something (e.g., "Add user Mike", "Remove John from privileges", "Update Gordon's age to 45").
 
 Respond with only one of the following category: 
 navigation, summarization or task_execution
@@ -51,7 +50,7 @@ Summary:
 SUMMARIZE_TEMPLATE = PromptTemplate.from_template(SUMMARIZE_PROMPT)
 
 
-CONTENT_VALIDATION_PROMPT = """
+CONTENT_MODERATION_PROMPT = """
 You are an assistant that has access to the user query and machine generated summary.
 Your role is to validate whether the summary is a proper response for the given query. 
 Ensure that it is not off-topic, out of context or an incorrect response for the given query
@@ -66,7 +65,7 @@ Summary: {summary}
 Response: 
 """
 
-CONTENT_VALIDATION_TEMPLATE = PromptTemplate.from_template(CONTENT_VALIDATION_PROMPT)
+CONTENT_MODERATION_TEMPLATE = PromptTemplate.from_template(CONTENT_MODERATION_PROMPT)
 
 CHAINED_TOOL_CALL_PROMPT = """
 You are an expert Action Identification Agent responsible for determining the next best action to execute based on a user query, available actions, and the history of previous actions and their results.

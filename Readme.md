@@ -44,8 +44,8 @@ docker ps --format '{{.Names}}'
 ```
 
 ```
-aatmun-api
-aatmun-frontend
+aatmunn-api
+aatmunn-frontend
 ollama
 ```
 
@@ -115,7 +115,7 @@ npm run dev
     - [x] Frontend
     - [x] Single Tool Call
     - [ ] Chained Tool Call
-    - [ ] Content Validation
+    - [ ] Content Moderation
         - [ ] Fixed Output Schema
         - [ ] Integrate with flow
 - [x] Task Execution Agent
@@ -125,7 +125,8 @@ npm run dev
 - [x] Chained Tool Call
     - [x] Integrate Xccelerate Logic
     - [x] Convert Agent to Graphs (chained_true flag)
-    - [ ] Add backend flag and front-end checkbox 
+    - [x] Add backend flag
+    - [ ] Frontend checkbox 
 - [ ] Test Framework
     - [x] Navigation
     - [ ] Summarization
@@ -133,5 +134,7 @@ npm run dev
 - [x] Integration with Aatmunn APIs
     - [x] Read APIs
         - [ ] Integrate Navigation Options API
+- [ ] Add timestamp & processing time
+- [ ] Log actions to DB
 - [ ] ~~LLM can create SQL queries and fetch data from db~~
 - [ ] Colored logging for local dev

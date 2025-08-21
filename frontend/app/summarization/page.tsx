@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { FileText, Zap, CheckCircle, Copy } from "lucide-react"
@@ -13,15 +14,18 @@ import { API_BASE_URL } from "@/constants/api"
 interface SummarizationResult {
   query: string
   summary: string
+  processing_time: number
 }
 
 interface SummaryResponse {
   summary: string
   content_moderated: boolean
+  processing_time: number
 }
 
 export default function SummarizationPage() {
   const [query, setQuery] = useState("")
+  const [chained, setChained] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SummarizationResult | null>(null)
   const { toast } = useToast()
@@ -38,6 +42,7 @@ export default function SummarizationPage() {
         },
         body: JSON.stringify({
           query: query,
+          chained: chained,
         }),
       })
 
@@ -46,6 +51,7 @@ export default function SummarizationPage() {
         const mockResult: SummarizationResult = {
           query: query,
           summary: data.summary,
+          processing_time: data.processing_time,
         }
 
         setResult(mockResult)
@@ -113,6 +119,15 @@ export default function SummarizationPage() {
               }}
             />
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="chained" checked={chained} onCheckedChange={(checked) => setChained(Boolean(checked))} />
+            <label
+              htmlFor="chained"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Chained
+            </label>
+          </div>
           <Button onClick={handleSummarize} disabled={loading || !query.trim()}>
             {loading ? "Summarizing..." : "Summarize"}
           </Button>
@@ -146,7 +161,7 @@ export default function SummarizationPage() {
 
             {/* Metadata */}
             <div className="flex items-center gap-4 pt-2 border-t">
-              <Badge variant="outline">Processing Time: 2.3s</Badge>
+              <Badge variant="outline">Processing Time: {result.processing_time}s</Badge>
               <Badge variant="outline">Generated: {new Date().toLocaleString()}</Badge>
             </div>
           </CardContent>

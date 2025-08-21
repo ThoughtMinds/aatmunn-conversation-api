@@ -109,6 +109,7 @@ npm run dev
 - [x] Orchestrator
     - [x] Frontend
     - [ ] Create flow to identify intent and invoke sub-graph
+    - [ ] Improve accuracy of identification (Summarization + Navigation)
 - [x] Insert dummy data for Summarization & Task Execution
     - [x] Integrate DB queries as Tools
 - [x] Summrization Agent

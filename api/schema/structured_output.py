@@ -15,7 +15,7 @@ class Navigation(BaseModel):
     reasoning: str
 
 
-class NavigationResponse(BaseModel):
+class NavigationAgentResponse(BaseModel):
     """
     Pydantic model for the navigation response API endpoint.
 

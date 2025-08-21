@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from api import agent, db, schema
 import pandas as pd
-from typing import Annotated, List
+from typing import Annotated
 from sqlmodel import Session
 from time import time
 import json
@@ -12,10 +12,10 @@ router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
-@router.post("/get_navigation/", response_model=schema.NavigationResponse)
+@router.post("/get_navigation/", response_model=schema.NavigationAgentResponse)
 def get_navigation(
     intent: schema.NavigationQuery, session: SessionDep
-) -> schema.Navigation:
+) -> schema.NavigationAgentResponse:
     """
     Get navigation information for a given query.
 
@@ -27,18 +27,17 @@ def get_navigation(
         session (SessionDep): The database session dependency.
 
     Returns:
-        schema.NavigationResponse: The navigation response, including the predicted intent.
+        schema.NavigationAgentResponse: The navigation response, including the predicted intent.
     """
     query = intent.query
     print(f"Request: {query}")
-    response = agent.navigation_graph.invoke({"query": query})
-    print(f"Response: {response}")
-    navigation: schema.Navigation = response["navigation"]
+    navigation: schema.Navigation = agent.get_navigation_response(query=query)
+    print(f"Response: {navigation}")
 
     predicted_intent = db.get_intent_name_by_chroma_id_db(
         chroma_id=navigation.id, session=session
     )
-    navigation_response = schema.NavigationResponse(
+    navigation_response = schema.NavigationAgentResponse(
         id=navigation.id, reasoning=navigation.reasoning, intent_name=predicted_intent
     )
     return navigation_response
@@ -95,14 +94,15 @@ async def upload_navigation_excel(
                     continue
 
                 start_time = time()
-                response = agent.navigation_graph.invoke({"query": query})
+                navigation: schema.Navigation = agent.get_navigation_response(
+                    query=query
+                )
                 end_time = time()
 
                 elapsed_time = end_time - start_time
                 elapsed_time = round(elapsed_time, 3)
                 print(f"Time taken: {elapsed_time:.4f} seconds")
 
-                navigation: schema.Navigation = response["navigation"]
                 chroma_id = navigation.id
 
                 predicted_intent = db.get_intent_name_by_chroma_id_db(

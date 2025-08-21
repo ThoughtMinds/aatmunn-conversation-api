@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from api import agent, db, schema
-from typing import Annotated
+from typing import Annotated, Optional
 from sqlmodel import Session
 
 

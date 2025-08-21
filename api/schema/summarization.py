@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from typing_extensions import TypedDict
 from typing import Any
 
+
 class SummarizationCreate(BaseModel):
     """
     Pydantic model for requesting a data summarization.
@@ -15,19 +16,22 @@ class SummarizationCreate(BaseModel):
         limit (Optional[int]): Maximum number of results to return.
         offset (Optional[int]): Number of records to skip for pagination.
     """
+
     table: str
     group_by: Optional[str] = None
     filters: Optional[Dict[str, str]] = None
     metrics: List[str]
     limit: Optional[int] = None
     offset: Optional[int] = 0
-    
+
+
 class SummaryRequest(BaseModel):
     query: str
     chained: bool = False
-    
+
+
 class SummaryResponse(BaseModel):
-    summary: Any#str
+    summary: Any  # str
     content_moderated: bool
     processing_time: float
 

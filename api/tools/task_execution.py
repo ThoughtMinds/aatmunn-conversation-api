@@ -200,19 +200,14 @@ def update_employee_email_db(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    try:
-        validated_email = EmailStr(email)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid email format")
-
-    if validated_email != employee.email:
+    if email != employee.email:
         existing_employee = session.exec(
-            select(db.Employee).where(db.Employee.email == validated_email)
+            select(db.Employee).where(db.Employee.email == email)
         ).first()
         if existing_employee:
             raise HTTPException(status_code=400, detail="Email already in use")
 
-    employee.email = validated_email
+    employee.email = email
 
     try:
         session.commit()

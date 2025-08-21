@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from api.core.config import settings
-from api import routers, db, rag, llm
+from api import db, llm, rag, routers, tools
 from api.middlewares.logging_middleware import LoggingMiddleware
 from contextlib import asynccontextmanager
 

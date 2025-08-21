@@ -14,6 +14,7 @@ class IntentCreate(BaseModel):
         required (List[str]): A list of required parameters.
         responses (Dict[str, str]): A dictionary of responses for the intent.
     """
+
     chroma_id: Optional[str] = None  # Not needed when creating intent
     intent: str
     description: str
@@ -34,6 +35,7 @@ class IntentResponse(BaseModel):
         required (List[str]): A list of required parameters.
         responses (Dict[str, str]): A dictionary of responses for the intent.
     """
+
     intent_id: int
     intent: str
     description: str
@@ -50,6 +52,7 @@ class NavigationQuery(BaseModel):
         query (str): The user's query for navigation.
         source (Optional[str]): The source of the query (optional).
     """
+
     query: str
     source: Optional[str] = None
 
@@ -64,6 +67,7 @@ class NavigationTestResult(BaseModel):
         predicted_intent (str): The intent predicted by the model.
         response_time (float): The time taken to get the response.
     """
+
     query: str
     actual_intent: str
     predicted_intent: str

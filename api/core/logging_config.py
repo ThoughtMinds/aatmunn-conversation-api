@@ -19,12 +19,12 @@ base_logger.handlers.clear()
 log_formatter = coloredlogs.ColoredFormatter(
     fmt="%(asctime)s %(levelname)s %(message)s %(funcName)s %(lineno)d %(filename)s request_id=%(request_id)s",
     level_styles={
-        'debug': {'color': 'green'},
-        'info': {'color': 'cyan'},
-        'warning': {'color': 'yellow'},
-        'error': {'color': 'red'},
-        'critical': {'color': 'red', 'bold': True},
-    }
+        "debug": {"color": "green"},
+        "info": {"color": "cyan"},
+        "warning": {"color": "yellow"},
+        "error": {"color": "red"},
+        "critical": {"color": "red", "bold": True},
+    },
 )
 
 # Stream handler with formatter
@@ -40,6 +40,7 @@ class RequestIdFilter(logging.Filter):
     This filter retrieves the request_id from a context variable and adds it
     as an attribute to the log record, making it available in the log output.
     """
+
     def filter(self, record):
         record.request_id = request_id_var.get()
         return True
@@ -60,6 +61,7 @@ class RequestIdLoggerAdapter(logging.LoggerAdapter):
     included in the 'extra' dictionary of the log record, which can then be
     used by formatters.
     """
+
     def process(self, msg, kwargs):
         if "extra" not in kwargs:
             kwargs["extra"] = {}

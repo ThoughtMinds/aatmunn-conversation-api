@@ -11,11 +11,18 @@ from langchain_core.runnables.base import Runnable
 from pydantic import BaseModel
 from langchain_core.output_parsers.base import BaseOutputParser
 
+
 def create_chain_for_task(
-    task: Literal["chained tool call", "content validation", "navigation", "orchestration", "summarization"],
+    task: Literal[
+        "chained tool call",
+        "content validation",
+        "navigation",
+        "orchestration",
+        "summarization",
+    ],
     llm: BaseChatModel,
     output_schema: Optional[BaseModel] = None,
-    output_parser: Optional[BaseOutputParser] = None
+    output_parser: Optional[BaseOutputParser] = None,
 ) -> Runnable:
     """
     Create a runnable chain for a specific task.

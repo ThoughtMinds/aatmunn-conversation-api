@@ -86,7 +86,7 @@ def preload_ollama_models():
     """
     ollama_model = get_ollama_chat_model()
     embed_model = get_ollama_embeddings_model()
-    
+
     logger.info("Loading [Chat Model]")
     ollama_model.invoke("Hi")
     logger.info("Loading [Embeddings Model]")

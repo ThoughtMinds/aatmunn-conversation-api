@@ -1,10 +1,8 @@
 "use client"
+
 import { useState, useEffect } from "react"
-import { Navigation, FileText, Zap, Activity, CheckCircle, Target } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Navigation, FileText, Zap, Activity } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useTheme } from "next-themes"
 import { useToast } from "@/hooks/use-toast"
@@ -40,18 +38,9 @@ interface DashboardStats {
   total_queries: number
 }
 
-interface OrchestrationResponse {
-  category: "navigation" | "summarization" | "task_execution"
-}
-
 export default function IntentManagementApp() {
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
-
-  // Intent Classification state
-  const [intentQuery, setIntentQuery] = useState("")
-  const [intentLoading, setIntentLoading] = useState(false)
-  const [intentResult, setIntentResult] = useState<OrchestrationResponse | null>(null)
 
   // Dashboard stats state
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
@@ -74,68 +63,6 @@ export default function IntentManagementApp() {
       console.error("Failed to fetch dashboard stats:", error)
     } finally {
       setLoadingStats(false)
-    }
-  }
-
-  const handleIntentClassification = async () => {
-    if (!intentQuery.trim()) return
-
-    setIntentLoading(true)
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/orchestrator/identify_intent/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: intentQuery,
-        }),
-      })
-
-      if (response.ok) {
-        const result: OrchestrationResponse = await response.json()
-        setIntentResult(result)
-        toast({
-          title: "Intent Classified",
-          description: `Query classified as: ${result.category}`,
-          className: "bg-green-50 border-green-200 text-green-800",
-        })
-      }
-    } catch (error) {
-      console.error("Failed to classify intent:", error)
-      toast({
-        title: "Classification Failed",
-        description: "Failed to classify the intent",
-        className: "bg-red-50 border-red-200 text-red-800",
-      })
-    } finally {
-      setIntentLoading(false)
-    }
-  }
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "navigation":
-        return <Navigation className="h-4 w-4" />
-      case "summarization":
-        return <FileText className="h-4 w-4" />
-      case "task_execution":
-        return <Zap className="h-4 w-4" />
-      default:
-        return <Target className="h-4 w-4" />
-    }
-  }
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "navigation":
-        return "bg-blue-500"
-      case "summarization":
-        return "bg-purple-500"
-      case "task_execution":
-        return "bg-orange-500"
-      default:
-        return "bg-gray-500"
     }
   }
 
@@ -191,58 +118,6 @@ export default function IntentManagementApp() {
           </Card>
         </div>
       </div>
-
-      {/* Intent Classification Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-green-500" />
-            Intent Classification
-          </CardTitle>
-          <CardDescription>
-            Enter your query to automatically identify its category and get routed to the appropriate service
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="intent-query">Query</Label>
-            <div className="flex gap-2">
-              <Input
-                id="intent-query"
-                placeholder="Enter your query to classify its intent..."
-                value={intentQuery}
-                onChange={(e) => setIntentQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleIntentClassification()}
-              />
-              <Button onClick={handleIntentClassification} disabled={intentLoading || !intentQuery.trim()}>
-                {intentLoading ? "Classifying..." : "Classify"}
-              </Button>
-            </div>
-          </div>
-
-          {intentResult && (
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span className="font-medium">Intent Identified</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Query: "{intentQuery}"</p>
-                  </div>
-                  <Badge className={`${getCategoryColor(intentResult.category)} text-white`}>
-                    <span className="flex items-center gap-1">
-                      {getCategoryIcon(intentResult.category)}
-                      {intentResult.category.replace("_", " ")}
-                    </span>
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Main Components Overview */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

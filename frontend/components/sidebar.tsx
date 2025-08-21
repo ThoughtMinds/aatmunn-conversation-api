@@ -5,13 +5,18 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { LayoutDashboard, Navigation, FileText, Zap, History } from "lucide-react"
+import { LayoutDashboard, Navigation, FileText, Zap, History, Target } from "lucide-react"
 
 const navigation = [
   {
     name: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
+  },
+  {
+    name: "Intent Identification",
+    href: "/intent-identification",
+    icon: Target,
   },
   {
     name: "Navigation",

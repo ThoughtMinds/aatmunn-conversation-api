@@ -36,8 +36,8 @@ def invoke_agent(session: SessionDep, data: schema.InvokeAgentRequest) -> Option
     query = data.query
     match agent_name:
         case "navigation":
-            ...
+            agent_to_use = agent.get_navigation_response
         case "summarization":
-            ...
+            agent_to_use = agent.get_summarized_response
         case "task_execution":
-            ...
+            agent_to_use = agent.get_task_execution_response

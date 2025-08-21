@@ -203,39 +203,28 @@ def tool_call_router(state: AgentState) -> str:
         return "invoke_tools"
 
 
-# Define the LangGraph workflow
-def create_task_execution_graph():
-    """
-    Creates the LangGraph workflow for the task execution agent.
+workflow = StateGraph(AgentState)
 
-    This function defines the structure of the agent, including the nodes for
-    tool invocation and summarization, and the edges that connect them.
+# Add nodes
+workflow.add_node("invoke_tools", invoke_tools)
+workflow.add_node("chained_invoke_tools", chained_invoke_tools)
+workflow.add_node("summarize_response", summarize_response)
 
-    Returns:
-        Graph: The compiled LangGraph for the task execution agent.
-    """
-    workflow = StateGraph(AgentState)
+# Define conditional branching based on 'chained'
+workflow.set_conditional_entry_point(
+    tool_call_router,
+    {
+        "invoke_tools": "invoke_tools",
+        "chained_invoke_tools": "chained_invoke_tools",
+    },
+)
 
-    # Add nodes
-    workflow.add_node("invoke_tools", invoke_tools)
-    workflow.add_node("chained_invoke_tools", chained_invoke_tools)
-    workflow.add_node("summarize_response", summarize_response)
+# Define edges
+workflow.add_edge("invoke_tools", "summarize_response")
+workflow.add_edge("chained_invoke_tools", "summarize_response")
+workflow.add_edge("summarize_response", END)
 
-    # Define conditional branching based on 'chained'
-    workflow.set_conditional_entry_point(
-        tool_call_router,
-        {
-            "invoke_tools": "invoke_tools",
-            "chained_invoke_tools": "chained_invoke_tools",
-        },
-    )
-
-    # Define edges
-    workflow.add_edge("invoke_tools", "summarize_response")
-    workflow.add_edge("chained_invoke_tools", "summarize_response")
-    workflow.add_edge("summarize_response", END)
-
-    return workflow.compile()
+task_execution_graph = workflow.compile()
 
 
 # Function to run the task execution agent
@@ -251,7 +240,6 @@ def get_task_execution_response(query: str, chained: bool = True) -> str:
         str: The response after executing the task.
     """
     logger.info("Executing task")
-    graph = create_task_execution_graph()
     initial_state = {
         "query": query,
         "chained": chained,
@@ -260,7 +248,7 @@ def get_task_execution_response(query: str, chained: bool = True) -> str:
         "summarized_response": "",
         "final_response": "",
     }
-    result = graph.invoke(initial_state)
+    result = task_execution_graph.invoke(initial_state)
     return result["final_response"]
 
 

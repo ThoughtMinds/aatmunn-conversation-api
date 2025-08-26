@@ -2,6 +2,7 @@ from typing_extensions import TypedDict
 from langgraph.graph import START, StateGraph
 from api import llm, schema
 from typing import Optional
+from api.core.logging_config import logger
 
 
 class State(TypedDict):
@@ -64,5 +65,6 @@ def get_orchestrator_response(
     """
     result = orchestrator_graph.invoke({"query": query})
     category = result.get("category")
+    logger.info(f"Category: {category}")
     response = schema.OrchestrationResponse(category=category)
     return response

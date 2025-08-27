@@ -2,6 +2,7 @@ from typing_extensions import TypedDict
 from langgraph.graph import START, StateGraph
 from api import llm, schema
 from typing import Optional
+from api.core.logging_config import logger
 
 
 class State(TypedDict):
@@ -28,7 +29,7 @@ def identify_intent(state: State) -> State:
         State: Updated state with the identified category.
     """
     try:
-        chat_model = llm.get_ollama_chat_fallback_model()
+        chat_model = llm.get_ollama_chat_model()
         orchestrator_chain = llm.create_chain_for_task(
             task="orchestration", llm=chat_model
         )
@@ -64,5 +65,6 @@ def get_orchestrator_response(
     """
     result = orchestrator_graph.invoke({"query": query})
     category = result.get("category")
+    logger.info(f"Category: {category}")
     response = schema.OrchestrationResponse(category=category)
     return response

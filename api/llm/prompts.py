@@ -3,11 +3,14 @@ from langchain_core.prompts import PromptTemplate
 ORCHESTRATOR_PROMPT = """
 Your task is to analyze the user query and categorize it as belonging to one of the following Categories.
 
-1. navigation - User wants to go to a specific page or screen (e.g., "Go to employee add page", "Show product list", "Navigate to user selection").
+1. navigation - User query is about wanting to see or be taken to a particular page, screen, view etc
+eg: User list screen, navigate to task list, take me to entity list, show me settings page
 
-2. summarization - User seeks summarized or detailed information, possibly using terms like "summary" (e.g., "Summarize Mike's performance last quarter", "Details for employee Bob", "Top 5 expert employees").
+2. summarization - User is requesting information. This could be a query asking for summarizing some data
+eg: List all users, list issues after x date, show all active issues
 
-3. task_execution - User requests an action that modifies something (e.g., "Add user Mike", "Remove John from privileges", "Update Gordon's age to 45").
+3. task_execution - User wants to execute an action. This does not include naviation. Such as adding, deleting a record
+eg: Add new user, delet issue number 3, edit user firstname
 
 Respond with only one of the following category: 
 navigation, summarization or task_execution

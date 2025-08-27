@@ -1,9 +1,10 @@
 from typing_extensions import List, TypedDict
-from typing import Optional
+from typing import Optional, AsyncGenerator, Dict
 from langchain_core.documents import Document
 from api import rag, llm, schema
 from langgraph.graph import START, StateGraph
 import json
+from api.core.logging_config import logger
 
 
 class State(TypedDict):
@@ -34,7 +35,7 @@ def retrieve(state: State):
     vectorstore = rag.get_vectorstore()
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     retrieved_docs = retriever.invoke(input=state["query"])
-    print(f"{retrieved_docs=}")
+    logger.info(f"Retrieved {len(retrieved_docs)} documents")
     return {"context": retrieved_docs}
 
 
@@ -57,7 +58,7 @@ def generate(state: State):
             "description": doc.page_content,
         }
 
-    print("CONTEXT \n\n\n\n\n\n", context, "\n\n\n\n\n")
+    logger.info(f"Processing context with {len(context)} documents")
     try:
         chat_model = llm.get_ollama_chat_fallback_model()
         rag_chain = llm.create_chain_for_task(
@@ -71,7 +72,11 @@ def generate(state: State):
             response.id = id_mapping.get(id, None)
             return {"navigation": response}
     except Exception as e:
-        print(f"Failed to get Navigation due to: {e}")
+        logger.error(f"Failed to get Navigation due to: {e}")
+        return {"navigation": schema.Navigation(
+            reasoning="Unable to generate navigation response. Please try again.",
+            id=None,
+        )}
 
 
 graph_builder = StateGraph(State).add_sequence([retrieve, generate])
@@ -95,3 +100,39 @@ def get_navigation_response(
     initial_state = {"query": query}
     result = navigation_graph.invoke(initial_state)
     return result.get("navigation")
+
+
+async def get_streaming_navigation_response(
+    query: str, chained: bool = False
+) -> AsyncGenerator[Dict, None]:
+    """
+    Generates a navigation response for a given query using a LangGraph workflow with streaming.
+    """
+    logger.info("Generating streaming navigation response")
+    initial_state = {"query": query, "context": [], "navigation": None}
+
+    try:
+        async for event in navigation_graph.astream(initial_state):
+            for value in event.values():
+                state_update = {}
+                
+                if "context" in value:
+                    state_update["context"] = [
+                        {"id": doc.id, "content": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content}
+                        for doc in value["context"]
+                    ]
+                
+                if "navigation" in value and value["navigation"]:
+                    nav = value["navigation"]
+                    state_update["navigation"] = {
+                        "reasoning": nav.reasoning,
+                        "id": nav.id,
+                    }
+                    # Add final_response for navigation completion
+                    state_update["final_response"] = nav.reasoning
+                
+                yield state_update
+                
+    except Exception as e:
+        logger.error(f"Error in streaming navigation: {e}")
+        yield {"error": str(e)}

@@ -11,7 +11,7 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
 @router.post("/get_summary/", response_model=schema.SummaryResponse)
-def get_summary(
+async def get_summary(
     session: SessionDep, data: schema.SummaryRequest
 ) -> schema.SummaryResponse:
     """
@@ -32,7 +32,7 @@ def get_summary(
 
     start_time = time()
     try:
-        summary, moderated = agent.get_summarized_response(query=query, chained=chained)
+        summary, moderated = await agent.get_summarized_response(query=query, chained=chained)
     except Exception as e:
         logger.error(f"Failed to generate summary due to: {e}")
         summary = "Failed to generate summary. Please rephrase or retry"

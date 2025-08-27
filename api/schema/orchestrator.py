@@ -21,7 +21,7 @@ class OrchestrationResponse(BaseModel):
         category (Literal): The identified category of the query.
     """
 
-    category: Literal["navigation", "summarization", "task_execution"]
+    category: Literal["navigation", "summarization", "task_execution", "taskexecution"]
 
 class InvokeAgentRequest(BaseModel):
     """
@@ -31,5 +31,5 @@ class InvokeAgentRequest(BaseModel):
         agent (str): The identified agent
         query (str): The query for the agent
     """
-    agent: Literal["navigation", "summarization", "task_execution"]
+    agent: Literal["navigation", "summarization", "task_execution", "taskexecution"]
     query: str

@@ -1,4 +1,4 @@
-from typing import Dict, TypedDict, Annotated
+from typing import AsyncGenerator, Dict, TypedDict, Union
 from pydantic import BaseModel
 from json import dumps, loads
 from langgraph.graph import StateGraph, END
@@ -39,27 +39,11 @@ class AgentState(TypedDict):
 # Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
 tool_list = [
-    tools.summarization.fetch_employee_by_id_db,
-    tools.summarization.list_employees_by_skill_level_db,
-    tools.summarization.list_employees_by_performance_rating_db,
-    tools.summarization.list_employees_by_skill_db,
-    tools.summarization.list_employees_by_department_db,
-    tools.summarization.list_employees_by_project_db,
-    tools.summarization.list_employees_by_shift_db,
-    tools.summarization.list_employees_by_hire_year_db,
     tools.api_integration.get_issues,
     tools.api_integration.get_navigation_points,
     tools.api_integration.get_users,
 ]
 tool_dict = {
-    "fetch_employee_by_id_db": tools.summarization.fetch_employee_by_id_db,
-    "list_employees_by_skill_level_db": tools.summarization.list_employees_by_skill_level_db,
-    "list_employees_by_performance_rating_db": tools.summarization.list_employees_by_performance_rating_db,
-    "list_employees_by_skill_db": tools.summarization.list_employees_by_skill_db,
-    "list_employees_by_department_db": tools.summarization.list_employees_by_department_db,
-    "list_employees_by_project_db": tools.summarization.list_employees_by_project_db,
-    "list_employees_by_shift_db": tools.summarization.list_employees_by_shift_db,
-    "list_employees_by_hire_year_db": tools.summarization.list_employees_by_hire_year_db,
     "get_issues": tools.api_integration.get_issues,
     "get_navigation_points": tools.api_integration.get_navigation_points,
     "get_users": tools.api_integration.get_users,
@@ -138,7 +122,7 @@ def chained_invoke_tools(state: AgentState) -> AgentState:
             if iter_cnt == 3:
                 break
             iter_cnt += 1
-            logger.error(
+            logger.info(
                 {
                     "query": user_query,
                     "context": dumps(action_context),
@@ -259,26 +243,60 @@ workflow.add_edge("moderate_content", END)
 summarization_graph = workflow.compile()
 
 
-# Function to run the summarization agent
-def get_summarized_response(query: str, chained: bool = True) -> str:
+async def get_summarized_response(query: str, chained: bool = True) -> tuple[str, bool]:
     """
     Generates a summarized response for a given query using a LangGraph workflow.
 
     Args:
         query (str): The user's query for summarization.
+        chained (bool): Determines whether to use invoke_tools/chained_invoke_tools.
 
     Returns:
-        str: The summarized response.
+        tuple[str, bool]: The summarized response string and moderation status
     """
     logger.info("Generating summary")
     initial_state = {
         "query": query,
-        "chained": chained,  # Determines whether to use invoke_tools/chained_invoke_tools
+        "chained": chained,
         "tool_calls": [],
         "tool_response": "",
         "summarized_response": "",
         "is_moderated": False,
         "final_response": "",
     }
-    result = summarization_graph.invoke(initial_state)
+
+    result = await summarization_graph.ainvoke(initial_state)
     return result["final_response"], result["is_moderated"]
+
+
+async def get_streaming_summarized_response(
+    query: str, chained: bool = True
+) -> AsyncGenerator[Dict, None]:
+    """
+    Generates a summarized response for a given query using a LangGraph workflow.
+
+    Args:
+        query (str): The user's query for summarization.
+        chained (bool): Determines whether to use invoke_tools/chained_invoke_tools.
+
+    Yields:
+        Dict: The agent state at each step of the workflow.
+    """
+    logger.info("Generating streaming summary")
+    initial_state = {
+        "query": query,
+        "chained": chained,
+        "tool_calls": [],
+        "tool_response": "",
+        "summarized_response": "",
+        "is_moderated": False,
+        "final_response": "",
+    }
+
+    try:
+        async for event in summarization_graph.astream(initial_state):
+            for value in event.values():
+                yield value
+    except Exception as e:
+        logger.error(f"Error in streaming summarization: {e}")
+        yield {"error": str(e)}

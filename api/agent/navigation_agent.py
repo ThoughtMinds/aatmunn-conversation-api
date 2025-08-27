@@ -100,3 +100,39 @@ def get_navigation_response(
     initial_state = {"query": query}
     result = navigation_graph.invoke(initial_state)
     return result.get("navigation")
+
+
+async def get_streaming_navigation_response(
+    query: str, chained: bool = False
+) -> AsyncGenerator[Dict, None]:
+    """
+    Generates a navigation response for a given query using a LangGraph workflow with streaming.
+    """
+    logger.info("Generating streaming navigation response")
+    initial_state = {"query": query, "context": [], "navigation": None}
+
+    try:
+        async for event in navigation_graph.astream(initial_state):
+            for value in event.values():
+                state_update = {}
+                
+                if "context" in value:
+                    state_update["context"] = [
+                        {"id": doc.id, "content": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content}
+                        for doc in value["context"]
+                    ]
+                
+                if "navigation" in value and value["navigation"]:
+                    nav = value["navigation"]
+                    state_update["navigation"] = {
+                        "reasoning": nav.reasoning,
+                        "id": nav.id,
+                    }
+                    # Add final_response for navigation completion
+                    state_update["final_response"] = nav.reasoning
+                
+                yield state_update
+                
+    except Exception as e:
+        logger.error(f"Error in streaming navigation: {e}")
+        yield {"error": str(e)}

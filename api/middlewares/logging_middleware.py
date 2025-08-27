@@ -1,9 +1,8 @@
 import time
 import uuid
-
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-
+from starlette.responses import StreamingResponse
 from api.core.logging_config import logger, request_id_var
 
 
@@ -13,6 +12,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
     This middleware logs incoming requests and outgoing responses, including
     the request ID, method, path, status code, and duration.
+    Handles streaming responses properly without buffering.
     """
 
     async def dispatch(self, request: Request, call_next):
@@ -39,12 +39,29 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 "event": "request_received",
                 "method": request.method,
                 "path": request.url.path,
+                "request_id": request_id,
             }
         )
 
         response = await call_next(request)
         duration = time.time() - start_time
 
+        # For streaming responses, log immediately without waiting for completion
+        if isinstance(response, StreamingResponse):
+            logger.info(
+                {
+                    "event": "streaming_response_started",
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "duration": round(duration, 4),
+                    "request_id": request_id,
+                    "response_type": "streaming",
+                }
+            )
+            return response
+
+        # For regular responses, log completion details
         logger.info(
             {
                 "event": "request_completed",
@@ -52,6 +69,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "status_code": response.status_code,
                 "duration": round(duration, 4),
+                "request_id": request_id,
+                "response_type": "regular",
             }
         )
 

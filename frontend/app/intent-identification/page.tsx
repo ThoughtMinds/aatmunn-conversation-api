@@ -279,13 +279,16 @@ const renderAgentState = (agentState?: Partial<AgentState>) => {
   const hasSummary = !!summarized_response
   const hasFinal = !!final_response
 
+  // Check if this is a chained operation by looking for multiple tool calls
+  const isChained = hasToolCalls && tool_calls.length > 1
+
   return (
     <div className="space-y-4">
       {/* Progress Steps */}
       <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
         <div className={`flex items-center gap-1 ${hasToolCalls ? 'text-blue-600' : ''}`}>
           <div className={`w-2 h-2 rounded-full ${hasToolCalls ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-          <span>Tool Calls</span>
+          <span>{isChained ? 'Chained Tools' : 'Tool Calls'}</span>
         </div>
         <div className="flex-1 h-px bg-gray-300 mx-2"></div>
         <div className={`flex items-center gap-1 ${hasToolResponse ? 'text-green-600' : ''}`}>
@@ -304,20 +307,41 @@ const renderAgentState = (agentState?: Partial<AgentState>) => {
         </div>
       </div>
 
-      {/* Tool Calls */}
+      {/* Tool Calls - Show chained indicator if multiple calls */}
       {hasToolCalls && (
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="pt-4">
-            <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              Tool Execution
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                {isChained ? 'Chained Tool Execution' : 'Tool Execution'}
+              </h3>
+              {isChained && (
+                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                  Chained
+                </Badge>
+              )}
+            </div>
             {tool_calls.map((call, index) => (
-              <div key={index} className="mb-3 last:mb-0">
-                <p className="font-medium text-sm text-blue-700 mb-1">{call.name}</p>
-                <div className="bg-blue-50 p-2 rounded text-xs text-gray-700 font-mono">
+              <div key={index} className="mb-4 last:mb-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-3 h-3 bg-blue-400 rounded-full flex items-center justify-center">
+                    <span className="text-xs font-bold text-white">{index + 1}</span>
+                  </div>
+                  <p className="font-medium text-sm text-blue-700">{call.name}</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded text-xs text-gray-700 font-mono ml-5">
                   {JSON.stringify(call.args, null, 2)}
                 </div>
+                {index < tool_calls.length - 1 && (
+                  <div className="flex items-center justify-center my-2">
+                    <div className="w-4 h-4 bg-blue-200 rounded-full flex items-center justify-center">
+                      <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </CardContent>
@@ -403,7 +427,6 @@ const renderAgentState = (agentState?: Partial<AgentState>) => {
     </div>
   )
 }
-
   return (
     <div className="flex flex-col h-full">
       <header className="p-4 border-b">

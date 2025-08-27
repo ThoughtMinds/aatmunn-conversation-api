@@ -27,27 +27,3 @@ def load_sample_navigation_data() -> List[Dict]:
         sample_navigation_intents = []
 
     return sample_navigation_intents
-
-
-def load_sample_summarization_data() -> List[Dict]:
-    """
-    Load sample summarization data from a JSON file.
-
-    This function loads a list of sample summarization data from the JSON file
-    specified in the `DATABASE_SUMMARIZATION_DATA` setting. This data is used for
-    database initialization.
-
-    Returns:
-        List[Dict]: A list of dictionaries, where each dictionary represents
-                    a table with its corresponding data.
-    """
-    if not path.isfile(settings.DATABASE_SUMMARIZATION_DATA):
-        return []
-
-    try:
-        with open(settings.DATABASE_SUMMARIZATION_DATA) as f:
-            sample_summarization_data = load(f)
-    except Exception as e:
-        print(f"Failed to load navigation intents due to: {e}")
-        sample_summarization_data = []
-    return sample_summarization_data

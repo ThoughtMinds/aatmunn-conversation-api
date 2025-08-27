@@ -66,8 +66,8 @@ async def invoke_agent(
         agent_to_use = agent.get_streaming_summarized_response
     elif agent_name in ["task_execution", "taskexecution"]:
         agent_to_use = agent.get_streaming_task_execution_response
-    # elif agent_name == "navigation":
-    #     agent_to_use = agent.get_streaming_navigation_response
+    elif agent_name == "navigation":
+        agent_to_use = agent.get_streaming_navigation_response
     else:
         async def error_stream() -> AsyncGenerator[str, None]:
             yield f"data: {dumps({'error': 'Invalid agent specified'})}\n\n"
@@ -82,8 +82,6 @@ async def invoke_agent(
         )
 
     logger.info(f"Using agent: {agent_name}")
-
-    agent_to_use = agent.get_streaming_summarized_response
 
     async def stream_response() -> AsyncGenerator[str, None]:
         try:

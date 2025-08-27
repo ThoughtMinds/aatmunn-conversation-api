@@ -65,7 +65,7 @@ async def invoke_agent(
     #     agent_to_use = agent.get_streaming_navigation_response
     # elif agent_name == "summarization":
     #     agent_to_use = agent.get_streaming_summarized_response
-    # elif agent_name == "task_execution":
+    # elif agent_name in ["task_execution", "taskexecution"]:
     #     agent_to_use = agent.get_streaming_task_execution_response
     # else:
     #     async def error_stream() -> AsyncGenerator[str, None]:

@@ -29,7 +29,7 @@ def identify_intent(state: State) -> State:
         State: Updated state with the identified category.
     """
     try:
-        chat_model = llm.get_ollama_chat_fallback_model()
+        chat_model = llm.get_ollama_chat_model()
         orchestrator_chain = llm.create_chain_for_task(
             task="orchestration", llm=chat_model
         )

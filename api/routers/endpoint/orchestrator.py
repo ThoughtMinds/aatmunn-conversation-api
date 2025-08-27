@@ -61,24 +61,25 @@ async def invoke_agent(
 
     # Map agent name to the appropriate function
     agent_to_use = None
-    # if agent_name == "navigation":
+
+    if agent_name == "summarization":
+        agent_to_use = agent.get_streaming_summarized_response
+    elif agent_name in ["task_execution", "taskexecution"]:
+        agent_to_use = agent.get_streaming_task_execution_response
+    # elif agent_name == "navigation":
     #     agent_to_use = agent.get_streaming_navigation_response
-    # elif agent_name == "summarization":
-    #     agent_to_use = agent.get_streaming_summarized_response
-    # elif agent_name in ["task_execution", "taskexecution"]:
-    #     agent_to_use = agent.get_streaming_task_execution_response
-    # else:
-    #     async def error_stream() -> AsyncGenerator[str, None]:
-    #         yield f"data: {dumps({'error': 'Invalid agent specified'})}\n\n"
-    #     return StreamingResponse(
-    #         error_stream(),
-    #         media_type="text/event-stream",
-    #         headers={
-    #             "Cache-Control": "no-cache",
-    #             "Connection": "keep-alive",
-    #             "X-Accel-Buffering": "no",
-    #         },
-    #     )
+    else:
+        async def error_stream() -> AsyncGenerator[str, None]:
+            yield f"data: {dumps({'error': 'Invalid agent specified'})}\n\n"
+        return StreamingResponse(
+            error_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     logger.info(f"Using agent: {agent_name}")
 

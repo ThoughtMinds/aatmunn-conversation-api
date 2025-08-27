@@ -1,6 +1,6 @@
-from typing import Dict, TypedDict
+from typing import AsyncGenerator, Dict, TypedDict, Union
 from pydantic import BaseModel
-from json import dumps
+from json import dumps, loads
 from langgraph.graph import StateGraph, END
 from api import db, llm, schema, tools
 from api.core.logging_config import logger
@@ -38,27 +38,15 @@ class AgentState(TypedDict):
 chat_model = llm.get_ollama_chat_model()
 
 tool_list = [
-    tools.task_execution.add_employee_db,
-    tools.task_execution.update_employee_first_name_db,
-    tools.task_execution.update_employee_last_name_db,
-    tools.task_execution.update_employee_email_db,
-    tools.task_execution.update_employee_hire_date_db,
-    tools.task_execution.update_employee_department_db,
-    tools.task_execution.update_employee_role_db,
-    tools.task_execution.update_employee_status_db,
-    tools.task_execution.delete_employee_db,
+    tools.api_integration.get_issues,
+    tools.api_integration.get_navigation_points,
+    tools.api_integration.get_users,
 ]
 
 tool_dict = {
-    "add_employee_db": tools.task_execution.add_employee_db,
-    "update_employee_first_name_db": tools.task_execution.update_employee_first_name_db,
-    "update_employee_last_name_db": tools.task_execution.update_employee_last_name_db,
-    "update_employee_email_db": tools.task_execution.update_employee_email_db,
-    "update_employee_hire_date_db": tools.task_execution.update_employee_hire_date_db,
-    "update_employee_department_db": tools.task_execution.update_employee_department_db,
-    "update_employee_role_db": tools.task_execution.update_employee_role_db,
-    "update_employee_status_db": tools.task_execution.update_employee_status_db,
-    "delete_employee_db": tools.task_execution.delete_employee_db,
+    "get_issues": tools.api_integration.get_issues,
+    "get_navigation_points": tools.api_integration.get_navigation_points,
+    "get_users": tools.api_integration.get_users,
 }
 
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
@@ -128,7 +116,7 @@ def chained_invoke_tools(state: AgentState) -> AgentState:
             if iter_cnt == 3:
                 break
             iter_cnt += 1
-            logger.error(
+            logger.info(
                 {
                     "query": user_query,
                     "context": dumps(action_context),
@@ -250,6 +238,38 @@ def get_task_execution_response(query: str, chained: bool = True) -> str:
     }
     result = task_execution_graph.invoke(initial_state)
     return result["final_response"]
+
+
+async def get_streaming_task_execution_response(
+    query: str, chained: bool = True
+) -> AsyncGenerator[Dict, None]:
+    """
+    Generates a task execution response for a given query using a LangGraph workflow.
+
+    Args:
+        query (str): The user's query for task execution.
+        chained (bool): Determines whether to use invoke_tools/chained_invoke_tools.
+
+    Yields:
+        Dict: The agent state at each step of the workflow.
+    """
+    logger.info("Generating streaming task execution response")
+    initial_state = {
+        "query": query,
+        "chained": chained,
+        "tool_calls": [],
+        "tool_response": "",
+        "summarized_response": "",
+        "final_response": "",
+    }
+
+    try:
+        async for event in task_execution_graph.astream(initial_state):
+            for value in event.values():
+                yield value
+    except Exception as e:
+        logger.error(f"Error in streaming task execution: {e}")
+        yield {"error": str(e)}
 
 
 # TODO: Prompt user for missing details?

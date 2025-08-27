@@ -79,7 +79,8 @@ def get_navigation_points() -> Optional[schema.NavigationResponse]:
         response.raise_for_status()
         data = response.json()
         navigation_points = schema.NavigationResponse(**data)
-        return navigation_points
+        return navigation_points.model_dump()
+    
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None

@@ -1,9 +1,10 @@
 from typing_extensions import List, TypedDict
-from typing import Optional
+from typing import Optional, AsyncGenerator, Dict
 from langchain_core.documents import Document
 from api import rag, llm, schema
 from langgraph.graph import START, StateGraph
 import json
+from api.core.logging_config import logger
 
 
 class State(TypedDict):
@@ -34,7 +35,7 @@ def retrieve(state: State):
     vectorstore = rag.get_vectorstore()
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     retrieved_docs = retriever.invoke(input=state["query"])
-    print(f"{retrieved_docs=}")
+    logger.info(f"Retrieved {len(retrieved_docs)} documents")
     return {"context": retrieved_docs}
 
 
@@ -57,7 +58,7 @@ def generate(state: State):
             "description": doc.page_content,
         }
 
-    print("CONTEXT \n\n\n\n\n\n", context, "\n\n\n\n\n")
+    logger.info(f"Processing context with {len(context)} documents")
     try:
         chat_model = llm.get_ollama_chat_fallback_model()
         rag_chain = llm.create_chain_for_task(
@@ -71,7 +72,11 @@ def generate(state: State):
             response.id = id_mapping.get(id, None)
             return {"navigation": response}
     except Exception as e:
-        print(f"Failed to get Navigation due to: {e}")
+        logger.error(f"Failed to get Navigation due to: {e}")
+        return {"navigation": schema.Navigation(
+            reasoning="Unable to generate navigation response. Please try again.",
+            id=None,
+        )}
 
 
 graph_builder = StateGraph(State).add_sequence([retrieve, generate])

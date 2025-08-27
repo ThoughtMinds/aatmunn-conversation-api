@@ -275,7 +275,7 @@ const streamAgentResponse = (messageId: string, agent: string, query: string) =>
         eventSourceRef.current = null;
         setIsLoading(false);
       }
-    }, 30000); // 30 second timeout
+    }, 120000); // 120 second timeout
 
   } catch (error) {
     console.error("Error constructing SSE URL:", error);

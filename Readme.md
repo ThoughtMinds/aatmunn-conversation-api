@@ -108,38 +108,33 @@ npm run dev
 - [x] Add mock tables for Task Execution, Summarization data
 - [x] Orchestrator
     - [x] Frontend
-    - [ ] Create flow to identify intent and invoke sub-graph
-    - [ ] Improve accuracy of identification (Summarization + Navigation)
-- [x] Insert dummy data for Summarization & Task Execution
-    - [x] Integrate DB queries as Tools
+    - [x] Identify intent & invoke sub-graph
+        - [x] Log Agent State
 - [x] Summrization Agent
     - [x] Frontend
     - [x] Single Tool Call
-    - [ ] Chained Tool Call
-    - [ ] Content Moderation
-        - [ ] Fixed Output Schema
-        - [ ] Meaningful summary
-        - [ ] Integrate with flow
-
-    - [x] Replace local data with APIs
-        - [ ] Remove legacy SQL Model Flow
+    - [x] Chained Tool Call
+    - [x] Content Moderation
+        - [x] Fixed Output Schema
+        - [x] Meaningful summary
+        - [x] Integrate with flow
 - [x] Task Execution Agent
     - [x] Frontend
     - [x] Single Tool Call
-    - [ ] Chained Tool Call
+    - [x] Chained Tool Call
 - [x] Chained Tool Call
-    - [x] Integrate Xccelerate Logic
-    - [x] Convert Agent to Graphs (chained_true flag)
-    - [x] Add backend flag
-    - [ ] Frontend checkbox 
-- [ ] Test Framework
+    - [x] Implement
+    - [x] Convert to Graph
+    - [x] Frontend Support 
+- [x] Test Framework
     - [x] Navigation
     - [ ] Summarization
     - [ ] Task Execution
-- [x] Integration with Aatmunn APIs
+- [x] Integration with Aatmunn API
     - [x] Read APIs
         - [ ] Integrate Navigation Options API
-- [ ] Add timestamp & processing time
+    - [x] Replace local data with APIs
+    - [x] Explore other Read, Write API's
+- [x] Add timestamp & processing time
 - [ ] Log actions to DB
-- [ ] ~~LLM can create SQL queries and fetch data from db~~
-- [ ] Colored logging for local dev
+- [x] Colored logging for local dev

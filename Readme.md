@@ -118,9 +118,11 @@ npm run dev
     - [ ] Chained Tool Call
     - [ ] Content Moderation
         - [ ] Fixed Output Schema
+        - [ ] Meaningful summary
         - [ ] Integrate with flow
 
-    - [ ] Replace local data with APIs
+    - [x] Replace local data with APIs
+        - [ ] Remove legacy SQL Model Flow
 - [x] Task Execution Agent
     - [x] Frontend
     - [x] Single Tool Call

@@ -11,7 +11,7 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
 @router.post("/execute_task/", response_model=schema.TaskResponse)
-def execute_task(session: SessionDep, data: schema.TaskRequest) -> schema.TaskResponse:
+async def execute_task(session: SessionDep, data: schema.TaskRequest) -> schema.TaskResponse:
     """
     Execute a task for a given query.
 

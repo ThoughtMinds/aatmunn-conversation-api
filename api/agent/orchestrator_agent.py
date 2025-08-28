@@ -50,7 +50,7 @@ graph_builder.add_edge(START, "identify_intent")
 orchestrator_graph = graph_builder.compile()
 
 
-def get_orchestrator_response(
+async def get_orchestrator_response(
     query: str, chained: bool = False
 ) -> Optional[schema.OrchestrationResponse]:
     """

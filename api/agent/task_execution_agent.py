@@ -270,6 +270,3 @@ async def get_streaming_task_execution_response(
     except Exception as e:
         logger.error(f"Error in streaming task execution: {e}")
         yield {"error": str(e)}
-
-
-# TODO: Prompt user for missing details?

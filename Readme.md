@@ -127,9 +127,11 @@ npm run dev
     - [x] Convert to Graph
     - [x] Frontend Support 
 - [x] Test Framework
-    - [x] Navigation
-    - [ ] Summarization
-    - [ ] Task Execution
+    - [ ] Integrated test framework
+        - [ ] Refer Excel for needed columns, logic (document this)
+        - [ ] Navigation
+        - [ ] Summarization
+        - [ ] Task Execution
 - [x] Integration with Aatmunn API
     - [x] Read APIs
         - [ ] Integrate Navigation Options API

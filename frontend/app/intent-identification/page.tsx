@@ -617,7 +617,7 @@ const streamAgentResponse = (messageId: string, agent: string, query: string) =>
           Intent Identification
         </h1>
         <p className="text-muted-foreground">
-          A chat-like interface to identify intent and invoke corresponding agents.
+          Use AI to identify user intent and execute them
         </p>
       </header>
 

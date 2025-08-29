@@ -121,7 +121,9 @@ npm run dev
 - [x] Task Execution Agent
     - [x] Frontend
     - [x] Single Tool Call
-    - [x] Chained Tool Call
+    - [x] Chained Tool 
+        - [ ] Rate limit chaining
+    - [ ] User confirmation (yes/no) before execution
 - [x] Chained Tool Call
     - [x] Implement
     - [x] Convert to Graph

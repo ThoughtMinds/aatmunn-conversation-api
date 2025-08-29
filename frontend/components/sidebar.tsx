@@ -35,7 +35,7 @@ const navigation = [
   },
   {
     name: "Testing",
-    href: "/",
+    href: "/testing-module",
     icon: Bug,
   },
   {

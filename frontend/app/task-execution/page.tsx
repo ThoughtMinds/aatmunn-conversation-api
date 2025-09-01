@@ -136,7 +136,7 @@ export default function TaskExecutionPage() {
           <Zap className="h-8 w-8 text-orange-500" />
           Task Execution
         </h1>
-        <p className="text-muted-foreground">Automated task processing and workflow management</p>
+        <p className="text-muted-foreground">AI powered task execution</p>
       </div>
 
       {/* Task Creation */}
@@ -146,7 +146,7 @@ export default function TaskExecutionPage() {
             <Play className="h-5 w-5" />
             Create New Task
           </CardTitle>
-          <CardDescription>Define and execute automated tasks</CardDescription>
+          <CardDescription>Define and execute tasks</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">

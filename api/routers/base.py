@@ -7,6 +7,7 @@ from .endpoint import (
     orchestrator,
     summarization,
     task_execution,
+    testing_module
 )
 
 api_router = APIRouter()
@@ -26,4 +27,7 @@ api_router.include_router(
 )
 api_router.include_router(
     orchestrator.router, prefix="/orchestrator", tags=["orchestrator"]
+)
+api_router.include_router(
+    testing_module.router, prefix="/testing", tags=["testing"]
 )

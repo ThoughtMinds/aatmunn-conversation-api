@@ -30,7 +30,7 @@ async def execute_task(session: SessionDep, data: schema.TaskRequest) -> schema.
 
     start_time = time()
     try:
-        task_response = agent.get_task_execution_response(query=query, chained=chained)
+        task_response = await agent.get_task_execution_response(query=query, chained=chained)
         task_status = True
     except Exception as e:
         logger.error(f"Failed to execute task due to: {e}")

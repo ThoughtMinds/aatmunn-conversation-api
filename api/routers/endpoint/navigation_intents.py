@@ -10,7 +10,7 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
 @router.post("/intents/", response_model=schema.IntentResponse)
-def create_intent(
+async def create_intent(
     intent: schema.IntentCreate, session: SessionDep
 ) -> schema.IntentResponse:
     """Create a new intent with associated parameters, required parameters, and responses.
@@ -31,7 +31,7 @@ def create_intent(
 
 
 @router.get("/intents/{intent_id}", response_model=schema.IntentResponse)
-def read_intent(intent_id: int, session: SessionDep) -> schema.IntentResponse:
+async def read_intent(intent_id: int, session: SessionDep) -> schema.IntentResponse:
     """Retrieve an intent by its ID, including its parameters, required parameters, and responses.
 
     Args:
@@ -48,7 +48,7 @@ def read_intent(intent_id: int, session: SessionDep) -> schema.IntentResponse:
 
 
 @router.get("/intents/", response_model=List[schema.IntentResponse])
-def read_intents(
+async def read_intents(
     session: SessionDep,
     offset: int = 0,
     limit: Annotated[Optional[int], Query(le=100)] = None,
@@ -67,7 +67,7 @@ def read_intents(
 
 
 @router.delete("/intents/{intent_id}")
-def delete_intent(intent_id: int, session: SessionDep) -> Dict[str, bool]:
+async def delete_intent(intent_id: int, session: SessionDep) -> Dict[str, bool]:
     """Delete an intent by its ID, including its associated parameters, required parameters, and responses.
 
     Args:
@@ -112,7 +112,7 @@ async def update_intent(
 
 
 @router.get("/get_intent_count")
-def get_intent_count(session: SessionDep) -> Dict[str, int]:
+async def get_intent_count(session: SessionDep) -> Dict[str, int]:
     """
     Get the total number of intents in the database.
 

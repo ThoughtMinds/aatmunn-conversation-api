@@ -29,7 +29,7 @@ async def identify_intent(
         schema.OrchestrationResponse: The identified category of the query.
     """
     query = data.query
-    response = agent.get_orchestrator_response(query=query)
+    response = await agent.get_orchestrator_response(query=query)
     return response
 
 

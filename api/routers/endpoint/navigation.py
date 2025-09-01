@@ -13,7 +13,7 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
 @router.post("/get_navigation/", response_model=schema.NavigationAgentResponse)
-def get_navigation(
+async def get_navigation(
     intent: schema.NavigationQuery, session: SessionDep
 ) -> schema.NavigationAgentResponse:
     """

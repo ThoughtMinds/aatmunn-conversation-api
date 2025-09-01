@@ -143,7 +143,7 @@ export default function IntentManagementApp() {
               <FileText className="h-5 w-5 text-purple-500" />
               <CardTitle>Summarization</CardTitle>
             </div>
-            <CardDescription>Document analysis and intelligent content summarization</CardDescription>
+            <CardDescription>Intelligent content summarization</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">

@@ -9,7 +9,7 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
 @router.get("/get_audit_log/", response_model=schema.AuditLog)
-def get_audit_log(session: SessionDep) -> List[schema.AuditLog]:
+async def get_audit_log(session: SessionDep) -> List[schema.AuditLog]:
     """
     Retrieve the audit log.
 

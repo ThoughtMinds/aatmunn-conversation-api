@@ -9,7 +9,7 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
 @router.get("/get_dashboard_stats/", response_model=schema.DashboardStats)
-def get_dashboard_stats(session: SessionDep) -> schema.DashboardStats:
+async def get_dashboard_stats(session: SessionDep) -> schema.DashboardStats:
     """
     Retrieve dashboard statistics.
 

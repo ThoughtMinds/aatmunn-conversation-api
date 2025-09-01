@@ -7,3 +7,4 @@ from .orchestrator import InvokeAgentRequest, OrchestrationQuery, OrchestrationR
 from .tool_chaining import ChainedToolCall
 from .metadata import DashboardStats
 from .aatmunn_api import IssueResponse, NavigationResponse, UserResponse
+from .testing_module import ScoreResponse

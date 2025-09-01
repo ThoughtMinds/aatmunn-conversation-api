@@ -216,7 +216,7 @@ task_execution_graph = workflow.compile()
 
 
 # Function to run the task execution agent
-def get_task_execution_response(query: str, chained: bool = True) -> str:
+async def get_task_execution_response(query: str, chained: bool = True) -> str:
     """
     Executes a task based on a given query using a LangGraph workflow.
 
@@ -236,7 +236,7 @@ def get_task_execution_response(query: str, chained: bool = True) -> str:
         "summarized_response": "",
         "final_response": "",
     }
-    result = task_execution_graph.invoke(initial_state)
+    result = await task_execution_graph.ainvoke(initial_state)
     return result["final_response"]
 
 

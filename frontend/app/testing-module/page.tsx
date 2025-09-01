@@ -21,10 +21,11 @@ interface TestResult {
 }
 
 interface TestCase {
-  query: string
-  expected_intent: string
-  expected_response?: string
-  directives?: string
+  "Sl No": number
+  Input: string
+  "Actual Intent": string
+  "Actual Response": string
+  Directives: string
 }
 
 export default function TestingModule() {
@@ -33,6 +34,9 @@ export default function TestingModule() {
   const [progress, setProgress] = useState(0)
   const [totalTests, setTotalTests] = useState(0)
   const [completedTests, setCompletedTests] = useState(0)
+  const [previewData, setPreviewData] = useState<TestCase[]>([])
+  const [showPreview, setShowPreview] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { toast } = useToast()
   const eventSourceRef = useRef<EventSource | null>(null)
 
@@ -50,16 +54,46 @@ export default function TestingModule() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    setIsLoading(true)
+    setSelectedFile(file)
+    setShowPreview(true)
     setTestResults([])
     setProgress(0)
     setCompletedTests(0)
+    setTotalTests(0)
 
     try {
       const formData = new FormData()
       formData.append("file", file)
+      const previewResponse = await fetch(`${API_BASE_URL}/api/testing/preview_test_cases/`, {
+        method: "POST",
+        body: formData,
+      })
+      if (!previewResponse.ok) throw new Error("Failed to fetch preview")
+      const jsonData: TestCase[] = await previewResponse.json()
+      setPreviewData(jsonData)
+    } catch (error) {
+      console.error("Error fetching preview:", error)
+      toast({
+        title: "Error reading file",
+        description: "Failed to read the test file. Please ensure it's a valid .xlsx or .xls file.",
+        variant: "destructive",
+      })
+      setShowPreview(false)
+      setSelectedFile(null)
+    }
+  }
 
-      // First, get the total number of test cases
+  const handleRunTests = async () => {
+    if (!selectedFile) return
+
+    setIsLoading(true)
+    setShowPreview(false)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+
+      // Get the total number of test cases
       const countResponse = await fetch(`${API_BASE_URL}/api/testing/count_test_cases/`, {
         method: "POST",
         body: formData,
@@ -72,12 +106,8 @@ export default function TestingModule() {
       const countData = await countResponse.json()
       setTotalTests(countData.total_cases)
 
-      // Reset form data for the actual test execution
-      const executionFormData = new FormData()
-      executionFormData.append("file", file)
-
       // Start streaming test results
-      startTestStreaming(executionFormData)
+      startTestStreaming(formData)
     } catch (error) {
       console.error("Error processing test file:", error)
       toast({
@@ -151,7 +181,6 @@ export default function TestingModule() {
         })
         setIsLoading(false)
       })
-
     } catch (error) {
       console.error("Error setting up test streaming:", error)
       toast({
@@ -210,11 +239,8 @@ export default function TestingModule() {
       try {
         const predictedJson = JSON.parse(result.predicted_response.replace(/'/g, '"'))
         const actualJson = JSON.parse(result.actual_response.replace(/'/g, '"'))
-        
-        // Simple comparison - in a real scenario, you'd want a more robust comparison
         const predictedStr = JSON.stringify(predictedJson)
         const actualStr = JSON.stringify(actualJson)
-        
         return predictedStr === actualStr 
           ? "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300" 
           : "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300"
@@ -224,206 +250,24 @@ export default function TestingModule() {
           : "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300"
       }
     }
-    return ""
+    return result.summarization_score !== null && result.summarization_score >= 80
+      ? "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300" 
+      : "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300"
   }
 
   const getStatusIcon = (status: string) => {
-    if (status === "Success") {
-      return <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-    } else {
-      return <X className="h-5 w-5 text-red-600 dark:text-red-400" />
-    }
+    return status === "Success" 
+      ? <CheckCircle className="h-4 w-4 text-green-500" />
+      : <XCircle className="h-4 w-4 text-red-500" />
   }
-
-  // Enhanced mock data with correct and wrong examples for all intent categories
-  const mockTestResults: TestResult[] = [
-    // Navigation - Success cases
-    {
-      id: "1",
-      predicted_intent: "navigation",
-      predicted_response: "Navigating to user profile page",
-      actual_response: "Navigating to user profile page",
-      status: "Success",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "1.2 s"
-    },
-    {
-      id: "2",
-      predicted_intent: "navigation",
-      predicted_response: "Opening settings page",
-      actual_response: "Opening settings page",
-      status: "Success",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "0.8 s"
-    },
-    
-    // Navigation - Failure cases
-    {
-      id: "3",
-      predicted_intent: "navigation",
-      predicted_response: "Navigating to dashboard",
-      actual_response: "Navigating to user profile page",
-      status: "Failure",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "1.1 s"
-    },
-    {
-      id: "4",
-      predicted_intent: "navigation",
-      predicted_response: "Opening analytics page",
-      actual_response: "Opening reports page",
-      status: "Failure",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "0.9 s"
-    },
-    
-    // Task Execution - Success cases
-    {
-      id: "5",
-      predicted_intent: "task_execution",
-      predicted_response: `{ "name": "get_users", "parameters": { "count": 5 } }`,
-      actual_response: `{ "name": "get_users", "parameters": { "count": 5 } }`,
-      status: "Success",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "1.5 s"
-    },
-    {
-      id: "6",
-      predicted_intent: "task_execution",
-      predicted_response: `{ "name": "create_user", "parameters": { "name": "John Doe", "email": "john@example.com" } }`,
-      actual_response: `{ "name": "create_user", "parameters": { "name": "John Doe", "email": "john@example.com" } }`,
-      status: "Success",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "2.1 s"
-    },
-    {
-      id: "7",
-      predicted_intent: "task_execution",
-      predicted_response: `[{ "name": "get_data", "parameters": { "type": "analytics" } }, { "name": "process_data", "parameters": { "algorithm": "standard" } }]`,
-      actual_response: `[{ "name": "get_data", "parameters": { "type": "analytics" } }, { "name": "process_data", "parameters": { "algorithm": "standard" } }]`,
-      status: "Success",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "2.8 s"
-    },
-    
-    // Task Execution - Failure cases
-    {
-      id: "8",
-      predicted_intent: "task_execution",
-      predicted_response: `{ "name": "update_user", "parameters": { "id": 123, "name": "Jane Doe" } }`,
-      actual_response: `{ "name": "update_user", "parameters": { "id": 124, "name": "Jane Doe" } }`,
-      status: "Failure",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "1.7 s"
-    },
-    {
-      id: "9",
-      predicted_intent: "task_execution",
-      predicted_response: `[{ "name": "fetch_data", "parameters": { "category": "sales" } }, { "name": "analyze_data", "parameters": { "method": "trend" } }]`,
-      actual_response: `[{ "name": "fetch_data", "parameters": { "category": "sales" } }, { "name": "analyze_data", "parameters": { "method": "comparative" } }]`,
-      status: "Failure",
-      summarization_analysis: "",
-      summarization_score: null,
-      tat: "2.5 s"
-    },
-    
-    // Summarization - Success cases with high scores
-    {
-      id: "10",
-      predicted_intent: "summarization",
-      predicted_response: "This is a comprehensive summary of the document covering all key points with appropriate detail and structure.",
-      actual_response: "This is a comprehensive summary of the document covering all key points with appropriate detail and structure.",
-      status: "Success",
-      summarization_analysis: "Summary meets all requirements: covers key points, maintains structure, and is concise.",
-      summarization_score: 95,
-      tat: "3.2 s"
-    },
-    {
-      id: "11",
-      predicted_intent: "summarization",
-      predicted_response: "The document discusses recent market trends, highlighting growth in technology sectors and challenges in traditional industries.",
-      actual_response: "The document discusses recent market trends, highlighting growth in technology sectors and challenges in traditional industries.",
-      status: "Success",
-      summarization_analysis: "Good summary that captures the main themes of the document.",
-      summarization_score: 88,
-      tat: "2.9 s"
-    },
-    
-    // Summarization - Medium scores
-    {
-      id: "12",
-      predicted_intent: "summarization",
-      predicted_response: "The article talks about climate change effects and possible solutions but misses some important data points.",
-      actual_response: "The article talks about climate change effects and possible solutions but misses some important data points.",
-      status: "Success",
-      summarization_analysis: "Adequate summary but could be more comprehensive and include specific examples.",
-      summarization_score: 72,
-      tat: "3.1 s"
-    },
-    {
-      id: "13",
-      predicted_intent: "summarization",
-      predicted_response: "This is a summary of the main points but lacks depth in analysis and misses some secondary themes.",
-      actual_response: "This is a summary of the main points but lacks depth in analysis and misses some secondary themes.",
-      status: "Success",
-      summarization_analysis: "Covers basic points but needs more detail and contextual analysis.",
-      summarization_score: 65,
-      tat: "2.7 s"
-    },
-    
-    // Summarization - Low scores
-    {
-      id: "14",
-      predicted_intent: "summarization",
-      predicted_response: "The text is about various topics with some important information.",
-      actual_response: "The text is about various topics with some important information.",
-      status: "Failure",
-      summarization_analysis: "Summary is too vague and doesn't capture specific details or main arguments.",
-      summarization_score: 42,
-      tat: "3.0 s"
-    },
-    {
-      id: "15",
-      predicted_intent: "summarization",
-      predicted_response: "This document contains words and sentences that form paragraphs.",
-      actual_response: "This document contains words and sentences that form paragraphs.",
-      status: "Failure",
-      summarization_analysis: "Summary fails to extract meaningful content and merely describes the document structure.",
-      summarization_score: 25,
-      tat: "2.8 s"
-    }
-  ]
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <FileText className="h-8 w-8 text-blue-500" />
-          Testing Module
-        </h1>
-        <p className="text-muted-foreground">
-          Upload test cases to evaluate intent identification and agent responses
-        </p>
-      </div>
-
-      {/* Upload Section */}
+      {/* Upload Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Upload Test Cases
-          </CardTitle>
-          <CardDescription>
-            Upload an Excel file containing test cases with queries and expected responses
-          </CardDescription>
+          <CardTitle>Upload Test File</CardTitle>
+          <CardDescription>Upload an Excel or CSV file containing test cases</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
@@ -433,31 +277,80 @@ export default function TestingModule() {
               onChange={handleFileUpload} 
               disabled={isLoading}
             />
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled={isLoading}>
               <Upload className="h-4 w-4 mr-2" />
               Upload
             </Button>
           </div>
-
-          {isLoading && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Running tests...</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                <div 
-                  className="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Completed {completedTests} of {totalTests} tests
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {/* Preview Card */}
+      {showPreview && previewData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>File Preview</CardTitle>
+            <CardDescription>Review the test cases before running</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-hidden dark:border-gray-700">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 dark:bg-gray-800">
+                    <tr>
+                      <th className="text-left p-3 font-medium">Sl No</th>
+                      <th className="text-left p-3 font-medium">Input</th>
+                      <th className="text-left p-3 font-medium">Actual Intent</th>
+                      <th className="text-left p-3 font-medium">Actual Response</th>
+                      <th className="text-left p-3 font-medium">Directives</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.map((row, index) => (
+                      <tr key={index} className="border-b hover:bg-muted/25 dark:border-gray-700 dark:hover:bg-gray-800/50">
+                        <td className="p-3">{row["Sl No"]}</td>
+                        <td className="p-3">{row.Input}</td>
+                        <td className="p-3">{row["Actual Intent"]}</td>
+                        <td className="p-3">{row["Actual Response"]}</td>
+                        <td className="p-3">{row.Directives}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowPreview(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleRunTests} disabled={isLoading}>
+                Run Tests
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Progress Card */}
+      {isLoading && (
+        <Card>
+          <CardContent className="space-y-2 pt-6">
+            <div className="flex items-center justify-between text-sm">
+              <span>Running tests...</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full" 
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Completed {completedTests} of {totalTests} tests
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Results Table */}
       <Card>
@@ -526,63 +419,6 @@ export default function TestingModule() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Mock Data for Demonstration */}
-      <Card className="border-dashed dark:border-gray-700">
-        <CardHeader>
-          <CardTitle>Example Test Results (Mock Data)</CardTitle>
-          <CardDescription>
-            Sample of how test results will appear once you upload a file
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-lg overflow-hidden dark:border-gray-700">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 dark:bg-gray-800">
-                  <tr>
-                    <th className="text-left p-3 font-medium">Predicted Intent</th>
-                    <th className="text-left p-3 font-medium">Predicted Response</th>
-                    <th className="text-left p-3 font-medium">Actual Response</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Summarization Analysis</th>
-                    <th className="text-left p-3 font-medium">Score</th>
-                    <th className="text-left p-3 font-medium">TAT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockTestResults.map((result, index) => (
-                    <tr key={`mock-${index}`} className="border-b hover:bg-muted/25 dark:border-gray-700 dark:hover:bg-gray-800/50">
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {getIntentIcon(result.predicted_intent)}
-                          <span className="font-medium">{result.predicted_intent}</span>
-                        </div>
-                      </td>
-                      <td className={`p-3 ${getResponseHighlight(result)}`}>
-                        {result.predicted_response}
-                      </td>
-                      <td className={`p-3 ${getResponseHighlight(result)}`}>
-                        {result.actual_response}
-                      </td>
-                      <td className="p-3">
-                        {getStatusIcon(result.status)}
-                      </td>
-                      <td className="p-3 text-muted-foreground dark:text-gray-400">
-                        {result.summarization_analysis}
-                      </td>
-                      <td className={`p-3 font-medium ${getScoreColor(result.summarization_score)}`}>
-                        {result.summarization_score !== null ? `${result.summarization_score}%` : "N/A"}
-                      </td>
-                      <td className="p-3 text-muted-foreground dark:text-gray-400">{result.tat}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

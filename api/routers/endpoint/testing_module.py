@@ -128,10 +128,10 @@ async def run_tests(
                     continue
 
                 orch_response = await agent.get_orchestrator_response(query)
-                
+
                 predicted_intent = orch_response.category if orch_response else "error"
-                logger.info(f"{index+1}) Input: {query} | Intent: {predicted_intent}")
-                
+                logger.info(f"{index+1}) Input: {query} | Predicted: {predicted_intent} | Actual: {expected_intent}")
+
                 predicted_response = ""
                 summarization_analysis = ""
                 summarization_score = None
@@ -144,7 +144,7 @@ async def run_tests(
                     try:
                         if predicted_intent == "navigation":
                             logger.info(f"[[Navigation]]")
-                            
+
                             graph_result = await agent.navigation_graph.ainvoke(
                                 {"query": query}
                             )
@@ -156,23 +156,25 @@ async def run_tests(
                             if predicted_response != expected_response:
                                 status = "Failure"
 
-                        elif predicted_intent == "task_execution":
-                            logger.info(f"[[Task Execution]]")
-                            
-                            graph_result = await agent.get_task_execution_response(
-                                query=query, chained=True
-                            )
-                            tool_calls = graph_result.get("tool_calls", [])
-                            predicted_response = json.dumps(tool_calls)
-                            if predicted_response != expected_response:
-                                status = "Failure"
-
                         elif predicted_intent == "summarization":
                             logger.info(f"[[Summarization]]")
-                            
-                            graph_result = await agent.get_summarized_response(
-                                query=query, chained=True
+
+                            chained = False  # TODO: Accept input
+
+                            initial_state = {
+                                "query": query,
+                                "chained": chained,
+                                "tool_calls": [],
+                                "tool_response": "",
+                                "summarized_response": "",
+                                "is_moderated": False,
+                                "final_response": "",
+                            }
+
+                            graph_result = await agent.summarization_graph.ainvoke(
+                                initial_state
                             )
+
                             predicted_response = graph_result["final_response"]
                             is_moderated = graph_result["is_moderated"]
                             summarized = graph_result["summarized_response"]
@@ -208,6 +210,18 @@ async def run_tests(
                                 summarization_analysis = "No directives provided"
                                 summarization_score = None
 
+                            # TODO: Task Execution use graph
+                            # elif predicted_intent == "task_execution":
+                            #     logger.info(f"[[Task Execution]]")
+
+                            #     graph_result = await agent.get_task_execution_response(
+                            #         query=query, chained=True
+                            #     )
+                            #     tool_calls = graph_result.get("tool_calls", [])
+                            #     predicted_response = json.dumps(tool_calls)
+                            #     if predicted_response != expected_response:
+                            #         status = "Failure"
+                        
                     except Exception as e:
                         logger.error(f"Error processing row {index + 1}: {e}")
                         await test_queue.put(

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Dict, Literal
+from datetime import datetime
 
 
 class RequestData(BaseModel):
@@ -25,6 +26,8 @@ class AuditLog(BaseModel):
         status (Literal): The status of the request (success or error).
     """
 
-    intent_type: Literal["navigation", "summarization", "task-execution"]
+    id: int
+    timestamp: datetime
+    intent_type: Literal["navigation", "summarization", "task_execution"]
     data: RequestData
     status: Literal["success", "error"]

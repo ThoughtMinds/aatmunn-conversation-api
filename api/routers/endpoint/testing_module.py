@@ -128,8 +128,10 @@ async def run_tests(
                     continue
 
                 orch_response = await agent.get_orchestrator_response(query)
+                
                 predicted_intent = orch_response.category if orch_response else "error"
-
+                logger.info(f"{index+1}) Input: {query} | Intent: {predicted_intent}")
+                
                 predicted_response = ""
                 summarization_analysis = ""
                 summarization_score = None
@@ -141,6 +143,8 @@ async def run_tests(
                     status = "Success"
                     try:
                         if predicted_intent == "navigation":
+                            logger.info(f"[[Navigation]]")
+                            
                             graph_result = await agent.navigation_graph.ainvoke(
                                 {"query": query}
                             )
@@ -153,6 +157,8 @@ async def run_tests(
                                 status = "Failure"
 
                         elif predicted_intent == "task_execution":
+                            logger.info(f"[[Task Execution]]")
+                            
                             graph_result = await agent.get_task_execution_response(
                                 query=query, chained=True
                             )
@@ -162,6 +168,8 @@ async def run_tests(
                                 status = "Failure"
 
                         elif predicted_intent == "summarization":
+                            logger.info(f"[[Summarization]]")
+                            
                             graph_result = await agent.get_summarized_response(
                                 query=query, chained=True
                             )

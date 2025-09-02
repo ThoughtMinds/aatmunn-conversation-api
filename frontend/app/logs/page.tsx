@@ -166,12 +166,15 @@ export default function LogsPage() {
                 </Badge>
                 <Badge variant="outline">{latestLog.status}</Badge>
               </div>
-              <div className="text-sm font-mono bg-white p-2 rounded">
-                <strong>Input:</strong> {latestLog.data.input}
+              <div className="text-sm font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded">
+                <strong>Input:</strong>
+                <span className="text-green-800 dark:text-green-400"> {latestLog.data.input}</span>
               </div>
-              <div className="text-sm font-mono bg-white p-2 rounded">
+              <div className="text-sm font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded">
                 <strong>Output:</strong>
-                <pre className="whitespace-pre-wrap break-all">{formatJsonOutput(latestLog.data.output)}</pre>
+                <pre className="whitespace-pre-wrap break-all text-orange-800 dark:text-orange-400">
+                  {formatJsonOutput(latestLog.data.output)}
+                </pre>
               </div>
             </div>
           </CardContent>
@@ -314,13 +317,17 @@ export default function LogsPage() {
                   {expandedLogs.includes(log.id) && (
                     <div className="p-4 border-t bg-muted/25">
                       <div className="space-y-2">
-                        <div className="text-sm font-mono bg-white p-2 rounded">
+                        <div className="text-sm font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded">
                           <strong>Input:</strong>
-                          <p className="whitespace-pre-wrap break-all">{log.data.input}</p>
+                          <p className="whitespace-pre-wrap break-all text-green-800 dark:text-green-400">
+                            {log.data.input}
+                          </p>
                         </div>
-                        <div className="text-sm font-mono bg-white p-2 rounded">
+                        <div className="text-sm font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded">
                           <strong>Output:</strong>
-                          <pre className="whitespace-pre-wrap break-all">{formatJsonOutput(log.data.output)}</pre>
+                          <pre className="whitespace-pre-wrap break-all text-orange-800 dark:text-orange-400">
+                            {formatJsonOutput(log.data.output)}
+                          </pre>
                         </div>
                       </div>
                     </div>

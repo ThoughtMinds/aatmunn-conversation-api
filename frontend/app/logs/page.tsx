@@ -6,194 +6,70 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react"
+import {
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Loader2,
+  Map,
+  Terminal,
+  ChevronDown,
+} from "lucide-react"
 
-interface LogEntry {
-  id: number
-  type: "navigation" | "summarization" | "task"
-  action: string
-  details: string
-  timestamp: string
-  status: "success" | "error" | "warning" | "info"
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
-// Add interfaces for API response
 interface RequestData {
   input: string
   output: string
 }
 
 interface AuditLogEntry {
+  id: number
+  timestamp: string
   intent_type: "navigation" | "summarization" | "task-execution"
   data: RequestData
   status: "success" | "error"
 }
 
-// Mock data for logs
-const mockLogs: LogEntry[] = [
-  {
-    id: 1,
-    type: "navigation",
-    action: "Navigation query processed",
-    details: "Intent: navigate_to_dashboard",
-    timestamp: "2 minutes ago",
-    status: "success",
-  },
-  {
-    id: 2,
-    type: "summarization",
-    action: "Document summarization completed",
-    details: "File: quarterly_report.pdf",
-    timestamp: "5 minutes ago",
-    status: "success",
-  },
-  {
-    id: 3,
-    type: "task",
-    action: "Task execution started",
-    details: "Task: data_processing_batch_001",
-    timestamp: "8 minutes ago",
-    status: "info",
-  },
-  {
-    id: 4,
-    type: "navigation",
-    action: "New intent created",
-    details: "Intent: navigate_to_reports",
-    timestamp: "12 minutes ago",
-    status: "success",
-  },
-  {
-    id: 5,
-    type: "task",
-    action: "Task execution completed",
-    details: "Task: email_notification_batch",
-    timestamp: "15 minutes ago",
-    status: "success",
-  },
-  {
-    id: 6,
-    type: "summarization",
-    action: "Summarization failed",
-    details: "Error: File format not supported",
-    timestamp: "18 minutes ago",
-    status: "error",
-  },
-  {
-    id: 7,
-    type: "navigation",
-    action: "Intent updated",
-    details: "Intent: navigate_to_settings",
-    timestamp: "22 minutes ago",
-    status: "info",
-  },
-  {
-    id: 8,
-    type: "task",
-    action: "Task execution queued",
-    details: "Task: report_generation_weekly",
-    timestamp: "25 minutes ago",
-    status: "warning",
-  },
-  {
-    id: 9,
-    type: "summarization",
-    action: "Query summarization completed",
-    details: 'Query: "Analyze market trends"',
-    timestamp: "28 minutes ago",
-    status: "success",
-  },
-  {
-    id: 10,
-    type: "navigation",
-    action: "Navigation test completed",
-    details: "Batch test: 95% accuracy",
-    timestamp: "30 minutes ago",
-    status: "success",
-  },
-  {
-    id: 11,
-    type: "task",
-    action: "Task execution failed",
-    details: "Task: backup_database - Connection timeout",
-    timestamp: "35 minutes ago",
-    status: "error",
-  },
-  {
-    id: 12,
-    type: "summarization",
-    action: "Document processed",
-    details: "File: user_manual.docx",
-    timestamp: "40 minutes ago",
-    status: "success",
-  },
-  {
-    id: 13,
-    type: "navigation",
-    action: "Intent deleted",
-    details: "Intent: deprecated_function",
-    timestamp: "45 minutes ago",
-    status: "warning",
-  },
-  {
-    id: 14,
-    type: "task",
-    action: "Scheduled task created",
-    details: "Task: daily_cleanup",
-    timestamp: "50 minutes ago",
-    status: "info",
-  },
-  {
-    id: 15,
-    type: "summarization",
-    action: "Batch summarization started",
-    details: "Processing 5 documents",
-    timestamp: "55 minutes ago",
-    status: "info",
-  },
-]
-
 export default function LogsPage() {
-  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [logs, setLogs] = useState<AuditLogEntry[]>([])
+  const [latestLog, setLatestLog] = useState<AuditLogEntry | null>(null)
   const [loading, setLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [filterType, setFilterType] = useState<string>("all")
-  const [auditLog, setAuditLog] = useState<AuditLogEntry | null>(null)
+  const [totalLogs, setTotalLogs] = useState(0)
+  const [expandedLogs, setExpandedLogs] = useState<number[]>([])
 
-  // Calculate pagination values
-  const filteredLogs = filterType === "all" ? mockLogs : mockLogs.filter((log) => log.type === filterType)
-
-  const totalLogs = filteredLogs.length
   const totalPages = Math.ceil(totalLogs / itemsPerPage)
-  const offset = (currentPage - 1) * itemsPerPage
-  const paginatedLogs = filteredLogs.slice(offset, offset + itemsPerPage)
 
-  // Add useEffect to fetch audit log
   useEffect(() => {
-    fetchAuditLog()
-  }, [])
+    fetchAuditLogs()
+  }, [currentPage, itemsPerPage, filterType])
 
-  const fetchAuditLog = async () => {
+  const fetchAuditLogs = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/logging/get_audit_log/`)
-      if (response.ok) {
-        const data: AuditLogEntry = await response.json()
-        setAuditLog(data)
+      const params = new URLSearchParams({
+        offset: ((currentPage - 1) * itemsPerPage).toString(),
+        limit: itemsPerPage.toString(),
+        intentType: filterType,
+      })
+      const response = await fetch(`${API_BASE_URL}/api/logging/get_audit_log/?${params}`)
+      const countResponse = await fetch(
+        `${API_BASE_URL}/api/logging/get_audit_log_count/?intentType=${filterType}`
+      )
 
-        // Convert audit log to display format (you can expand this logic)
-        const mockLogs: LogEntry[] = [
-          {
-            id: 1,
-            type: data.intent_type === "task-execution" ? "task" : data.intent_type,
-            action: `${data.intent_type} processed`,
-            details: `Input: ${data.data.input.substring(0, 50)}...`,
-            timestamp: "Just now",
-            status: data.status === "success" ? "success" : "error",
-          },
-        ]
-        setLogs(mockLogs)
+      if (response.ok && countResponse.ok) {
+        const data: AuditLogEntry[] = await response.json()
+        const countData = await countResponse.json()
+        setLogs(data)
+        setTotalLogs(countData.total)
+        if (currentPage === 1 && data.length > 0 && !latestLog) {
+          setLatestLog(data[0])
+        }
       }
     } catch (error) {
       console.error("Failed to fetch audit log:", error)
@@ -201,15 +77,6 @@ export default function LogsPage() {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setLogs(paginatedLogs)
-      setLoading(false)
-    }, 500)
-  }, [currentPage, itemsPerPage, filterType])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -225,16 +92,29 @@ export default function LogsPage() {
     setCurrentPage(1)
   }
 
+  const toggleLogExpansion = (id: number) => {
+    setExpandedLogs((prev) => (prev.includes(id) ? prev.filter((logId) => logId !== id) : [...prev, id]))
+  }
+
+  const getIntentIcon = (type: string) => {
+    switch (type) {
+      case "navigation":
+        return <Map className="h-5 w-5 text-blue-500" />
+      case "summarization":
+        return <FileText className="h-5 w-5 text-purple-500" />
+      case "task_execution":
+        return <Terminal className="h-5 w-5 text-orange-500" />
+      default:
+        return <FileText className="h-5 w-5 text-gray-500" />
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "success":
         return "bg-green-500"
       case "error":
         return "bg-red-500"
-      case "warning":
-        return "bg-yellow-500"
-      case "info":
-        return "bg-blue-500"
       default:
         return "bg-gray-500"
     }
@@ -243,13 +123,22 @@ export default function LogsPage() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "navigation":
-        return "text-blue-500"
+        return "text-blue-500 border-blue-500"
       case "summarization":
-        return "text-purple-500"
-      case "task":
-        return "text-orange-500"
+        return "text-purple-500 border-purple-500"
+      case "task_execution":
+        return "text-orange-500 border-orange-500"
       default:
-        return "text-gray-500"
+        return "text-gray-500 border-gray-500"
+    }
+  }
+
+  const formatJsonOutput = (output: string) => {
+    try {
+      const parsed = JSON.parse(output)
+      return JSON.stringify(parsed, null, 2)
+    } catch (error) {
+      return output
     }
   }
 
@@ -263,8 +152,8 @@ export default function LogsPage() {
         <p className="text-muted-foreground">System activity logs and history</p>
       </div>
 
-      {auditLog && (
-        <Card className="mb-6">
+      {latestLog && currentPage === 1 && (
+        <Card className="mb-6 bg-muted/25">
           <CardHeader>
             <CardTitle>Latest Audit Entry</CardTitle>
             <CardDescription>Most recent system activity</CardDescription>
@@ -272,16 +161,17 @@ export default function LogsPage() {
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Badge variant={auditLog.status === "success" ? "default" : "destructive"}>
-                  {auditLog.intent_type}
+                <Badge variant={latestLog.status === "success" ? "default" : "destructive"}>
+                  {latestLog.intent_type.replace("_", " ")}
                 </Badge>
-                <Badge variant="outline">{auditLog.status}</Badge>
+                <Badge variant="outline">{latestLog.status}</Badge>
               </div>
-              <div className="text-sm">
-                <strong>Input:</strong> {auditLog.data.input}
+              <div className="text-sm font-mono bg-white p-2 rounded">
+                <strong>Input:</strong> {latestLog.data.input}
               </div>
-              <div className="text-sm">
-                <strong>Output:</strong> {auditLog.data.output.substring(0, 200)}...
+              <div className="text-sm font-mono bg-white p-2 rounded">
+                <strong>Output:</strong>
+                <pre className="whitespace-pre-wrap break-all">{formatJsonOutput(latestLog.data.output)}</pre>
               </div>
             </div>
           </CardContent>
@@ -316,7 +206,7 @@ export default function LogsPage() {
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="navigation">Navigation</SelectItem>
                     <SelectItem value="summarization">Summarization</SelectItem>
-                    <SelectItem value="task">Task Execution</SelectItem>
+                    <SelectItem value="task_execution">Task Execution</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -379,7 +269,7 @@ export default function LogsPage() {
           </div>
 
           {/* Logs List */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -389,34 +279,53 @@ export default function LogsPage() {
               <div className="text-center py-8 text-muted-foreground">No logs found for the selected filter.</div>
             ) : (
               logs.map((log) => (
-                <div key={log.id} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-muted/25">
-                  <div className={`w-2 h-2 rounded-full ${getStatusColor(log.status)}`}></div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{log.action}</p>
-                      <Badge variant="outline" className={`text-xs ${getTypeColor(log.type)}`}>
-                        {log.type}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {log.details} • {log.timestamp}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={log.status === "success" ? "default" : "secondary"}
-                    className={
-                      log.status === "success"
-                        ? "bg-green-500"
-                        : log.status === "error"
-                          ? "bg-red-500"
-                          : log.status === "warning"
-                            ? "bg-yellow-500"
-                            : "bg-blue-500"
-                    }
+                <Card key={log.id} className="overflow-hidden">
+                  <div
+                    className="flex items-center space-x-4 p-4 cursor-pointer hover:bg-muted/50"
+                    onClick={() => toggleLogExpansion(log.id)}
                   >
-                    {log.status}
-                  </Badge>
-                </div>
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(log.status)} flex-shrink-0`}></div>
+                    {getIntentIcon(log.intent_type)}
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium capitalize">
+                          {log.intent_type.replace("_", " ")} processed
+                        </p>
+                        <Badge variant="outline" className={`text-xs ${getTypeColor(log.intent_type)}`}>
+                          {log.intent_type}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Input: {log.data.input.substring(0, 80)}... • {new Date(log.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={log.status === "success" ? "default" : "secondary"}
+                      className={log.status === "success" ? "bg-green-500" : "bg-red-500"}
+                    >
+                      {log.status}
+                    </Badge>
+                    <ChevronDown
+                      className={`h-5 w-5 text-muted-foreground transform transition-transform ${
+                        expandedLogs.includes(log.id) ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                  {expandedLogs.includes(log.id) && (
+                    <div className="p-4 border-t bg-muted/25">
+                      <div className="space-y-2">
+                        <div className="text-sm font-mono bg-white p-2 rounded">
+                          <strong>Input:</strong>
+                          <p className="whitespace-pre-wrap break-all">{log.data.input}</p>
+                        </div>
+                        <div className="text-sm font-mono bg-white p-2 rounded">
+                          <strong>Output:</strong>
+                          <pre className="whitespace-pre-wrap break-all">{formatJsonOutput(log.data.output)}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
               ))
             )}
           </div>
@@ -425,7 +334,8 @@ export default function LogsPage() {
           {totalLogs > 0 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <div className="text-sm text-muted-foreground">
-                Showing {offset + 1} to {Math.min(offset + itemsPerPage, totalLogs)} of {totalLogs} logs
+                Showing {Math.min((currentPage - 1) * itemsPerPage + 1, totalLogs)} to{" "}
+                {Math.min(currentPage * itemsPerPage, totalLogs)} of {totalLogs} logs
               </div>
 
               <div className="flex items-center gap-2">

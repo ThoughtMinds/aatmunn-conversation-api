@@ -6,6 +6,7 @@ from typing import Annotated
 from sqlmodel import Session
 from time import time
 import json
+from api.db.log import create_log_entry
 
 
 router = APIRouter()
@@ -31,16 +32,42 @@ async def get_navigation(
     """
     query = intent.query
     print(f"Request: {query}")
-    navigation: schema.Navigation = agent.get_navigation_response(query=query)
-    print(f"Response: {navigation}")
+    start_time = time()
+    
+    try:
+        navigation: schema.Navigation = agent.get_navigation_response(query=query)
+        print(f"Response: {navigation}")
 
-    predicted_intent = db.get_intent_name_by_chroma_id_db(
-        chroma_id=navigation.id, session=session
-    )
-    navigation_response = schema.NavigationAgentResponse(
-        id=navigation.id, reasoning=navigation.reasoning, intent_name=predicted_intent
-    )
-    return navigation_response
+        predicted_intent = db.get_intent_name_by_chroma_id_db(
+            chroma_id=navigation.id, session=session
+        )
+        navigation_response = schema.NavigationAgentResponse(
+            id=navigation.id, reasoning=navigation.reasoning, intent_name=predicted_intent
+        )
+        
+        end_time = time()
+        processing_time = end_time - start_time
+        create_log_entry(
+            session=session,
+            intent_type="navigation",
+            request_data=query,
+            response_data=navigation_response.model_dump_json(),
+            status="success",
+            processing_time=processing_time,
+        )
+        return navigation_response
+    except Exception as e:
+        end_time = time()
+        processing_time = end_time - start_time
+        create_log_entry(
+            session=session,
+            intent_type="navigation",
+            request_data=query,
+            response_data=str(e),
+            status="error",
+            processing_time=processing_time,
+        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/test_navigation/")

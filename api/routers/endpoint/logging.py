@@ -1,15 +1,21 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from api import db, schema
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from sqlmodel import Session
+from api.db.log import get_logs, count_logs
 
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
 
 
-@router.get("/get_audit_log/", response_model=schema.AuditLog)
-async def get_audit_log(session: SessionDep) -> List[schema.AuditLog]:
+@router.get("/get_audit_log/", response_model=List[schema.AuditLog])
+async def get_audit_log(
+    session: SessionDep,
+    offset: int = 0,
+    limit: int = 10,
+    intent_type: Optional[str] = Query(None, alias="intentType"),
+) -> List[schema.AuditLog]:
     """
     Retrieve the audit log.
 
@@ -22,30 +28,25 @@ async def get_audit_log(session: SessionDep) -> List[schema.AuditLog]:
     Returns:
         List[schema.AuditLog]: A list of audit log entries.
     """
+    logs = get_logs(session=session, offset=offset, limit=limit, intent_type=intent_type)
 
-    # fetch audit log from db
-    # Dynamic data field based on Intent type with their own metadata for UI
     audit_logs = [
         schema.AuditLog(
-            intent_type="navigation",
-            data=schema.RequestData(input="Home page", output="Home page screen"),
-            status="success",
-        ),
-        schema.AuditLog(
-            intent_type="summarization",
-            data=schema.RequestData(input="Home page", output="Home page screen"),
-            status="error",
-        ),
-        schema.AuditLog(
-            intent_type="task-execution",
-            data=schema.RequestData(input="Home page", output="Home page screen"),
-            status="success",
-        ),
-        schema.AuditLog(
-            intent_type="navigation",
-            data=schema.RequestData(input="Home page", output="Home page screen"),
-            status="error",
-        ),
+            id=log.id,
+            timestamp=log.timestamp,
+            intent_type=log.intent_type,
+            data=schema.RequestData(input=log.request_data, output=log.response_data),
+            status=log.status,
+        )
+        for log in logs
     ]
-
     return audit_logs
+
+
+@router.get("/get_audit_log_count/")
+async def get_audit_log_count(
+    session: SessionDep,
+    intent_type: Optional[str] = Query(None, alias="intentType"),
+) -> dict:
+    count = count_logs(session=session, intent_type=intent_type)
+    return {"total": count}

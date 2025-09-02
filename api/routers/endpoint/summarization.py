@@ -4,6 +4,7 @@ from typing import Annotated
 from sqlmodel import Session
 from api.core.logging_config import logger
 from time import time
+from api.db.log import create_log_entry
 
 
 router = APIRouter()
@@ -32,18 +33,31 @@ async def get_summary(
 
     start_time = time()
     try:
-        summary, moderated = await agent.get_summarized_response(query=query, chained=chained)
+        summary, moderated = await agent.get_summarized_response(
+            query=query, chained=chained
+        )
+        status = "success"
     except Exception as e:
         logger.error(f"Failed to generate summary due to: {e}")
         summary = "Failed to generate summary. Please rephrase or retry"
         moderated = False
-    finally:
-        end_time = time()
-        elapsed_time = end_time - start_time
-        elapsed_time = round(elapsed_time, 3)
-        print(f"Time taken: {elapsed_time:.4f} seconds")
+        status = "error"
 
-        response = schema.SummaryResponse(
-            summary=summary, content_moderated=moderated, processing_time=elapsed_time
-        )
-        return response
+    end_time = time()
+    elapsed_time = end_time - start_time
+    elapsed_time = round(elapsed_time, 3)
+    print(f"Time taken: {elapsed_time:.4f} seconds")
+
+    response = schema.SummaryResponse(
+        summary=summary, content_moderated=moderated, processing_time=elapsed_time
+    )
+
+    create_log_entry(
+        session=session,
+        intent_type="summarization",
+        request_data=query,
+        response_data=response.model_dump_json(),
+        status=status,
+        processing_time=elapsed_time,
+    )
+    return response

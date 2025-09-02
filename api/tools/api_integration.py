@@ -137,14 +137,14 @@ def format_issue_string(issue_response: schema.IssueResponse) -> str:
     return "\n---\n".join(issue_strings)
 
 @tool
-def get_issues(size: int = 3) -> Optional[schema.IssueResponse]:
+def get_issues(size: int = 1) -> Optional[schema.IssueResponse]:
     """
     Perform GET request to retrieve issues from the IIOP API.
 
     This tool fetches a paginated list of issues for a given organization.
 
     Args:
-        size (int): The number of issues per page. Defaults to 3.
+        size (int): The number of issues per page. Defaults to 1.
 
     Returns:
         Optional[schema.IssueResponse]: A Pydantic model instance containing
@@ -212,7 +212,7 @@ def format_user_string(user_response: schema.UserResponse) -> str:
 
 @tool
 def get_users(
-    size: int = 3,
+    size: int = 1,
     status: str = "ACTIVE",
 ) -> Optional[schema.UserResponse]:
     """
@@ -222,7 +222,7 @@ def get_users(
     organization.
 
     Args:
-        size (int): The number of users per page. Defaults to 3.
+        size (int): The number of users per page. Defaults to 1.
         status (str): The status of the users to filter by. Defaults to "ACTIVE".
 
     Returns:

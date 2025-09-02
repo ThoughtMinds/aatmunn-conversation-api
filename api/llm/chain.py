@@ -4,6 +4,7 @@ from .prompts import (
     CONTENT_MODERATION_TEMPLATE,
     ORCHESTRATOR_TEMPLATE,
     RAG_TEMPLATE,
+    SUMMARY_SCORE_TEMPLATE,
     SUMMARIZE_TEMPLATE,
 )
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -19,6 +20,7 @@ def create_chain_for_task(
         "navigation",
         "orchestration",
         "summarization",
+        "summary score"
     ],
     llm: BaseChatModel,
     output_schema: Optional[BaseModel] = None,
@@ -55,6 +57,8 @@ def create_chain_for_task(
             template = SUMMARIZE_TEMPLATE
         case "chained tool call":
             template = CHAINED_TOOL_CALL_TEMPLATE
+        case "summary score":
+            template = SUMMARY_SCORE_TEMPLATE
         case default:
             raise Exception("Invalid arguments given to chain factory")
     if output_parser:

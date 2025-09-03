@@ -18,6 +18,7 @@ __all__ = [
     "get_user_statuses",
 ]
 
+
 def get_aatmunn_access_token() -> Optional[Dict[str, Any]]:
     """
     Fetches an access token from the Aatmunn authentication API.
@@ -51,7 +52,9 @@ def get_aatmunn_access_token() -> Optional[Dict[str, Any]]:
         print(f"Error during authentication: {e}")
         return None
 
+
 ACCESS_TOKEN = get_aatmunn_access_token()
+
 
 def get_auth_header() -> Dict[str, str]:
     """
@@ -66,6 +69,7 @@ def get_auth_header() -> Dict[str, str]:
                         with the bearer token.
     """
     return {"Authorization": f"Bearer {ACCESS_TOKEN}"}
+
 
 @tool
 def get_navigation_points() -> Optional[schema.NavigationResponse]:
@@ -92,6 +96,7 @@ def get_navigation_points() -> Optional[schema.NavigationResponse]:
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None
+
 
 def format_issue_string(issue_response: schema.IssueResponse) -> str:
     """
@@ -139,6 +144,7 @@ def format_issue_string(issue_response: schema.IssueResponse) -> str:
 
     return "\n---\n".join(issue_strings)
 
+
 @tool
 def get_issues(size: int = 1) -> Optional[str]:
     """
@@ -171,6 +177,7 @@ def get_issues(size: int = 1) -> Optional[str]:
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None
+
 
 def format_user_string(user_response: schema.UserResponse) -> str:
     """
@@ -207,6 +214,7 @@ def format_user_string(user_response: schema.UserResponse) -> str:
         user_strings.append(user_string)
 
     return "\n---\n".join(user_strings)
+
 
 @tool
 def get_users(size: int = 1, status: str = "ACTIVE") -> Optional[str]:
@@ -247,6 +255,7 @@ def get_users(size: int = 1, status: str = "ACTIVE") -> Optional[str]:
         print(f"Error making request: {e}")
         return None
 
+
 def format_role_string(role_response: schema.RoleResponse) -> str:
     """
     Constructs a formatted string from relevant role information using Pydantic models.
@@ -281,6 +290,7 @@ def format_role_string(role_response: schema.RoleResponse) -> str:
 
     return "\n---\n".join(role_strings)
 
+
 @tool
 def get_roles(size: int = 10) -> Optional[str]:
     """
@@ -314,6 +324,7 @@ def get_roles(size: int = 10) -> Optional[str]:
         print(f"Error making request: {e}")
         return None
 
+
 @tool
 def get_organization(org_id: int = 4) -> Optional[schema.Organization]:
     """
@@ -342,6 +353,7 @@ def get_organization(org_id: int = 4) -> Optional[schema.Organization]:
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None
+
 
 def format_product_model_string(product_models: List[schema.ProductModel]) -> str:
     """
@@ -373,6 +385,7 @@ def format_product_model_string(product_models: List[schema.ProductModel]) -> st
         product_strings.append(product_string)
 
     return "\n---\n".join(product_strings)
+
 
 @tool
 def get_product_models(org_id: int = 4) -> Optional[str]:
@@ -407,8 +420,11 @@ def get_product_models(org_id: int = 4) -> Optional[str]:
         print(f"Error making request: {e}")
         return None
 
+
 @tool
-def get_historical_data(time_period_in_days: int = 2, page: int = 0, size: int = 3000) -> Optional[schema.HistoricalDataResponse]:
+def get_historical_data(
+    time_period_in_days: int = 2, page: int = 0, size: int = 3000
+) -> Optional[schema.HistoricalDataResponse]:
     """
     Retrieves historical data for alerts from the IIOP API.
 
@@ -423,7 +439,12 @@ def get_historical_data(time_period_in_days: int = 2, page: int = 0, size: int =
         Optional[schema.HistoricalDataResponse]: A Pydantic model instance containing the historical
                                                 data if the request is successful, otherwise None.
     """
-    params = {"capability": "alerts", "timePeriodInDays": time_period_in_days, "page": page, "size": size}
+    params = {
+        "capability": "alerts",
+        "timePeriodInDays": time_period_in_days,
+        "page": page,
+        "size": size,
+    }
 
     try:
         headers = get_auth_header()
@@ -441,7 +462,10 @@ def get_historical_data(time_period_in_days: int = 2, page: int = 0, size: int =
         print(f"Error making request: {e}")
         return None
 
-def format_form_execution_summary(form_execution_response: schema.FormExecutionSummaryResponse) -> str:
+
+def format_form_execution_summary(
+    form_execution_response: schema.FormExecutionSummaryResponse,
+) -> str:
     """
     Constructs a formatted string from form execution summary information using Pydantic models.
 
@@ -457,7 +481,9 @@ def format_form_execution_summary(form_execution_response: schema.FormExecutionS
         entity_id = entity.entityId
         entity_name = entity.entityName
         total_count = entity.totalCount
-        statuses = "\n".join([f"  {status.displayName}: {status.count}" for status in entity.statuses])
+        statuses = "\n".join(
+            [f"  {status.displayName}: {status.count}" for status in entity.statuses]
+        )
 
         entity_string = (
             f"Entity ID: {entity_id}\n"
@@ -469,13 +495,14 @@ def format_form_execution_summary(form_execution_response: schema.FormExecutionS
 
     return "\n---\n".join(entity_strings)
 
+
 @tool
 def get_form_execution_summary(
     entity_ids: str = "4,1,3",
     form_types: str = "PRODUCT_TEST,PRODUCT_MAINTENANCE,PRODUCT_CLEANING,PRODUCT_INSPECTION,AREA_INSPECTION,WORKER_OBSERVATION,WORKER_FIT_TEST,WORKER_TRAINING",
     from_date: str = "2025-08-02T18:30:00.000Z",
     to_date: str = "2025-09-02T18:29:59.999Z",
-    summary_type: str = "result"
+    summary_type: str = "result",
 ) -> Optional[str]:
     """
     Retrieves form execution summary from the IIOP API.
@@ -512,13 +539,18 @@ def get_form_execution_summary(
 
         data = response.json()
         form_execution_response = schema.FormExecutionSummaryResponse(**data)
-        formatted_summary = format_form_execution_summary(form_execution_response=form_execution_response)
+        formatted_summary = format_form_execution_summary(
+            form_execution_response=form_execution_response
+        )
         return formatted_summary
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None
 
-def format_areas_needing_attention(areas_response: schema.AreasNeedingAttentionResponse) -> str:
+
+def format_areas_needing_attention(
+    areas_response: schema.AreasNeedingAttentionResponse,
+) -> str:
     """
     Constructs a formatted string from areas needing attention information using Pydantic models.
 
@@ -543,10 +575,11 @@ def format_areas_needing_attention(areas_response: schema.AreasNeedingAttentionR
 
     return "\n---\n".join(area_strings)
 
+
 @tool
 def get_areas_needing_attention(
     from_date: str = "2025-08-02T18:30:00.000Z",
-    to_date: str = "2025-09-02T18:29:59.999Z"
+    to_date: str = "2025-09-02T18:29:59.999Z",
 ) -> Optional[str]:
     """
     Retrieves areas needing attention from the IIOP API.
@@ -580,6 +613,7 @@ def get_areas_needing_attention(
         print(f"Error making request: {e}")
         return None
 
+
 @tool
 def get_user_statuses(org_id: int = 4) -> Optional[schema.UserStatusResponse]:
     """
@@ -603,7 +637,9 @@ def get_user_statuses(org_id: int = 4) -> Optional[schema.UserStatusResponse]:
         response.raise_for_status()
 
         data = response.json()
-        user_statuses = schema.UserStatusResponse(userStatuses=[schema.UserStatus(**item) for item in data])
+        user_statuses = schema.UserStatusResponse(
+            userStatuses=[schema.UserStatus(**item) for item in data]
+        )
         return user_statuses.model_dump()
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")

@@ -20,7 +20,7 @@ def create_chain_for_task(
         "navigation",
         "orchestration",
         "summarization",
-        "summary score"
+        "summary score",
     ],
     llm: BaseChatModel,
     output_schema: Optional[BaseModel] = None,

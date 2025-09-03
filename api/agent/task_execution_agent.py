@@ -53,6 +53,9 @@ tool_list = [
     tools.api_integration.get_areas_needing_attention,
     tools.api_integration.get_user_statuses,
 ]
+
+TOOL_DESCRIPTION = tools.render_text_description(tool_list)
+
 tool_dict = {
     "get_issues": tools.api_integration.get_issues,
     "get_navigation_points": tools.api_integration.get_navigation_points,
@@ -66,7 +69,6 @@ tool_dict = {
     "get_user_statuses": tools.api_integration.get_user_statuses,
 }
 
-TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 

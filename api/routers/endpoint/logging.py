@@ -28,7 +28,9 @@ async def get_audit_log(
     Returns:
         List[schema.AuditLog]: A list of audit log entries.
     """
-    logs = get_logs(session=session, offset=offset, limit=limit, intent_type=intent_type)
+    logs = get_logs(
+        session=session, offset=offset, limit=limit, intent_type=intent_type
+    )
 
     audit_logs = [
         schema.AuditLog(

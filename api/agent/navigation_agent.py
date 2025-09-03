@@ -73,10 +73,12 @@ def generate(state: State):
             return {"navigation": response}
     except Exception as e:
         logger.error(f"Failed to get Navigation due to: {e}")
-        return {"navigation": schema.Navigation(
-            reasoning="Unable to generate navigation response. Please try again.",
-            id=None,
-        )}
+        return {
+            "navigation": schema.Navigation(
+                reasoning="Unable to generate navigation response. Please try again.",
+                id=None,
+            )
+        }
 
 
 graph_builder = StateGraph(State).add_sequence([retrieve, generate])
@@ -115,13 +117,20 @@ async def get_streaming_navigation_response(
         async for event in navigation_graph.astream(initial_state):
             for value in event.values():
                 state_update = {}
-                
+
                 if "context" in value:
                     state_update["context"] = [
-                        {"id": doc.id, "content": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content}
+                        {
+                            "id": doc.id,
+                            "content": (
+                                doc.page_content[:200] + "..."
+                                if len(doc.page_content) > 200
+                                else doc.page_content
+                            ),
+                        }
                         for doc in value["context"]
                     ]
-                
+
                 if "navigation" in value and value["navigation"]:
                     nav = value["navigation"]
                     state_update["navigation"] = {
@@ -130,9 +139,9 @@ async def get_streaming_navigation_response(
                     }
                     # Add final_response for navigation completion
                     state_update["final_response"] = nav.reasoning
-                
+
                 yield state_update
-                
+
     except Exception as e:
         logger.error(f"Error in streaming navigation: {e}")
         yield {"error": str(e)}

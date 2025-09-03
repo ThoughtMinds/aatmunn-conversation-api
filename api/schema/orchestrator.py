@@ -23,6 +23,7 @@ class OrchestrationResponse(BaseModel):
 
     category: Literal["navigation", "summarization", "task_execution", "taskexecution"]
 
+
 class InvokeAgentRequest(BaseModel):
     """
     Pydantic model for an Agent Invocation Request.
@@ -31,5 +32,6 @@ class InvokeAgentRequest(BaseModel):
         agent (str): The identified agent
         query (str): The query for the agent
     """
+
     agent: Literal["navigation", "summarization", "task_execution", "taskexecution"]
     query: str

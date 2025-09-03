@@ -40,8 +40,10 @@ RAG_TEMPLATE = PromptTemplate.from_template(RAG_PROMPT)
 
 
 SUMMARIZE_PROMPT = """
-You are an assistant that has access to the user query and corresponding API/Database response to it.
-From this information create a brief, human readable description or summary.
+You are an assistant that is given the user query and corresponding API/Database response.
+Create a short but descriptive summary from this information.
+Make sure you convery important information in an easy to understand format.
+Do not mention usage of tools.
 Do not add unnecessary formatting.
 
 Query: {query}

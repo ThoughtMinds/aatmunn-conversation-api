@@ -104,41 +104,27 @@ npm run dev
 ```
 
 ## Checklist
-- [x] Update Collection for Newman
-- [x] Add mock tables for Task Execution, Summarization data
 - [x] Orchestrator
     - [x] Frontend
     - [x] Identify intent & invoke sub-graph
-        - [x] Log Agent State
 - [x] Summrization Agent
     - [x] Frontend
-    - [x] Single Tool Call
-    - [x] Chained Tool Call
+    - [x] Single & Chained Tool Call
     - [x] Content Moderation
-        - [x] Fixed Output Schema
-        - [x] Meaningful summary
-        - [x] Integrate with flow
+    - [x] Meaningful summary
 - [x] Task Execution Agent
     - [x] Frontend
-    - [x] Single Tool Call
-    - [x] Chained Tool 
-        - [ ] Rate limit chaining
+    - [x] Single & Chained Tool Call
+    - [ ] Rate limit chaining
     - [ ] User confirmation (yes/no) before execution
-- [x] Chained Tool Call
-    - [x] Implement
-    - [x] Convert to Graph
-    - [x] Frontend Support 
 - [x] Test Framework
-    - [ ] Integrated test framework
-        - [ ] Refer Excel for needed columns, logic (document this)
-        - [ ] Navigation
-        - [ ] Summarization
+    - [x] Integrated test framework
+        - [x] Navigation
+        - [x] Summarization
         - [ ] Task Execution
 - [x] Integration with Aatmunn API
     - [x] Read APIs
-        - [ ] Integrate Navigation Options API
-    - [x] Replace local data with APIs
-    - [x] Explore other Read, Write API's
-- [x] Add timestamp & processing time
-- [ ] Log actions to DB
-- [x] Colored logging for local dev
+- [x] Logging
+    - [x] Add timestamp & processing time
+    - [x] Log actions to DB
+    - [x] Colored logging

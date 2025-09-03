@@ -69,8 +69,10 @@ async def invoke_agent(
     elif agent_name == "navigation":
         agent_to_use = agent.get_streaming_navigation_response
     else:
+
         async def error_stream() -> AsyncGenerator[str, None]:
             yield f"data: {dumps({'error': 'Invalid agent specified'})}\n\n"
+
         return StreamingResponse(
             error_stream(),
             media_type="text/event-stream",

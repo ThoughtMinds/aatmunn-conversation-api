@@ -539,7 +539,7 @@ const streamAgentResponse = (messageId: string, agent: string, query: string) =>
               </h3>
               <div className="bg-green-50 p-3 rounded">
                 <pre className="text-xs text-gray-700 whitespace-pre-wrap">
-                  {tool_response}
+                  {tool_response.replace(/\\n/g, '\n')}
                 </pre>
               </div>
             </CardContent>

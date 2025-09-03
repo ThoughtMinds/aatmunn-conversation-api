@@ -40,8 +40,10 @@ RAG_TEMPLATE = PromptTemplate.from_template(RAG_PROMPT)
 
 
 SUMMARIZE_PROMPT = """
-You are an assistant that has access to the user query and corresponding API/Database response to it.
-From this information create a brief, human readable description or summary.
+You are an assistant that is given the user query and corresponding API/Database response.
+Create a short but descriptive summary from this information.
+Make sure you convery important information in an easy to understand format.
+Do not mention usage of tools.
 Do not add unnecessary formatting.
 
 Query: {query}
@@ -103,3 +105,20 @@ Response:
 """
 
 CHAINED_TOOL_CALL_TEMPLATE = PromptTemplate.from_template(CHAINED_TOOL_CALL_PROMPT)
+
+SUMMARY_SCORE_PROMPT = """
+You are a scoring agent. You are given a query and an AI generated summary. Evaluate the given information and return a score and an analysis. The score should be out of 100. The analysis should a one sentence reasoning for the score.
+
+Schema:
+{{
+    "analysis": Reasoning,
+    "score": <score out of 100>
+}}
+
+Query: {query}
+Summary: {summary}
+
+Response:
+"""
+
+SUMMARY_SCORE_TEMPLATE = PromptTemplate.from_template(SUMMARY_SCORE_PROMPT)

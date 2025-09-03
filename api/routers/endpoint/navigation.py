@@ -33,7 +33,7 @@ async def get_navigation(
     query = intent.query
     print(f"Request: {query}")
     start_time = time()
-    
+
     try:
         navigation: schema.Navigation = agent.get_navigation_response(query=query)
         print(f"Response: {navigation}")
@@ -42,9 +42,11 @@ async def get_navigation(
             chroma_id=navigation.id, session=session
         )
         navigation_response = schema.NavigationAgentResponse(
-            id=navigation.id, reasoning=navigation.reasoning, intent_name=predicted_intent
+            id=navigation.id,
+            reasoning=navigation.reasoning,
+            intent_name=predicted_intent,
         )
-        
+
         end_time = time()
         processing_time = end_time - start_time
         create_log_entry(

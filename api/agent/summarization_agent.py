@@ -38,18 +38,38 @@ class AgentState(TypedDict):
 
 # Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
+
 tool_list = [
     tools.api_integration.get_issues,
     tools.api_integration.get_navigation_points,
     tools.api_integration.get_users,
+    tools.api_integration.get_navigation_points,
+    tools.api_integration.get_issues,
+    tools.api_integration.get_users,
+    tools.api_integration.get_roles,
+    tools.api_integration.get_organization,
+    tools.api_integration.get_product_models,
+    tools.api_integration.get_historical_data,
+    tools.api_integration.get_form_execution_summary,
+    tools.api_integration.get_areas_needing_attention,
+    tools.api_integration.get_user_statuses,
 ]
+
+TOOL_DESCRIPTION = tools.render_text_description(tool_list)
+
 tool_dict = {
     "get_issues": tools.api_integration.get_issues,
     "get_navigation_points": tools.api_integration.get_navigation_points,
     "get_users": tools.api_integration.get_users,
+    "get_roles": tools.api_integration.get_roles,
+    "get_organization": tools.api_integration.get_organization,
+    "get_product_models": tools.api_integration.get_product_models,
+    "get_historical_data": tools.api_integration.get_historical_data,
+    "get_form_execution_summary": tools.api_integration.get_form_execution_summary,
+    "get_areas_needing_attention": tools.api_integration.get_areas_needing_attention,
+    "get_user_statuses": tools.api_integration.get_user_statuses,
 }
 
-TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 llm_with_tools = chat_model.bind_tools(tool_list)

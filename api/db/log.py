@@ -2,6 +2,7 @@ from sqlmodel import Field, SQLModel, Session, select
 from datetime import datetime
 from typing import Optional, List
 
+
 class Log(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.utcnow, index=True)
@@ -10,6 +11,7 @@ class Log(SQLModel, table=True):
     response_data: str
     status: str = Field(index=True)
     processing_time: Optional[float] = Field(default=None)
+
 
 def create_log_entry(
     session: Session,
@@ -30,6 +32,7 @@ def create_log_entry(
     session.commit()
     return log_entry
 
+
 def get_logs(
     session: Session,
     offset: int = 0,
@@ -44,12 +47,13 @@ def get_logs(
     logs = session.exec(query).all()
     return logs
 
+
 def count_logs(session: Session, intent_type: Optional[str] = None) -> int:
     query = select(Log)
     if intent_type and intent_type != "all":
         if intent_type == "task":
             intent_type = "task_execution"
         query = query.where(Log.intent_type == intent_type)
-    
+
     results = session.exec(query).all()
     return len(results)

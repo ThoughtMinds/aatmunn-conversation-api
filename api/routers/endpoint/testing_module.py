@@ -19,6 +19,11 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 router = APIRouter()
 
+chat_model = llm.get_ollama_chat_model()
+score_chain = llm.create_chain_for_task(
+    task="summary score", llm=chat_model, output_schema=schema.ScoreResponse
+)
+
 
 @router.get("/run_tests_stream/")
 async def run_tests_stream():
@@ -107,17 +112,15 @@ async def run_tests(
     async def process_file(file_content: bytes):
         try:
             df = pd.read_excel(BytesIO(file_content))
-            chat_model = llm.get_ollama_chat_model()
-            # score_chain = llm.create_chain_for_task(
-            #     task="score_summary", llm=chat_model, output_schema=schema.ScoreResponse
-            # )
 
             for index, row in df.iterrows():
                 start_time = time.time()
                 query = row.get("Input", "")
                 expected_intent = row.get("Actual Intent", "")
                 expected_response = row.get("Actual Response", "")
-                directives = row.get("Directives", "")
+                # directives = row.get("Directives", "")
+                # TODO: Add directives
+                directives = "SCORE THIS SUMMARY"
 
                 if not query or not expected_intent:
                     await test_queue.put(
@@ -128,10 +131,12 @@ async def run_tests(
                     continue
 
                 orch_response = await agent.get_orchestrator_response(query)
-                
+
                 predicted_intent = orch_response.category if orch_response else "error"
-                logger.info(f"{index+1}) Input: {query} | Intent: {predicted_intent}")
-                
+                logger.info(
+                    f"{index+1}) Input: {query} | Predicted: {predicted_intent} | Actual: {expected_intent}"
+                )
+
                 predicted_response = ""
                 summarization_analysis = ""
                 summarization_score = None
@@ -144,7 +149,7 @@ async def run_tests(
                     try:
                         if predicted_intent == "navigation":
                             logger.info(f"[[Navigation]]")
-                            
+
                             graph_result = await agent.navigation_graph.ainvoke(
                                 {"query": query}
                             )
@@ -156,23 +161,25 @@ async def run_tests(
                             if predicted_response != expected_response:
                                 status = "Failure"
 
-                        elif predicted_intent == "task_execution":
-                            logger.info(f"[[Task Execution]]")
-                            
-                            graph_result = await agent.get_task_execution_response(
-                                query=query, chained=True
-                            )
-                            tool_calls = graph_result.get("tool_calls", [])
-                            predicted_response = json.dumps(tool_calls)
-                            if predicted_response != expected_response:
-                                status = "Failure"
-
                         elif predicted_intent == "summarization":
                             logger.info(f"[[Summarization]]")
-                            
-                            graph_result = await agent.get_summarized_response(
-                                query=query, chained=True
+
+                            chained = False  # TODO: Accept input
+
+                            initial_state = {
+                                "query": query,
+                                "chained": chained,
+                                "tool_calls": [],
+                                "tool_response": "",
+                                "summarized_response": "",
+                                "is_moderated": False,
+                                "final_response": "",
+                            }
+
+                            graph_result = await agent.summarization_graph.ainvoke(
+                                initial_state
                             )
+
                             predicted_response = graph_result["final_response"]
                             is_moderated = graph_result["is_moderated"]
                             summarized = graph_result["summarized_response"]
@@ -182,13 +189,17 @@ async def run_tests(
                                 summarization_analysis = "Flagged by content policy"
                                 summarization_score = 0
                             elif directives:
-                                # score_response = score_chain.invoke({
-                                #     "query": query,
-                                #     "directives": directives,
-                                #     "summary": summarized
-                                # })
-                                # summarization_score = score_response.score
-                                summarization_score = 100
+                                score_response: schema.ScoreResponse = (
+                                    score_chain.invoke(
+                                        {
+                                            "query": query,
+                                            # "directives": directives,
+                                            "summary": summarized,
+                                        }
+                                    )
+                                )
+                                summarization_score = score_response.score
+                                logger.info(f"Score: {score_response}")
                                 # Sanitize summarization_score
                                 if isinstance(summarization_score, float) and (
                                     math.isnan(summarization_score)
@@ -200,13 +211,24 @@ async def run_tests(
                                     )
                                     status = "Failure"
                                 else:
-                                    # summarization_analysis = score_response.analysis
-                                    summarization_analysis = "Accepted"
-                                    if summarization_score < 80:
+                                    summarization_analysis = score_response.analysis
+                                    if summarization_score < 50:
                                         status = "Failure"
                             else:
                                 summarization_analysis = "No directives provided"
                                 summarization_score = None
+
+                            # TODO: Task Execution use graph
+                            # elif predicted_intent == "task_execution":
+                            #     logger.info(f"[[Task Execution]]")
+
+                            #     graph_result = await agent.get_task_execution_response(
+                            #         query=query, chained=True
+                            #     )
+                            #     tool_calls = graph_result.get("tool_calls", [])
+                            #     predicted_response = json.dumps(tool_calls)
+                            #     if predicted_response != expected_response:
+                            #         status = "Failure"
 
                     except Exception as e:
                         logger.error(f"Error processing row {index + 1}: {e}")

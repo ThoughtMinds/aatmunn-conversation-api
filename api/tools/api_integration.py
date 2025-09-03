@@ -292,14 +292,14 @@ def format_role_string(role_response: schema.RoleResponse) -> str:
 
 
 @tool
-def get_roles(size: int = 10) -> Optional[str]:
+def get_roles(size: int = 3) -> Optional[str]:
     """
     Retrieves a list of roles from the IIOP API.
 
     This tool fetches a paginated list of roles for a given organization.
 
     Args:
-        size (int): The number of roles per page. Defaults to 10.
+        size (int): The number of roles per page. Defaults to 3.
 
     Returns:
         Optional[str]: A formatted string containing the list of roles if the request is

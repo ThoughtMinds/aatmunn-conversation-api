@@ -2,7 +2,40 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+__all__ = [
+    "NavigationPoint",
+    "NavigationResponse",
+    "PriorityInfo",
+    "StatusInfo",
+    "AssignedUserInfo",
+    "EntityInfo",
+    "SourceEntityInfo",
+    "ParentSourceEntityInfo",
+    "IssueDto",
+    "IssueResponse",
+    "Status",
+    "UserData",
+    "UserResponse",
+    "RoleData",
+    "RoleResponse",
+    "OrgStatus",
+    "Organization",
+    "ProductCounts",
+    "ProductModel",
+    "HistoricalDataResponse",
+    "FormStatus",
+    "EntitySummary",
+    "AdditionalInfo",
+    "FormExecutionData",
+    "FormExecutionSummaryResponse",
+    "AreaData",
+    "AreasNeedingAttentionResponse",
+    "UserStatus",
+    "UserStatusResponse",
+]
+
 # Navigation Options
+
 
 class NavigationPoint(BaseModel):
     id: int
@@ -12,18 +45,23 @@ class NavigationPoint(BaseModel):
     description: str
     modules: List[int]
 
+
 class NavigationResponse(BaseModel):
     totalCount: int
     message: str
     navigationPointData: List[NavigationPoint]
 
+
 # Issue
+
 
 class PriorityInfo(BaseModel):
     priority: str
 
+
 class StatusInfo(BaseModel):
     status: str
+
 
 class AssignedUserInfo(BaseModel):
     assignedUserId: Optional[int] = None
@@ -32,11 +70,13 @@ class AssignedUserInfo(BaseModel):
     userProfileUrl: Optional[str] = None
     userProfileThumbnailUrl: Optional[str] = None
 
+
 class EntityInfo(BaseModel):
     id: Optional[int] = None
     entityName: Optional[str] = None
     instanceName: Optional[str] = None
     instanceId: Optional[str] = None
+
 
 class SourceEntityInfo(BaseModel):
     id: Optional[int] = None
@@ -44,11 +84,13 @@ class SourceEntityInfo(BaseModel):
     instanceName: Optional[str] = None
     instanceId: Optional[str] = None
 
+
 class ParentSourceEntityInfo(BaseModel):
     id: Optional[int] = None
     entityName: Optional[str] = None
     instanceName: Optional[str] = None
     instanceId: Optional[str] = None
+
 
 class IssueDto(BaseModel):
     id: str
@@ -68,17 +110,21 @@ class IssueDto(BaseModel):
     createdBy: str
     updatedBy: str
 
+
 class IssueResponse(BaseModel):
     totalCount: int
     message: str
     allIssueDto: List[IssueDto]
 
+
 # Users
+
 
 class Status(BaseModel):
     id: int
     statusName: str
     status: str
+
 
 class UserData(BaseModel):
     empId: Optional[str] = None
@@ -112,12 +158,15 @@ class UserData(BaseModel):
     supervisor: bool
     status: Status
 
+
 class UserResponse(BaseModel):
     totalCount: int
     message: str
     userData: List[UserData]
 
+
 # Roles
+
 
 class RoleData(BaseModel):
     id: int
@@ -131,17 +180,21 @@ class RoleData(BaseModel):
     noOfUsers: int
     status: str
 
+
 class RoleResponse(BaseModel):
     totalCount: int
     message: str
     rolesData: List[RoleData]
 
+
 # Organization
+
 
 class OrgStatus(BaseModel):
     id: int
     statusName: str
     status: str
+
 
 class Organization(BaseModel):
     id: int
@@ -165,12 +218,15 @@ class Organization(BaseModel):
     industryDomain: Optional[str] = None
     status: OrgStatus
 
+
 # Product Models
+
 
 class ProductCounts(BaseModel):
     countOfProductModels: int
     countOfProducts: int
     countOfCapabilities: int
+
 
 class ProductModel(BaseModel):
     id: str
@@ -185,7 +241,9 @@ class ProductModel(BaseModel):
     createdByOrgId: Optional[int] = None
     isPublic: Optional[bool] = None
 
+
 # Historical Data
+
 
 class HistoricalDataResponse(BaseModel):
     totalEventCount: int
@@ -193,12 +251,15 @@ class HistoricalDataResponse(BaseModel):
     message: str
     data: List[Any]
 
+
 # Form Execution Summary
+
 
 class FormStatus(BaseModel):
     status: str
     displayName: str
     count: int
+
 
 class EntitySummary(BaseModel):
     entityId: int
@@ -206,9 +267,11 @@ class EntitySummary(BaseModel):
     totalCount: int
     statuses: List[FormStatus]
 
+
 class AdditionalInfo(BaseModel):
     name: str
     value: List[str]
+
 
 class FormExecutionData(BaseModel):
     id: int
@@ -216,11 +279,14 @@ class FormExecutionData(BaseModel):
     entitySummary: List[EntitySummary]
     additionalInfo: List[AdditionalInfo]
 
+
 class FormExecutionSummaryResponse(BaseModel):
     message: str
     data: FormExecutionData
 
+
 # Areas Needing Attention
+
 
 class AreaData(BaseModel):
     areaName: str
@@ -230,17 +296,21 @@ class AreaData(BaseModel):
     noOfIssues: int
     noOfUnassignedIssues: int
 
+
 class AreasNeedingAttentionResponse(BaseModel):
     totalCount: int
     message: str
     data: List[AreaData]
 
+
 # User Status
+
 
 class UserStatus(BaseModel):
     id: int
     statusName: str
     status: str
+
 
 class UserStatusResponse(BaseModel):
     userStatuses: List[UserStatus]

@@ -18,6 +18,8 @@ __all__ = [
     "get_user_statuses",
 ]
 
+# Shared base API URL
+BASE_API_URL = "https://iiop-demo.aatmunn.net/io/api/v3"
 
 def get_aatmunn_access_token() -> Optional[Dict[str, Any]]:
     """
@@ -41,7 +43,7 @@ def get_aatmunn_access_token() -> Optional[Dict[str, Any]]:
 
     try:
         response = requests.post(
-            "https://iiop-demo.aatmunn.net/io/api/v3/auth/login", json=payload
+            f"{BASE_API_URL}/auth/login", json=payload
         )
         response.raise_for_status()
         data = response.json()
@@ -87,7 +89,7 @@ def get_navigation_points() -> Optional[schema.NavigationResponse]:
     headers = get_auth_header()
     try:
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/navigation-points", headers=headers
+            f"{BASE_API_URL}/navigation-points", headers=headers
         )
         response.raise_for_status()
         data = response.json()
@@ -164,7 +166,7 @@ def get_issues(size: int = 1) -> Optional[str]:
     try:
         headers = get_auth_header()
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/issues",
+            f"{BASE_API_URL}/issues",
             params=params,
             headers=headers,
         )
@@ -241,7 +243,7 @@ def get_users(size: int = 1, status: str = "ACTIVE") -> Optional[str]:
     try:
         headers = get_auth_header()
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/users",
+            f"{BASE_API_URL}/users",
             params=params,
             headers=headers,
         )
@@ -310,7 +312,7 @@ def get_roles(size: int = 3) -> Optional[str]:
     try:
         headers = get_auth_header()
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/roles",
+            f"{BASE_API_URL}/roles",
             params=params,
             headers=headers,
         )
@@ -342,7 +344,7 @@ def get_organization(org_id: int = 4) -> Optional[schema.Organization]:
     try:
         headers = get_auth_header()
         response = requests.get(
-            f"https://iiop-demo.aatmunn.net/io/api/v3/orgs/{org_id}",
+            f"{BASE_API_URL}/orgs/{org_id}",
             headers=headers,
         )
         response.raise_for_status()
@@ -406,7 +408,7 @@ def get_product_models(org_id: int = 4) -> Optional[str]:
     try:
         headers = get_auth_header()
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/product-models/summary",
+            f"{BASE_API_URL}/product-models/summary",
             params=params,
             headers=headers,
         )
@@ -449,7 +451,7 @@ def get_historical_data(
     try:
         headers = get_auth_header()
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/widget-data/historical-data",
+            f"{BASE_API_URL}/widget-data/historical-data",
             params=params,
             headers=headers,
         )
@@ -531,7 +533,7 @@ def get_form_execution_summary(
     try:
         headers = get_auth_header()
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/form-execution/summary",
+            f"{BASE_API_URL}/form-execution/summary",
             params=params,
             headers=headers,
         )
@@ -599,7 +601,7 @@ def get_areas_needing_attention(
     try:
         headers = get_auth_header()
         response = requests.get(
-            "https://iiop-demo.aatmunn.net/io/api/v3/widget-data/areas-needing-attention",
+            f"{BASE_API_URL}/widget-data/areas-needing-attention",
             params=params,
             headers=headers,
         )
@@ -631,7 +633,7 @@ def get_user_statuses(org_id: int = 4) -> Optional[schema.UserStatusResponse]:
     try:
         headers = get_auth_header()
         response = requests.get(
-            f"https://iiop-demo.aatmunn.net/io/api/v3/orgs/{org_id}/status/USER",
+            f"{BASE_API_URL}/orgs/{org_id}/status/USER",
             headers=headers,
         )
         response.raise_for_status()

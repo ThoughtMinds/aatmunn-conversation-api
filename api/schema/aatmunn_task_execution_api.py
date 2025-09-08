@@ -13,6 +13,12 @@ __all__ = [
     "RoleAccessPermissions",
     "UserRoleData",
     "UserRolesResponse",
+    "WidgetDataUrlResponse",
+    "WidgetType",
+    "WidgetItem",
+    "WidgetContent",
+    "TemplateData",
+    "TemplateResponse",
 ]
 
 class OrgsEntityStatus(BaseModel):
@@ -108,3 +114,63 @@ class UserRoleData(BaseModel):
 
 class UserRolesResponse(BaseModel):
     rolesData: List[UserRoleData]
+
+
+class WidgetDataUrlResponse(BaseModel):
+    name: str
+    url: str
+    protocol: str
+    method: str
+
+
+class WidgetType(BaseModel):
+    id: int
+    name: str
+    desc: str
+    formFactor: str
+    metaData: Optional[str] = None
+    isActive: bool
+
+
+class WidgetItem(BaseModel):
+    sequence: int
+    widgetId: int
+    widgetName: str
+    widgetDesc: str
+    widgetSpecs: str
+    widgetDataUrl: str
+    widgetDataUrlResponses: List[WidgetDataUrlResponse]
+    widgetMetaData: Optional[Any] = None
+    widgetType: WidgetType
+    widgetIsActive: bool
+
+
+class WidgetContent(BaseModel):
+    contentType: str
+    isParent: Optional[bool] = None
+    items: List[WidgetItem]
+
+
+class TemplateData(BaseModel):
+    templateId: int
+    templateName: str
+    templateDesc: str
+    templateFormFactor: str
+    templateType: str
+    parentWidgetId: int
+    parentWidgetName: str
+    templateIsActive: bool
+    orgName: str
+    orgId: int
+    defaultTemplateId: int
+    widgets: List[WidgetContent]
+    createdOn: datetime
+    createdBy: Optional[str] = None
+    updatedOn: datetime
+    updatedBy: Optional[str] = None
+    moduleId: Optional[int] = None
+
+
+class TemplateResponse(BaseModel):
+    data: TemplateData
+    message: str = "SUCCESS"

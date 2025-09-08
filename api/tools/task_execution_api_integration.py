@@ -1,15 +1,20 @@
 import requests
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from api.core.config import settings
 from api.core.logging_config import logger
 from langchain_core.tools import tool
 from api import schema
+from api import aatmunn_task_execution_api
 
 __all__ = [
     "get_navigation_points",
     "get_user_by_id",
     "get_roles_by_user_id",
     "get_role_by_id",
+    "get_product_models",
+    "get_templates_by_module_id",
+    "get_form_execution_summary",
+    "get_areas_needing_attention",
 ]
 
 # Shared base API URL for customer4

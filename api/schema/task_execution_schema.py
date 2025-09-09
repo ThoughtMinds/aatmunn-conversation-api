@@ -23,7 +23,9 @@ __all__ = [
     "RolesResponse",
     "EntitiesResponse",
     "ModulesResponse",
+    "SingleRoleResponse",
 ]
+
 
 class OrgsEntityStatus(BaseModel):
     entityStatus: schema.Status
@@ -228,3 +230,16 @@ class ModulesResponse(BaseModel):
     total: int
     page: int
     size: int
+
+
+class SingleRoleResponse(BaseModel):
+    id: int
+    orgId: int
+    name: str
+    description: str
+    status: schema.Status
+    createdOn: datetime
+    createdBy: str
+    updatedOn: datetime
+    updatedBy: str
+    roleAccessPermissions: RoleAccessPermissions

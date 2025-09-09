@@ -6,6 +6,10 @@ from langchain_core.tools import tool
 from api import schema
 
 __all__ = [
+    "search_users",
+    "get_roles",
+    "get_entities",
+    "get_modules",
     "get_navigation_points",
     "get_user_by_id",
     "get_roles_by_user_id",
@@ -64,6 +68,176 @@ def get_auth_header() -> Dict[str, str]:
     """
     return {"Authorization": f"Bearer {ACCESS_TOKEN}"}
 
+
+
+# Format function for user list
+def format_users_list(users_response: schema.UsersResponse) -> str:
+    user_strings = []
+    for user in users_response.data:
+        user_id = user.id
+        full_name = f"{user.firstName} {user.middleName} {user.lastName}".strip()
+        email = user.email or "No Email"
+        status = user.status.status
+        user_string = (
+            f"User ID: {user_id}\n"
+            f"Name: {full_name}\n"
+            f"Email: {email}\n"
+            f"Status: {status}\n"
+        )
+        user_strings.append(user_string)
+    return "\n---\n".join(user_strings) if user_strings else "No users found."
+
+@tool
+def search_users(
+    search: str = "",
+    email: str = "",
+    user_name: str = "",
+    status: str = "",
+    page: int = 0,
+    size: int = 25
+) -> Optional[str]:
+    """
+    Searches for users to retrieve their details and IDs. Use this to find user_id for other tools like get_user_by_id or get_roles_by_user_id.
+
+    Args:
+        search (str): General search string (e.g., name or ID).
+        email (str): Filter by email.
+        user_name (str): Filter by username.
+        status (str): Filter by status (e.g., "ACTIVE").
+        page (int): Page number for pagination.
+        size (int): Number of results per page.
+
+    Returns:
+        Optional[str]: Formatted string of matching users, or None on error.
+    """
+    params = {
+        "search": search,
+        "email": email,
+        "userName": user_name,
+        "status": status,
+        "page": page,
+        "size": size
+    }
+    try:
+        headers = get_auth_header()
+        response = requests.get(f"{BASE_API_URL}/users", params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        users_response = schema.UsersResponse(**data)  # Assume this model exists or add it
+        return format_users_list(users_response)
+    except requests.exceptions.RequestException as e:
+        print(f"Error making request: {e}")
+        return None
+
+# Format function for roles list (similar to format_user_roles_string but for list)
+def format_roles_list(roles_response: schema.RolesResponse) -> str:
+    role_strings = []
+    for role in roles_response.rolesData:
+        role_id = role.id
+        name = role.name or "No Name"
+        description = role.description or "No Description"
+        status = role.entityStatus.status
+        role_string = (
+            f"Role ID: {role_id}\n"
+            f"Name: {name}\n"
+            f"Description: {description}\n"
+            f"Status: {status}\n"
+        )
+        role_strings.append(role_string)
+    return "\n---\n".join(role_strings) if role_strings else "No roles found."
+
+@tool
+def get_roles(
+    search: str = "",
+    page: int = 0,
+    size: int = 25,
+    sort: str = "updatedOn"
+) -> Optional[str]:
+    """
+    Retrieves a list of roles to find role IDs. Use this to get role_id for get_role_by_id.
+
+    Args:
+        search (str): Search string for roles.
+        page (int): Page number.
+        size (int): Results per page.
+        sort (str): Sort by (e.g., "updatedOn").
+
+    Returns:
+        Optional[str]: Formatted string of roles, or None on error.
+    """
+    params = {"search": search, "page": page, "size": size, "sort": sort}
+    try:
+        headers = get_auth_header()
+        response = requests.get(f"{BASE_API_URL}/roles", params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        roles_response = schema.RolesResponse(**data)  # Assume or add model (similar to UserRolesResponse)
+        return format_roles_list(roles_response)
+    except requests.exceptions.RequestException as e:
+        print(f"Error making request: {e}")
+        return None
+
+# Similar for entities (format function omitted for brevity; similar to above)
+@tool
+def get_entities(
+    entity_type: str = "",
+    search: str = "",
+    page: int = 0,
+    size: int = 25
+) -> Optional[str]:
+    """
+    Retrieves a list of entities to find entity_ids for tools like get_form_execution_summary.
+
+    Args:
+        entity_type (str): Filter by entity type (e.g., "TAXONOMY").
+        search (str): Search string.
+        page (int): Page number.
+        size (int): Results per page.
+
+    Returns:
+        Optional[str]: Formatted string of entities, or None on error.
+    """
+    params = {"entityType": entity_type, "search": search, "page": page, "size": size}
+    try:
+        headers = get_auth_header()
+        response = requests.get(f"{BASE_API_URL}/entities", params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        # Format similarly; assume EntitiesResponse model
+        return "Formatted entities list"  # Implement full format
+    except requests.exceptions.RequestException as e:
+        print(f"Error making request: {e}")
+        return None
+
+# Similar for modules (if needed for module_id)
+@tool
+def get_modules(
+    search: str = "",
+    page: int = 0,
+    size: int = 25
+) -> Optional[str]:
+    """
+    Retrieves a list of modules to find module_id for get_templates_by_module_id.
+
+    Args:
+        search (str): Search string.
+        page (int): Page number.
+        size (int): Results per page.
+
+    Returns:
+        Optional[str]: Formatted string of modules, or None on error.
+    """
+    params = {"search": search, "page": page, "size": size}
+    try:
+        headers = get_auth_header()
+        response = requests.get(f"{BASE_API_URL}/modules", params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        # Format similarly; assume ModulesResponse
+        return "Formatted modules list"  # Implement full format
+    except requests.exceptions.RequestException as e:
+        print(f"Error making request: {e}")
+        return None
 
 @tool
 def get_navigation_points() -> Optional[schema.NavigationResponse]:

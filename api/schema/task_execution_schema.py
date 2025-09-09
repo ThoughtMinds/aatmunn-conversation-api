@@ -19,6 +19,10 @@ __all__ = [
     "WidgetContent",
     "TemplateData",
     "TemplateResponse",
+    "UsersResponse",
+    "RolesResponse",
+    "EntitiesResponse",
+    "ModulesResponse",
 ]
 
 class OrgsEntityStatus(BaseModel):
@@ -174,3 +178,53 @@ class TemplateData(BaseModel):
 class TemplateResponse(BaseModel):
     data: TemplateData
     message: str = "SUCCESS"
+
+
+class UsersResponse(BaseModel):
+    data: List[SingleUserResponse]
+    total: int
+    page: int
+    size: int
+
+
+class RolesResponse(BaseModel):
+    rolesData: List[UserRoleData]
+    total: int
+    page: int
+    size: int
+
+
+class EntityData(BaseModel):
+    entityId: int
+    entityName: str
+    entityType: str
+    status: schema.Status
+    createdOn: datetime
+    createdBy: str
+    updatedOn: datetime
+    updatedBy: str
+
+
+class EntitiesResponse(BaseModel):
+    data: List[EntityData]
+    total: int
+    page: int
+    size: int
+
+
+class ModuleData(BaseModel):
+    id: int
+    name: str
+    description: str
+    active: bool
+    createdOn: datetime
+    createdBy: str
+    updatedOn: datetime
+    updatedBy: str
+
+
+class ModulesResponse(BaseModel):
+    data: List[ModuleData]
+    total: int
+    page: int
+    size: int

@@ -31,7 +31,7 @@ __all__ = [
     "AreaData",
     "AreasNeedingAttentionResponse",
     "UserStatus",
-    "SingleUserResponse"
+    "SingleUserResponse",
     "UserStatusResponse",
     "UserUpdateRequest"
 ]
@@ -319,7 +319,7 @@ class UserStatusResponse(BaseModel):
 
 
 class OrgsEntityStatus(BaseModel):
-    entityStatus: schema.Status
+    entityStatus: Status
     orgId: int
     statusName: str
     id: int

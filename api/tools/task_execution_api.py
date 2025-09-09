@@ -18,6 +18,7 @@ __all__ = [
     "get_templates_by_module_id",
     "get_form_execution_summary",
     "get_areas_needing_attention",
+    "update_user"
 ]
 
 # Shared base API URL for customer4
@@ -89,42 +90,130 @@ def format_users_list(users_response: schema.UsersResponse) -> str:
 
 @tool
 def search_users(
+    size: int = 5,
     search: str = "",
     email: str = "",
-    user_name: str = "",
-    status: str = "",
-    page: int = 0,
-    size: int = 25
+    user_name: str = ""
 ) -> Optional[str]:
     """
-    Searches for users to retrieve their details and IDs. Use this to find user_id for other tools like get_user_by_id or get_roles_by_user_id.
+    Searches for active users in the organization specified by TASK_EXECUTION_ORG_ID to retrieve their details and IDs. Use this to find user_id for other tools like get_user_by_id or get_roles_by_user_id.
 
     Args:
-        search (str): General search string (e.g., name or ID).
-        email (str): Filter by email.
-        user_name (str): Filter by username.
-        status (str): Filter by status (e.g., "ACTIVE").
-        page (int): Page number for pagination.
-        size (int): Number of results per page.
+        size (int): Number of results per page. Defaults to 5.
+        search (str, optional): General search string (e.g., name or ID). Defaults to empty string.
+        email (str, optional): Filter by email. Defaults to empty string.
+        user_name (str, optional): Filter by username. Defaults to empty string.
 
     Returns:
         Optional[str]: Formatted string of matching users, or None on error.
     """
     params = {
+        "orgId": settings.TASK_EXECUTION_ORG_ID,
+        "order": "DESC",
+        "status": "ACTIVE",
+        "page": 0,
+        "size": size,
         "search": search,
         "email": email,
-        "userName": user_name,
-        "status": status,
-        "page": page,
-        "size": size
+        "userName": user_name
     }
     try:
         headers = get_auth_header()
         response = requests.get(f"{BASE_API_URL}/users", params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
-        users_response = schema.UsersResponse(**data)  # Assume this model exists or add it
+        data["total"] = data.pop("totalCount", 0)
+        data["data"] = data.pop("userData", [])
+        users_response = schema.UsersResponse(**data)
         return format_users_list(users_response)
+    except requests.exceptions.RequestException as e:
+        print(f"Error making request: {e}")
+        return None
+
+# New update_user tool
+@tool
+def update_user(
+    user_id: int,
+    first_name: str,
+    last_name: str,
+    user_name: str,
+    email: str,
+    uuid: str,
+    middle_name: str = "",
+    type: str = "USER",
+    job_title: str = "",
+    emp_id: str = "",
+    supervisor: bool = False,
+    contractor_company: Optional[str] = None,
+    emergency_contact_email: str = "",
+    emergency_contact_number: str = "",
+    emergency_contact_relationship: Optional[str] = None,
+    external_reference_id: str = "",
+    profile_image_url: str = "",
+    profile_image_thumbnail_url: str = ""
+) -> Optional[str]:
+    """
+    Updates details of a specific user in the IIOP API (customer4).
+
+    This tool updates user details for a given user ID, using the organization ID from TASK_EXECUTION_ORG_ID.
+
+    Args:
+        user_id (int): The ID of the user to update.
+        first_name (str): The user's first name.
+        last_name (str): The user's last name.
+        user_name (str): The user's username.
+        email (str): The user's email address.
+        uuid (str): The user's unique identifier.
+        middle_name (str, optional): The user's middle name. Defaults to empty string.
+        type (str, optional): The user type (e.g., USER). Defaults to "USER".
+        job_title (str, optional): The user's job title. Defaults to empty string.
+        emp_id (str, optional): The user's employee ID. Defaults to empty string.
+        supervisor (bool, optional): Whether the user is a supervisor. Defaults to False.
+        contractor_company (Optional[str], optional): The contractor company, if applicable. Defaults to None.
+        emergency_contact_email (str, optional): Emergency contact email. Defaults to empty string.
+        emergency_contact_number (str, optional): Emergency contact number. Defaults to empty string.
+        emergency_contact_relationship (Optional[str], optional): Emergency contact relationship. Defaults to None.
+        external_reference_id (str, optional): External reference ID. Defaults to empty string.
+        profile_image_url (str, optional): URL of the user's profile image. Defaults to empty string.
+        profile_image_thumbnail_url (str, optional): URL of the user's profile image thumbnail. Defaults to empty string.
+
+    Returns:
+        Optional[str]: A formatted string confirming the updated user ID, or None on error.
+    """
+    payload = schema.UserUpdateRequest(
+        selectedProducts={"selectedEntities": []},
+        selectedAreas={"selectedEntities": []},
+        firstName=first_name,
+        lastName=last_name,
+        middleName=middle_name,
+        type=type,
+        jobTitle=job_title,
+        empId=emp_id,
+        supervisor=supervisor,
+        contractorCompany=contractor_company,
+        emergencyContactEmail=emergency_contact_email,
+        emergencyContactNumber=emergency_contact_number,
+        emergencyContactRelationship=emergency_contact_relationship,
+        userName=user_name,
+        phone="",
+        email=email,
+        externalReferenceId=external_reference_id,
+        profileImageUrl=profile_image_url,
+        profileImageThumbnailUrl=profile_image_thumbnail_url,
+        orgId=settings.TASK_EXECUTION_ORG_ID,
+        id=user_id,
+        uuid=uuid
+    )
+    try:
+        headers = get_auth_header()
+        response = requests.put(
+            f"{BASE_API_URL}/users/{user_id}",
+            json=payload.dict(),
+            headers=headers
+        )
+        response.raise_for_status()
+        data = response.json()
+        return f"Updated user with ID: {data['id']}"
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None

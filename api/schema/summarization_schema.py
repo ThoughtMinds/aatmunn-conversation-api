@@ -31,7 +31,9 @@ __all__ = [
     "AreaData",
     "AreasNeedingAttentionResponse",
     "UserStatus",
+    "SingleUserResponse"
     "UserStatusResponse",
+    "UserUpdateRequest"
 ]
 
 # Navigation Options
@@ -314,3 +316,78 @@ class UserStatus(BaseModel):
 
 class UserStatusResponse(BaseModel):
     userStatuses: List[UserStatus]
+
+
+class OrgsEntityStatus(BaseModel):
+    entityStatus: schema.Status
+    orgId: int
+    statusName: str
+    id: int
+    createdOn: datetime
+    createdBy: str
+    updatedOn: datetime
+    updatedBy: str
+
+
+class SingleUserResponse(BaseModel):
+    userName: str
+    orgId: int
+    orgsEntityStatus: OrgsEntityStatus
+    ssoProviderName: str
+    workerState: str
+    id: int
+    createdOn: datetime
+    createdBy: str
+    updatedOn: datetime
+    updatedBy: str
+    empId: str
+    firstName: str
+    middleName: str
+    lastName: str
+    jobTitle: str
+    uuid: str
+    phone: str
+    email: str
+    externalReferenceId: str
+    profileImageUrl: str
+    profileImageThumbnailUrl: str
+    locale: Optional[str] = None
+    emergencyContactNumber: str
+    emergencyContactEmail: str
+    emergencyContactRelationship: Optional[str] = None
+    type: str
+    employmentType: Optional[str] = None
+    contractorCompany: Optional[str] = None
+    supervisor: bool
+    status: Status
+    reportingUserId: Optional[int] = None
+    reportingToUserName: Optional[str] = None
+
+
+# ... (other existing classes unchanged)
+
+
+# New model for user update request
+class UserUpdateRequest(BaseModel):
+    selectedProducts: dict = {"selectedEntities": []}
+    selectedAreas: dict = {"selectedEntities": []}
+    firstName: str
+    lastName: str
+    middleName: str = ""
+    type: str = "USER"
+    jobTitle: str = ""
+    empId: str = ""
+    supervisor: bool = False
+    contractorCompany: Optional[str] = None
+    emergencyContactEmail: str = ""
+    emergencyContactNumber: str = ""
+    emergencyContactRelationship: Optional[str] = None
+    userName: str
+    phone: str = ""
+    email: str
+    externalReferenceId: str = ""
+    profileImageUrl: str = ""
+    profileImageThumbnailUrl: str = ""
+    orgId: int
+    id: int
+    uuid: str

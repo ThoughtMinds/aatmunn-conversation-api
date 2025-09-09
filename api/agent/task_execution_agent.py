@@ -39,34 +39,27 @@ chat_model = llm.get_ollama_chat_model()
 
 
 tool_list = [
-    tools.api_integration.get_issues,
-    tools.api_integration.get_navigation_points,
-    tools.api_integration.get_users,
-    tools.api_integration.get_navigation_points,
-    tools.api_integration.get_issues,
-    tools.api_integration.get_users,
-    tools.api_integration.get_roles,
-    tools.api_integration.get_organization,
-    tools.api_integration.get_product_models,
-    tools.api_integration.get_historical_data,
-    tools.api_integration.get_form_execution_summary,
-    tools.api_integration.get_areas_needing_attention,
-    tools.api_integration.get_user_statuses,
+    tools.task_execution_api.get_navigation_points,
+    tools.task_execution_api.get_user_by_id,
+    tools.task_execution_api.get_roles_by_user_id,
+    tools.task_execution_api.get_role_by_id,
+    tools.task_execution_api.get_product_models,
+    tools.task_execution_api.get_templates_by_module_id,
+    tools.task_execution_api.get_form_execution_summary,
+    tools.task_execution_api.get_areas_needing_attention,
 ]
 
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
 tool_dict = {
-    "get_issues": tools.api_integration.get_issues,
-    "get_navigation_points": tools.api_integration.get_navigation_points,
-    "get_users": tools.api_integration.get_users,
-    "get_roles": tools.api_integration.get_roles,
-    "get_organization": tools.api_integration.get_organization,
-    "get_product_models": tools.api_integration.get_product_models,
-    "get_historical_data": tools.api_integration.get_historical_data,
-    "get_form_execution_summary": tools.api_integration.get_form_execution_summary,
-    "get_areas_needing_attention": tools.api_integration.get_areas_needing_attention,
-    "get_user_statuses": tools.api_integration.get_user_statuses,
+    "get_navigation_points": tools.task_execution_api.get_navigation_points,
+    "get_user_by_id": tools.task_execution_api.get_user_by_id,
+    "get_roles_by_user_id": tools.task_execution_api.get_roles_by_user_id,
+    "get_role_by_id": tools.task_execution_api.get_role_by_id,
+    "get_product_models": tools.task_execution_api.get_product_models,
+    "get_templates_by_module_id": tools.task_execution_api.get_templates_by_module_id,
+    "get_form_execution_summary": tools.task_execution_api.get_form_execution_summary,
+    "get_areas_needing_attention": tools.task_execution_api.get_areas_needing_attention,
 }
 
 

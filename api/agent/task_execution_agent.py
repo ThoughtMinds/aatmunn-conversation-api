@@ -5,6 +5,7 @@ from langgraph.graph import StateGraph, END
 from api import db, llm, schema, tools
 from api.core.logging_config import logger
 from sqlmodel import Session
+from langchain_core.tools import tool
 
 
 class ToolCall(BaseModel):
@@ -53,6 +54,18 @@ tool_list = [
     tools.task_execution_api.get_areas_needing_attention,
 ]
 
+@tool
+def list_tool_names():
+    """
+    Lists all available tools
+
+    Returns:
+        str: Formatted string containing all tools.
+    """
+    return tools.list_tool_names(tool_list)
+
+
+tool_list.append(list_tool_names)
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
 tool_dict = {
@@ -68,6 +81,7 @@ tool_dict = {
     "get_templates_by_module_id": tools.task_execution_api.get_templates_by_module_id,
     "get_form_execution_summary": tools.task_execution_api.get_form_execution_summary,
     "get_areas_needing_attention": tools.task_execution_api.get_areas_needing_attention,
+    "list_tool_names": list_tool_names,
 }
 
 

@@ -74,7 +74,7 @@ def get_auth_header() -> Dict[str, str]:
 # Format function for user list
 def format_users_list(users_response: schema.UsersResponse) -> str:
     user_strings = []
-    for user in users_response.data:
+    for user in users_response.userData:
         user_id = user.id
         full_name = f"{user.firstName} {user.middleName} {user.lastName}".strip()
         email = user.email or "No Email"
@@ -123,7 +123,6 @@ def search_users(
         response = requests.get(f"{BASE_API_URL}/users", params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
-        logger.info(f"ACTUAL DATA:\n{data}\n")
         users_response = schema.UsersResponse(**data)
         return format_users_list(users_response)
     except requests.exceptions.RequestException as e:
@@ -353,12 +352,12 @@ def get_navigation_points() -> Optional[schema.NavigationResponse]:
         return None
 
 
-def format_user_string(user_response: schema.SingleUserResponse) -> str:
+def format_user_string(user_response: schema.SingleUserTaskResponse) -> str:
     """
     Constructs a formatted string from relevant user information using Pydantic models.
 
     Args:
-        user_response (SingleUserResponse): Pydantic model containing user data.
+        user_response (SingleUserTaskResponse): Pydantic model containing user data.
 
     Returns:
         str: Formatted string with relevant user details.
@@ -408,7 +407,8 @@ def get_user_by_id(user_id: int = 1196) -> Optional[str]:
         response.raise_for_status()
 
         data = response.json()
-        user_response = schema.SingleUserResponse(**data)
+        logger.critical(data)
+        user_response = schema.SingleUserTaskResponse(**data)
         formatted_user = format_user_string(user_response=user_response)
         return formatted_user
     except requests.exceptions.RequestException as e:

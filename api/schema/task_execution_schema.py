@@ -5,7 +5,7 @@ from api import schema
 
 __all__ = [
     "OrgsEntityStatus",
-    "SingleUserResponse",
+    "SingleUserTaskResponse",
     "ModulePermission",
     "ApplicationPermission",
     "EntityPermission",
@@ -30,41 +30,39 @@ __all__ = [
 class OrgsEntityStatus(BaseModel):
     entityStatus: schema.Status
     orgId: int
-    statusName: str
+    statusName: Optional[str] = None
     id: int
     createdOn: datetime
-    createdBy: str
+    createdBy: Optional[str] = None
     updatedOn: datetime
-    updatedBy: str
+    updatedBy: Optional[str] = None
 
 
-class SingleUserResponse(BaseModel):
-    userName: str
+class SingleUserTaskResponse(BaseModel):
+    userName: Optional[str] = None
     orgId: int
-    orgsEntityStatus: OrgsEntityStatus
-    ssoProviderName: str
-    workerState: str
+    ssoProviderName: Optional[str] = None
+    workerState: Optional[str] = None
     id: int
     createdOn: datetime
-    createdBy: str
+    createdBy: Optional[str] = None
     updatedOn: datetime
-    updatedBy: str
-    empId: str
-    firstName: str
-    middleName: str
-    lastName: str
-    jobTitle: str
-    uuid: str
-    phone: str
-    email: str
-    externalReferenceId: str
-    profileImageUrl: str
-    profileImageThumbnailUrl: str
+    updatedBy: Optional[str] = None
+    firstName: Optional[str] = None
+    middleName: Optional[str] = None
+    lastName: Optional[str] = None
+    jobTitle: Optional[str] = None
+    uuid: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    externalReferenceId: Optional[str] = None
+    profileImageUrl: Optional[str] = None
+    profileImageThumbnailUrl: Optional[str] = None
     locale: Optional[str] = None
-    emergencyContactNumber: str
-    emergencyContactEmail: str
+    emergencyContactNumber: Optional[str] = None
+    emergencyContactEmail: Optional[str] = None
     emergencyContactRelationship: Optional[str] = None
-    type: str
+    type: Optional[str] = None
     employmentType: Optional[str] = None
     contractorCompany: Optional[str] = None
     supervisor: bool
@@ -75,27 +73,27 @@ class SingleUserResponse(BaseModel):
 
 class ModulePermission(BaseModel):
     id: int
-    name: str
-    description: str
+    name: Optional[str] = None
+    description: Optional[str] = None
     active: bool
     setAsHomePage: bool
 
 
 class ApplicationPermission(BaseModel):
     id: int
-    name: str
+    name: Optional[str] = None
     active: bool
 
 
 class EntityPermission(BaseModel):
-    name: str
+    name: Optional[str] = None
     isEnabled: bool
     excludedAttributes: List[str]
 
 
 class EntityAccess(BaseModel):
     entityId: int
-    entityName: str
+    entityName: Optional[str] = None
     permissions: List[EntityPermission]
 
 
@@ -108,14 +106,14 @@ class RoleAccessPermissions(BaseModel):
 
 class UserRoleData(BaseModel):
     orgId: int
-    name: str
-    description: str
+    name: Optional[str] = None
+    description: Optional[str] = None
     entityStatus: schema.Status
     id: int
     createdOn: datetime
-    createdBy: str
+    createdBy: Optional[str] = None
     updatedOn: datetime
-    updatedBy: str
+    updatedBy: Optional[str] = None
 
 
 class UserRolesResponse(BaseModel):
@@ -123,17 +121,17 @@ class UserRolesResponse(BaseModel):
 
 
 class WidgetDataUrlResponse(BaseModel):
-    name: str
-    url: str
-    protocol: str
-    method: str
+    name: Optional[str] = None
+    url: Optional[str] = None
+    protocol: Optional[str] = None
+    method: Optional[str] = None
 
 
 class WidgetType(BaseModel):
     id: int
-    name: str
-    desc: str
-    formFactor: str
+    name: Optional[str] = None
+    desc: Optional[str] = None
+    formFactor: Optional[str] = None
     metaData: Optional[str] = None
     isActive: bool
 
@@ -141,10 +139,10 @@ class WidgetType(BaseModel):
 class WidgetItem(BaseModel):
     sequence: int
     widgetId: int
-    widgetName: str
-    widgetDesc: str
-    widgetSpecs: str
-    widgetDataUrl: str
+    widgetName: Optional[str] = None
+    widgetDesc: Optional[str] = None
+    widgetSpecs: Optional[str] = None
+    widgetDataUrl: Optional[str] = None
     widgetDataUrlResponses: List[WidgetDataUrlResponse]
     widgetMetaData: Optional[Any] = None
     widgetType: WidgetType
@@ -152,21 +150,21 @@ class WidgetItem(BaseModel):
 
 
 class WidgetContent(BaseModel):
-    contentType: str
+    contentType: Optional[str] = None
     isParent: Optional[bool] = None
     items: List[WidgetItem]
 
 
 class TemplateData(BaseModel):
     templateId: int
-    templateName: str
-    templateDesc: str
-    templateFormFactor: str
-    templateType: str
+    templateName: Optional[str] = None
+    templateDesc: Optional[str] = None
+    templateFormFactor: Optional[str] = None
+    templateType: Optional[str] = None
     parentWidgetId: int
-    parentWidgetName: str
+    parentWidgetName: Optional[str] = None
     templateIsActive: bool
-    orgName: str
+    orgName: Optional[str] = None
     orgId: int
     defaultTemplateId: int
     widgets: List[WidgetContent]
@@ -179,44 +177,45 @@ class TemplateData(BaseModel):
 
 class TemplateResponse(BaseModel):
     data: TemplateData
-    message: str = "SUCCESS"
+    message: Optional[str] = None
 
 
 class UserData(BaseModel):
-    empId: str
-    lastName: str
-    jobTitle: str
-    emergencyContactRelationship: Optional[str]
-    locale: Optional[str]
-    type: str
-    uuid: str
+    empId: Optional[str] = None
+    lastName: Optional[str] = None
+    jobTitle: Optional[str] = None
+    emergencyContactRelationship: Optional[str] = None
+    locale: Optional[str] = None
+    type: Optional[str] = None
+    uuid: Optional[str] = None
     createdOn: datetime
     orgId: int
-    externalReferenceId: str
-    profileImageThumbnailUrl: str
-    emergencyContactEmail: str
+    externalReferenceId: Optional[str] = None
+    profileImageThumbnailUrl: Optional[str] = None
+    emergencyContactEmail: Optional[str] = None
     id: int
-    ssoProviderName: str
-    reportingToUserName: Optional[str]
-    profileImageUrl: str
-    email: str
-    contractorCompany: Optional[str]
-    updatedBy: str
-    employmentType: Optional[str]
-    emergencyContactNumber: str
+    ssoProviderName: Optional[str] = None
+    reportingToUserName: Optional[str] = None
+    profileImageUrl: Optional[str] = None
+    email: Optional[str] = None
+    contractorCompany: Optional[str] = None
+    updatedBy: Optional[str] = None
+    employmentType: Optional[str] = None
+    emergencyContactNumber: Optional[str] = None
     reportingUserId: Optional[int]
     updatedOn: datetime
-    userName: str
-    firstName: str
-    phone: str
-    createdBy: str
-    middleName: str
+    userName: Optional[str] = None
+    firstName: Optional[str] = None
+    phone: Optional[str] = None
+    createdBy: Optional[str] = None
+    middleName: Optional[str] = None
     supervisor: bool
     status: schema.Status
 
+
 class UsersResponse(BaseModel):
     totalCount: int
-    message: str
+    message: Optional[str] = None
     userData: List[UserData]
 
 
@@ -229,13 +228,13 @@ class RolesResponse(BaseModel):
 
 class EntityData(BaseModel):
     entityId: int
-    entityName: str
-    entityType: str
+    entityName: Optional[str] = None
+    entityType: Optional[str] = None
     status: schema.Status
     createdOn: datetime
-    createdBy: str
+    createdBy: Optional[str] = None
     updatedOn: datetime
-    updatedBy: str
+    updatedBy: Optional[str] = None
 
 
 class EntitiesResponse(BaseModel):
@@ -247,13 +246,13 @@ class EntitiesResponse(BaseModel):
 
 class ModuleData(BaseModel):
     id: int
-    name: str
-    description: str
+    name: Optional[str] = None
+    description: Optional[str] = None
     active: bool
     createdOn: datetime
-    createdBy: str
+    createdBy: Optional[str] = None
     updatedOn: datetime
-    updatedBy: str
+    updatedBy: Optional[str] = None
 
 
 class ModulesResponse(BaseModel):
@@ -266,11 +265,11 @@ class ModulesResponse(BaseModel):
 class SingleRoleResponse(BaseModel):
     id: int
     orgId: int
-    name: str
-    description: str
+    name: Optional[str] = None
+    description: Optional[str] = None
     status: schema.Status
     createdOn: datetime
-    createdBy: str
+    createdBy: Optional[str] = None
     updatedOn: datetime
-    updatedBy: str
+    updatedBy: Optional[str] = None
     roleAccessPermissions: RoleAccessPermissions

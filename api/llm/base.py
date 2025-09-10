@@ -35,6 +35,7 @@ def with_cached_embeddings(func):
             document_embedding_cache=docs_store,
             query_embedding_cache=query_store,
             namespace="embedding_namespace",
+            key_encoder="sha256",  # Use SHA-256 instead of SHA-1
         )
         return cached_embedder
 

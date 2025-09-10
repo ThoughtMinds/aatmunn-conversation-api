@@ -182,11 +182,42 @@ class TemplateResponse(BaseModel):
     message: str = "SUCCESS"
 
 
+class UserData(BaseModel):
+    empId: str
+    lastName: str
+    jobTitle: str
+    emergencyContactRelationship: Optional[str]
+    locale: Optional[str]
+    type: str
+    uuid: str
+    createdOn: datetime
+    orgId: int
+    externalReferenceId: str
+    profileImageThumbnailUrl: str
+    emergencyContactEmail: str
+    id: int
+    ssoProviderName: str
+    reportingToUserName: Optional[str]
+    profileImageUrl: str
+    email: str
+    contractorCompany: Optional[str]
+    updatedBy: str
+    employmentType: Optional[str]
+    emergencyContactNumber: str
+    reportingUserId: Optional[int]
+    updatedOn: datetime
+    userName: str
+    firstName: str
+    phone: str
+    createdBy: str
+    middleName: str
+    supervisor: bool
+    status: schema.Status
+
 class UsersResponse(BaseModel):
-    data: List[SingleUserResponse]
-    total: int
-    page: int
-    size: int
+    totalCount: int
+    message: str
+    userData: List[UserData]
 
 
 class RolesResponse(BaseModel):

@@ -41,6 +41,7 @@ chat_model = llm.get_ollama_chat_model()
 
 tool_list = [
     tools.task_execution_api.search_users,
+    tools.task_execution_api.update_user,
     tools.task_execution_api.get_roles,
     tools.task_execution_api.get_entities,
     tools.task_execution_api.get_modules,
@@ -70,6 +71,7 @@ TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
 tool_dict = {
     "search_users": tools.task_execution_api.search_users,
+    "update_user": tools.task_execution_api.update_user,
     "get_roles": tools.task_execution_api.get_roles,
     "get_entities": tools.task_execution_api.get_entities,
     "get_modules": tools.task_execution_api.get_modules,

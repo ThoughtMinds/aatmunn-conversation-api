@@ -91,19 +91,20 @@ def format_users_list(users_response: schema.UsersResponse) -> str:
 @tool
 def search_users(
     size: int = 5,
-    search: str = "",
-    email: str = "",
-    user_name: str = ""
+    # search: str = "",
+    # email: str = "",
+    # user_name: str = ""
+    # search (str, optional): General search string (e.g., name or ID). Defaults to empty string.
+    # email (str, optional): Filter by email. Defaults to empty string.
+    # user_name (str, optional): Filter by username. Defaults to empty string.
+
 ) -> Optional[str]:
     """
     Searches for active users in the organization specified by TASK_EXECUTION_ORG_ID to retrieve their details and IDs. Use this to find user_id for other tools like get_user_by_id or get_roles_by_user_id.
 
     Args:
         size (int): Number of results per page. Defaults to 5.
-        search (str, optional): General search string (e.g., name or ID). Defaults to empty string.
-        email (str, optional): Filter by email. Defaults to empty string.
-        user_name (str, optional): Filter by username. Defaults to empty string.
-
+        
     Returns:
         Optional[str]: Formatted string of matching users, or None on error.
     """
@@ -113,17 +114,16 @@ def search_users(
         "status": "ACTIVE",
         "page": 0,
         "size": size,
-        "search": search,
-        "email": email,
-        "userName": user_name
+        # "search": search,
+        # "email": email,
+        # "userName": user_name
     }
     try:
         headers = get_auth_header()
         response = requests.get(f"{BASE_API_URL}/users", params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
-        data["total"] = data.pop("totalCount", 0)
-        data["data"] = data.pop("userData", [])
+        logger.info(f"ACTUAL DATA:\n{data}\n")
         users_response = schema.UsersResponse(**data)
         return format_users_list(users_response)
     except requests.exceptions.RequestException as e:

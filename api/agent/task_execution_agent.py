@@ -219,7 +219,7 @@ def summarize_response(state: AgentState) -> AgentState:
 # Router function to decide between invoke_tools and chained_invoke_tools
 def tool_call_router(state: AgentState) -> str:
     is_chained = state["chained"]
-    logger.info(f"Chained Tool Call: {is_chained}")
+    logger.critical(f"Chained Tool Call: {is_chained}")
 
     if is_chained:
         return "chained_invoke_tools"

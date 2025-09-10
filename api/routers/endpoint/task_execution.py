@@ -29,7 +29,7 @@ async def execute_task(
         schema.TaskResponse: The result of the task execution.
     """
     query, chained = data.query, data.chained
-    logger.info(f"Task Execution Query: {query}")
+    logger.warning(f"Task Execution Query: {query}")
 
     start_time = time()
     try:

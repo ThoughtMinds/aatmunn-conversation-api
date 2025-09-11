@@ -118,6 +118,13 @@ def identify_actions(state: AgentState) -> AgentState:
 
 # Human approval node
 def human_approval(state: AgentState) -> Command[Literal["execute_approved_tools", "user_rejected"]]:
+    # Check if approval is already provided (resumed case)
+    if state.get("user_approved", False):
+        logger.info("Approval already provided, proceeding to execute approved tools")
+        state["requires_approval"] = False
+        return Command(goto="execute_approved_tools")
+    
+    # Initial approval request
     if state.get("requires_approval", False) and state.get("actions_to_review"):
         logger.warning("Triggering Interrupt for approval")
         is_approved = interrupt(state["actions_to_review"])

@@ -6,6 +6,7 @@ from api.core.logging_config import logger
 from typing import Annotated, AsyncGenerator
 from json import dumps
 from uuid import uuid4
+from collections import abc
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
@@ -58,7 +59,8 @@ async def execute_task(
                 initial_state["user_approved"] = resume_action == "approve"
 
             async for event in agent.task_execution_graph.astream(initial_state, config=config):
-                state = list(event.values())[0]  # Get the latest state
+                state = list(event.values())[0]  # Get the first state dictionary
+                logger.debug(f"Event values: {event.values()}, State type: {type(state)}")  # Debug log
                 event_data = {
                     "response": state.get("final_response", ""),
                     "status": state.get("final_response", "") != "",
@@ -126,7 +128,29 @@ async def handle_approval(
             input_update = {"user_approved": approved, "requires_approval": False}
 
             async for event in agent.task_execution_graph.astream(input_update, config=config):
-                state = list(event.values())[0]
+                # Debug the structure of the event
+                logger.critical(event)
+                logger.info(f"Event values: {event.values()}, Type: {type(event.values())}")
+                states = list(event.values())  # Convert dict_values to list
+                if not states:
+                    logger.error("No state values returned from astream")
+                    yield f"data: {dumps({'error': 'No state available'})}"
+                    break
+                
+                state = states[0] if states else {}
+                logger.debug(f"State type after selection: {type(state)}")
+
+                # Handle Interrupt case
+                if hasattr(state, '__interrupt__'):
+                    logger.warning("Encountered interrupt, continuing to next state")
+                    continue  # Skip interrupt and wait for next event
+
+                # Handle case where state might be unexpected
+                if not isinstance(state, dict):
+                    logger.error(f"Unexpected state format: {state}")
+                    yield f"data: {dumps({'error': 'Invalid state format'})}"
+                    break
+
                 event_data = {
                     "response": state.get("final_response", "Approval processed"),
                     "status": True,

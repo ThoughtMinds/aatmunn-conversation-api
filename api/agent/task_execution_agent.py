@@ -9,11 +9,9 @@ from api.core.logging_config import logger
 from sqlmodel import Session
 from langchain_core.tools import tool
 
-
 class ToolCall(BaseModel):
     name: str
     parameters: Dict
-
 
 # Define the state for the LangGraph
 class AgentState(TypedDict):
@@ -27,7 +25,6 @@ class AgentState(TypedDict):
     user_approved: bool
     requires_approval: bool
     actions_to_review: Optional[Dict]
-
 
 # Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
@@ -47,7 +44,6 @@ tool_list = [
     tools.task_execution_api.get_areas_needing_attention,
 ]
 
-
 @tool
 def list_tool_names():
     """
@@ -57,7 +53,6 @@ def list_tool_names():
         str: Formatted string containing all tools.
     """
     return tools.list_tool_names(tool_list)
-
 
 tool_list.append(list_tool_names)
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
@@ -92,7 +87,6 @@ chained_tool_chain = llm.create_chain_for_task(
 NO_RESPONSE = "We could not find any relevant information. Please rephrase the query"
 FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
-
 # Node to identify actions without executing them
 def identify_actions(state: AgentState) -> AgentState:
     session = Session(db.engine)
@@ -122,11 +116,8 @@ def identify_actions(state: AgentState) -> AgentState:
     session.close()
     return state
 
-
 # Human approval node
-def human_approval(
-    state: AgentState,
-) -> Command[Literal["execute_approved_tools", "user_rejected"]]:
+def human_approval(state: AgentState) -> Command[Literal["execute_approved_tools", "user_rejected"]]:
     if state.get("requires_approval", False) and state.get("actions_to_review"):
         logger.warning("Triggering Interrupt for approval")
         is_approved = interrupt(state["actions_to_review"])
@@ -140,14 +131,12 @@ def human_approval(
             return Command(goto="user_rejected")
     return Command(goto="execute_approved_tools")  # Fallback if no approval needed
 
-
 # Node for user rejection
 def user_rejected(state: AgentState) -> AgentState:
     state["final_response"] = "Task execution cancelled by user."
     state["requires_approval"] = False
     state["actions_to_review"] = None
     return state
-
 
 # Node to execute approved tools
 def execute_approved_tools(state: AgentState) -> AgentState:
@@ -173,7 +162,6 @@ def execute_approved_tools(state: AgentState) -> AgentState:
         session.close()
 
     return state
-
 
 # Chained Tool Calling Node
 def chained_invoke_tools(state: AgentState) -> AgentState:
@@ -233,7 +221,6 @@ def chained_invoke_tools(state: AgentState) -> AgentState:
 
     return state
 
-
 # Node to summarize the tool response
 def summarize_response(state: AgentState) -> AgentState:
     if state["final_response"]:
@@ -247,13 +234,11 @@ def summarize_response(state: AgentState) -> AgentState:
     logger.info(f"Summarized Response: {state['summarized_response']}")
     return state
 
-
 # Router function
 def tool_call_router(state: AgentState) -> str:
     is_chained = state["chained"]
     logger.critical(f"Chained Tool Call: {is_chained}")
     return "chained_invoke_tools" if is_chained else "identify_actions"
-
 
 # Define the workflow
 workflow = StateGraph(AgentState)
@@ -293,4 +278,3 @@ workflow.add_edge("summarize_response", END)
 # Compile the graph with checkpointing
 memory = MemorySaver()
 task_execution_graph = workflow.compile(checkpointer=memory)
-# Chained, summarize

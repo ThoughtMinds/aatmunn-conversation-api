@@ -218,7 +218,6 @@ export default function TaskExecutionPage() {
         <p className="text-muted-foreground">AI powered task execution</p>
       </div>
 
-      {/* Task Creation */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -236,40 +235,27 @@ export default function TaskExecutionPage() {
                 placeholder="Enter task name..."
                 value={taskName}
                 onChange={(e) => setTaskName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !loading) {
-                    handleStartTask()
-                  }
-                }}
+                onKeyDown={(e) => e.key === "Enter" && handleStartTask()}
               />
-              <Button onClick={handleStartTask} disabled={loading || !taskName.trim()}>
-                {loading ? "Starting..." : "Start Task"}
+              <Button 
+                onClick={handleStartTask} 
+                disabled={!taskName.trim() || !!eventSourceRef.current} // Disable when task is running
+                className={(!taskName.trim() || !!eventSourceRef.current) ? "opacity-50 cursor-not-allowed" : ""}
+              >
+                Start Task
               </Button>
             </div>
             <div className="flex items-center space-x-2 pt-2">
               <Checkbox id="chained" checked={chained} onCheckedChange={(checked) => setChained(Boolean(checked))} />
-              <label
-                htmlFor="chained"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
+              <label htmlFor="chained" className="text-sm font-medium leading-none">
                 Chained
               </label>
             </div>
-            {loading && (
-              <div className="flex items-center gap-2">
-                <Badge variant="default" className="bg-blue-500">
-                  Running
-                </Badge>
-                <span className="text-sm text-muted-foreground">Task is being processed...</span>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Task Result */}
       {result && (
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -277,39 +263,46 @@ export default function TaskExecutionPage() {
                 {getStatusIcon()}
                 Task Execution Result
               </span>
-              {result.output && (
+              {result.response && (
                 <Button variant="outline" size="sm" onClick={copyOutput}>
                   <Copy className="h-4 w-4 mr-2" />
                   Copy Output
                 </Button>
               )}
             </CardTitle>
-            <CardDescription>Execution result for task: "{result.taskName}"</CardDescription>
+            <CardDescription>Execution result for task: "{taskName}"</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Task Details */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Task ID</Label>
-                <p className="text-sm font-mono">{result.taskId}</p>
+                <p className="text-sm font-mono">{result.thread_id || "N/A"}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Status</Label>
-                <Badge className={getStatusColor()}>{result.status}</Badge>
+                <Badge className={getStatusColor()}>
+                  {result.error
+                    ? "Failed"
+                    : result.requires_approval
+                    ? "Awaiting Approval"
+                    : result.response
+                    ? "Completed"
+                    : "Running"}
+                </Badge>
               </div>
             </div>
 
-            {/* Metadata */}
-            <div className="flex items-center gap-4 pt-2 border-t">
-              <Badge variant="outline">Processing Time: {result.processing_time}s</Badge>
-            </div>
+            {result.processing_time && (
+              <div className="flex items-center gap-4 pt-2 border-t">
+                <Badge variant="outline">Processing Time: {result.processing_time}s</Badge>
+              </div>
+            )}
 
-            {/* Task Output or Error */}
-            {result.status === "completed" && result.output && (
+            {result.response && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Task Output</Label>
                 <div className="p-4 bg-muted/50 rounded-lg border font-mono text-sm">
-                  {result.output.map((line, index) => (
+                  {result.response.split("\n").map((line, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <span className="text-muted-foreground min-w-[20px]">{index + 1}.</span>
                       <span>{line}</span>
@@ -319,17 +312,65 @@ export default function TaskExecutionPage() {
               </div>
             )}
 
-            {result.status === "failed" && result.errorMessage && (
+            {result.error && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-red-600">Error Details</Label>
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-800">{result.errorMessage}</p>
+                  <p className="text-sm text-red-800">{result.error}</p>
+                </div>
+              </div>
+            )}
+
+            {result.requires_approval && result.actions_to_review && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-yellow-600">Awaiting Approval</Label>
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    Please review and approve the actions in the dialog above.
+                  </p>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      {approvalDialogOpen && currentApprovalRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-4xl mx-auto max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4 text-black">Action Approval Required</h3>
+            <p className="mb-4 text-black">{currentApprovalRequest.question}</p>
+            <div className="mb-4">
+              <h4 className="font-medium mb-2 text-black">Query: {currentApprovalRequest.query}</h4>
+              <div className="space-y-2">
+                {currentApprovalRequest.actions.map((action, index) => (
+                  <div key={index} className="p-3 border rounded-md">
+                    <p className="font-medium text-green-600">{action.tool}</p>
+                    <p className="text-sm text-black">{action.description}</p>
+                    <pre className="text-xs mt-2 bg-muted p-2 rounded overflow-x-auto text-orange-600">
+                      {JSON.stringify(action.parameters, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button 
+                onClick={handleApprove} 
+                className="bg-green-500 text-white hover:bg-green-600"
+              >
+                Approve
+              </Button>
+              <Button 
+                onClick={handleReject} 
+                className="bg-red-500 text-white hover:bg-red-600"
+              >
+                Reject
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }

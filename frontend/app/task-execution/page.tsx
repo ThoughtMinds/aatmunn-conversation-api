@@ -30,7 +30,6 @@ interface ApprovalRequest {
 interface TaskResult {
   response?: string;
   status?: boolean;
-  processing_time?: number;
   thread_id?: string;
   requires_approval?: boolean;
   actions_to_review?: ApprovalRequest;
@@ -97,7 +96,7 @@ export default function TaskExecutionPage() {
     };
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!result?.thread_id) return;
 
     const eventSource = new EventSource(
@@ -110,7 +109,7 @@ export default function TaskExecutionPage() {
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
       setResult((prev) => ({ ...prev, ...data, requires_approval: false, actions_to_review: null }));
-      setApprovalDialogOpen(false); // Collapse the view
+      setApprovalDialogOpen(false);
 
       if (data.response) {
         toast({
@@ -118,9 +117,10 @@ export default function TaskExecutionPage() {
           description: "Task execution completed successfully",
           className: "bg-green-50 border-green-200 text-green-800",
         });
+      } else if (!data.response && data.thread_id) {
+        // Fallback to get final response if not in stream
+        fetchFinalResponse();
       }
-      eventSource.close();
-      eventSourceRef.current = null;
     };
 
     eventSource.onerror = () => {
@@ -131,10 +131,11 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
+      fetchFinalResponse(); // Fallback on error
     };
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!result?.thread_id) return;
 
     const eventSource = new EventSource(
@@ -147,7 +148,7 @@ export default function TaskExecutionPage() {
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
       setResult((prev) => ({ ...prev, ...data, requires_approval: false, actions_to_review: null }));
-      setApprovalDialogOpen(false); // Collapse the view
+      setApprovalDialogOpen(false);
 
       if (data.response) {
         toast({
@@ -156,8 +157,6 @@ export default function TaskExecutionPage() {
           className: "bg-yellow-50 border-yellow-200 text-yellow-800",
         });
       }
-      eventSource.close();
-      eventSourceRef.current = null;
     };
 
     eventSource.onerror = () => {
@@ -169,6 +168,38 @@ export default function TaskExecutionPage() {
       eventSource.close();
       eventSourceRef.current = null;
     };
+  };
+
+  const fetchFinalResponse = async () => {
+    if (!result?.thread_id) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/task_execution/get_final_response/?thread_id=${result.thread_id}`,
+        { credentials: "include" }
+      );
+      const data = await response.json();
+      if (data.error) {
+        toast({
+          title: "Fetch Failed",
+          description: data.error,
+          className: "bg-red-50 border-red-200 text-red-800",
+        });
+      } else {
+        setResult((prev) => ({ ...prev, ...data, requires_approval: false, actions_to_review: null }));
+        toast({
+          title: "Task Completed",
+          description: "Final response fetched successfully",
+          className: "bg-green-50 border-green-200 text-green-800",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fetch Error",
+        description: "Failed to fetch final response",
+        className: "bg-red-50 border-red-200 text-red-800",
+      });
+    }
   };
 
   const copyOutput = () => {
@@ -239,7 +270,7 @@ export default function TaskExecutionPage() {
               />
               <Button 
                 onClick={handleStartTask} 
-                disabled={!taskName.trim() || !!eventSourceRef.current} // Disable when task is running
+                disabled={!taskName.trim() || !!eventSourceRef.current} 
                 className={(!taskName.trim() || !!eventSourceRef.current) ? "opacity-50 cursor-not-allowed" : ""}
               >
                 Start Task
@@ -292,22 +323,11 @@ export default function TaskExecutionPage() {
               </div>
             </div>
 
-            {result.processing_time && (
-              <div className="flex items-center gap-4 pt-2 border-t">
-                <Badge variant="outline">Processing Time: {result.processing_time}s</Badge>
-              </div>
-            )}
-
             {result.response && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Task Output</Label>
-                <div className="p-4 bg-muted/50 rounded-lg border font-mono text-sm">
-                  {result.response.split("\n").map((line, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <span className="text-muted-foreground min-w-[20px]">{index + 1}.</span>
-                      <span>{line}</span>
-                    </div>
-                  ))}
+                <div className="p-4 bg-muted/50 rounded-lg border font-mono text-sm whitespace-pre-wrap">
+                  {result.response}
                 </div>
               </div>
             )}

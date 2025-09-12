@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from api import db, schema, agent
+from api import db, agent
 from sqlmodel import Session
 from api.core.logging_config import logger
 from typing import Annotated, AsyncGenerator
 from json import dumps
 from uuid import uuid4
+from langgraph.types import Command
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
@@ -26,8 +27,8 @@ async def execute_task(
     """
     Execute a task for a given query using Server-Sent Events (SSE).
 
-    This endpoint streams the task execution process, including intermediate states and interruptions
-    for human approval, using SSE.
+    Streams the task execution process, including interruptions for human approval,
+    and resumes execution based on user input.
 
     Args:
         session (SessionDep): The database session dependency.
@@ -43,55 +44,57 @@ async def execute_task(
     thread_id = thread_id or uuid4().hex
 
     async def stream_task_execution() -> AsyncGenerator[str, None]:
-
         try:
             config = {"configurable": {"thread_id": thread_id}}
 
+            # Initial state for new execution
             initial_state = {
                 "query": query,
                 "chained": chained,
                 "tool_calls": [],
                 "identified_actions": [],
                 "tool_response": "",
-                "summarized_response": "",
                 "final_response": "",
                 "user_approved": False,
                 "requires_approval": False,
                 "actions_to_review": None,
             }
 
-            if thread_id and resume_action is not None:
-                initial_state["user_approved"] = resume_action == "approve"
-
-            async for event in agent.task_execution_graph.astream(
-                initial_state, config=config
-            ):
-
-                state = list(event.values())[0]  # Get the first state dictionary
-                event_data = {
-                    "response": state.get("final_response", ""),
-                    "status": state.get("final_response", "") != "",
-                    "processing_time": 0,  # To be updated with actual time
-                    "thread_id": thread_id,
-                    "requires_approval": state.get("requires_approval", False),
-                    "actions_to_review": state.get("actions_to_review"),
-                }
-
-                # Send intermediate state
-                yield f"data: {dumps(event_data, default=lambda o: '<object>')}\n\n"
-                logger.info(f"Streamed event: {event_data}")
-
-                # If approval is required, wait for user input (handled client-side)
-                if state.get("requires_approval", False):
-                    logger.warning("Approval required, awaiting user decision")
-                    break  # Pause streaming until approval is received
-
-                # If final response is set, end the stream
-                if state.get("final_response", "") and not state.get(
-                    "requires_approval", False
-                ):
-                    logger.info("Task execution completed")
-                    break
+            if resume_action is not None:
+                # Resume graph with user approval decision
+                resume_value = resume_action.lower() == "approve"
+                command = Command(resume=resume_value)
+                async for event in agent.task_execution_graph.astream(command, config=config):
+                    state = list(event.values())[0]
+                    event_data = {
+                        "response": state.get("final_response", ""),
+                        "status": bool(state.get("final_response", "")),
+                        "thread_id": thread_id,
+                        "requires_approval": state.get("requires_approval", False),
+                        "actions_to_review": state.get("actions_to_review"),
+                    }
+                    yield f"data: {dumps(event_data)}\n\n"
+                    if state.get("final_response", "") and not state.get("requires_approval", False):
+                        break
+            else:
+                # Start new execution with initial state
+                async for event in agent.task_execution_graph.astream(initial_state, config=config):
+                    state = list(event.values())[0]
+                    event_data = {
+                        "response": state.get("final_response", ""),
+                        "status": bool(state.get("final_response", "")),
+                        "thread_id": thread_id,
+                        "requires_approval": state.get("requires_approval", False),
+                        "actions_to_review": state.get("actions_to_review"),
+                    }
+                    yield f"data: {dumps(event_data)}\n\n"
+                    if state.get("requires_approval", False):
+                        # Pause streaming until approval is received
+                        logger.warning("Approval required, awaiting user decision")
+                        break
+                    if state.get("final_response", "") and not state.get("requires_approval", False):
+                        logger.info("Task execution completed")
+                        break
 
         except Exception as e:
             error_msg = {"error": str(e)}
@@ -121,6 +124,8 @@ async def handle_approval(
     """
     Handle user approval/rejection of actions using SSE.
 
+    Resumes the workflow with the user's approval decision.
+
     Args:
         session (SessionDep): The database session dependency.
         thread_id (str): The thread ID to resume.
@@ -134,43 +139,18 @@ async def handle_approval(
     async def stream_approval_result() -> AsyncGenerator[str, None]:
         try:
             config = {"configurable": {"thread_id": thread_id}}
-            input_update = {"user_approved": approved, "requires_approval": False}
-            async for event in agent.task_execution_graph.astream(
-                input_update, config=config
-            ):
-
-                logger.critical(event)
-                logger.info(
-                    f"Event values: {event.values()}, Type: {type(event.values())}"
-                )
-                states = list(event.values())
-                if not states:
-                    logger.error("No state values returned from astream")
-                    yield f"data: {dumps({'error': 'No state available'})}"
-                    continue
-                state = states[0] if states else {}
-                logger.debug(f"State type after selection: {type(state)}")
-                if state is None:
-                    logger.warning("Received None state, waiting for next event")
-                    continue
-                elif not isinstance(state, dict):
-                    logger.error(f"Unexpected state format: {state}")
-                    yield f"data: {dumps({'error': 'Invalid state format'})}"
-                    continue  # Continue instead of break to avoid premature exit
+            command = Command(resume=approved)
+            async for event in agent.task_execution_graph.astream(command, config=config):
+                state = list(event.values())[0]
                 event_data = {
                     "response": state.get("final_response", "Approval processed"),
                     "status": True,
-                    "processing_time": 0,
                     "thread_id": thread_id,
                     "requires_approval": state.get("requires_approval", False),
                     "actions_to_review": state.get("actions_to_review"),
                 }
-                yield f"data: {dumps(event_data, default=lambda o: '<object>')}\n\n"
-                logger.info(f"Streamed approval result: {event_data}")
-                # Only break if the workflow has reached END and final_response is set
-                if state.get("final_response", "") and not state.get(
-                    "requires_approval", False
-                ):
+                yield f"data: {dumps(event_data)}\n\n"
+                if state.get("final_response", "") and not state.get("requires_approval", False):
                     logger.info("Approval process completed")
                     break
         except Exception as e:

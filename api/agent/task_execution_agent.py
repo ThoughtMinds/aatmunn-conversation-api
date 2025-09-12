@@ -51,9 +51,7 @@ def list_tool_names():
 tool_list.append(list_tool_names)
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
-
 tool_dict = {tool.name: tool for tool in tool_list}
-
 
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 
@@ -65,9 +63,11 @@ FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
 # Node to identify actions without executing them
 def identify_actions(state: AgentState) -> AgentState:
+    # TODO: Replace with actual LLM call to identify tool calls
     # response = llm_with_tools.invoke(state["query"])
     # state["identified_actions"] = response.tool_calls or []
-    # TODO: Uncomment
+
+    # Temporary hardcoded example for demonstration
     state["identified_actions"] = [
         {
             "name": "search_users",
@@ -79,7 +79,6 @@ def identify_actions(state: AgentState) -> AgentState:
 
     if not state["identified_actions"]:
         logger.info("No tool call detected!")
-        # logger.error(f"NoToolCall: {response.content}")
         state["final_response"] = NO_RESPONSE
     else:
         logger.info(f"Found {len(state['identified_actions'])} actions to approve")
@@ -100,19 +99,21 @@ def identify_actions(state: AgentState) -> AgentState:
     return state
 
 
-# Human approval node
+# Human approval node using LangGraph interrupt
 def human_approval(state: AgentState) -> AgentState:
-    # Check if approval is already provided (resumed case or prior approval)
+    # If approval already provided (resumed), proceed
     if state.get("user_approved", False):
         logger.info("Approval already provided, proceeding to execute approved tools")
         state["requires_approval"] = False
         state["actions_to_review"] = None
-        return state  # Return updated state instead of Command
+        return state
 
-    # Initial approval request
+    # If approval is required and actions to review exist, pause for human input
     if state.get("requires_approval", False) and state.get("actions_to_review"):
-        logger.warning("Triggering Interrupt for approval")
+        logger.warning("Triggering interrupt for approval")
         is_approved = interrupt(state["actions_to_review"])
+
+        # After resuming, interrupt returns the human input (True/False)
         if is_approved:
             state["user_approved"] = True
             state["requires_approval"] = False
@@ -124,20 +125,12 @@ def human_approval(state: AgentState) -> AgentState:
             state["actions_to_review"] = None
             state["final_response"] = "Task execution cancelled by user."
             return state
-    return state  # Return unchanged state if no action needed
 
-
-# Node for user rejection (now handled in human_approval)
-def user_rejected(state: AgentState) -> AgentState:
-    state["final_response"] = "Task execution cancelled by user."
-    state["requires_approval"] = False
-    state["actions_to_review"] = None
     return state
 
 
 # Node to execute approved tools
 def execute_approved_tools(state: AgentState) -> AgentState:
-    session = Session(db.engine)
     state["tool_response"] = ""
 
     try:
@@ -147,38 +140,33 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             if func is None:
                 raise Exception(f"Function not found: {name}")
             logger.info(f"Executing approved tool: {name} | Args: {args}")
-            args["session"] = session
             response = func.invoke(args)
             logger.info(f"Tool Response:\n{response}")
             response_string = dumps(response)
             state["tool_response"] += f"{name}: {response_string}\n"
-        state["final_response"] = state[
-            "tool_response"
-        ]  # Set tool response as final response
+        state["final_response"] = state["tool_response"]
     except Exception as e:
         logger.error(f"Tool execution failed due to: {e}")
         state["final_response"] = FALLBACK_RESPONSE
-    finally:
-        session.close()
 
     return state
 
 
-# Router function
+# Router function to determine entry point
 def tool_call_router(state: AgentState) -> str:
     is_chained = state["chained"]
     logger.critical(f"Chained Tool Call: {is_chained}")
-    return "identify_actions"  # Always route to identify_actions since chaining is deferred
+    # Always route to identify_actions first
+    return "identify_actions"
 
 
-# Define the workflow
+# Define the workflow graph
 workflow = StateGraph(AgentState)
 
 # Add nodes
 workflow.add_node("identify_actions", identify_actions)
 workflow.add_node("human_approval", human_approval)
 workflow.add_node("execute_approved_tools", execute_approved_tools)
-workflow.add_node("user_rejected", user_rejected)
 
 # Set conditional entry point
 workflow.set_conditional_entry_point(
@@ -195,15 +183,14 @@ workflow.add_conditional_edges(
     lambda state: (
         "execute_approved_tools"
         if state.get("user_approved", False)
-        else "user_rejected"
+        else END
     ),
     {
         "execute_approved_tools": "execute_approved_tools",
-        "user_rejected": "user_rejected",
+        END: END,
     },
 )
 workflow.add_edge("execute_approved_tools", END)
-workflow.add_edge("user_rejected", END)
 
 # Compile the graph with checkpointing
 memory = MemorySaver()

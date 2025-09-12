@@ -239,8 +239,8 @@ export default function TestingModule() {
       try {
         const predictedJson = JSON.parse(result.predicted_response.replace(/'/g, '"'))
         const actualJson = JSON.parse(result.actual_response.replace(/'/g, '"'))
-        const predictedStr = JSON.stringify(predictedJson)
-        const actualStr = JSON.stringify(actualJson)
+        const predictedStr = JSON.stringify(predictedJson, null, 0)
+        const actualStr = JSON.stringify(actualJson, null, 0)
         return predictedStr === actualStr 
           ? "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300" 
           : "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300"
@@ -290,7 +290,7 @@ export default function TestingModule() {
         <Card>
           <CardHeader>
             <CardTitle>File Preview</CardTitle>
-            <CardDescription>Review the test cases before running</CardDescription>
+            <CardDescription>Review the test cases before running. For task_execution, include 'chained=true' in Directives for chained execution.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="border rounded-lg overflow-hidden dark:border-gray-700">
@@ -382,7 +382,7 @@ export default function TestingModule() {
                       <th className="text-left p-3 font-medium">Predicted Response</th>
                       <th className="text-left p-3 font-medium">Actual Response</th>
                       <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Summarization Analysis</th>
+                      <th className="text-left p-3 font-medium">Analysis</th>
                       <th className="text-left p-3 font-medium">Score</th>
                       <th className="text-left p-3 font-medium">TAT</th>
                     </tr>

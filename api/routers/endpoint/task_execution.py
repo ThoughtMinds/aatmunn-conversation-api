@@ -6,10 +6,10 @@ from api.core.logging_config import logger
 from typing import Annotated, AsyncGenerator
 from json import dumps
 from uuid import uuid4
-from collections import abc
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
+
 
 @router.get("/execute_task/", response_model=None)
 async def execute_task(
@@ -39,6 +39,7 @@ async def execute_task(
     thread_id = thread_id or uuid4().hex
 
     async def stream_task_execution() -> AsyncGenerator[str, None]:
+        
         try:
             config = {"configurable": {"thread_id": thread_id}}
 
@@ -59,8 +60,8 @@ async def execute_task(
                 initial_state["user_approved"] = resume_action == "approve"
 
             async for event in agent.task_execution_graph.astream(initial_state, config=config):
+                
                 state = list(event.values())[0]  # Get the first state dictionary
-                logger.debug(f"Event values: {event.values()}, State type: {type(state)}")  # Debug log
                 event_data = {
                     "response": state.get("final_response", ""),
                     "status": state.get("final_response", "") != "",
@@ -123,15 +124,9 @@ async def handle_approval(
 
     async def stream_approval_result() -> AsyncGenerator[str, None]:
         try:
-            
-            COUNT = 1
-            
             config = {"configurable": {"thread_id": thread_id}}
             input_update = {"user_approved": approved, "requires_approval": False}
             async for event in agent.task_execution_graph.astream(input_update, config=config):
-                
-                logger.info(f"COUNT: {COUNT}")
-                COUNT += 1
                 
                 logger.critical(event)
                 logger.info(f"Event values: {event.values()}, Type: {type(event.values())}")

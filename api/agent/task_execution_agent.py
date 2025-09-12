@@ -9,9 +9,11 @@ from api.core.logging_config import logger
 from sqlmodel import Session
 from langchain_core.tools import tool
 
+
 class ToolCall(BaseModel):
     name: str
     parameters: Dict
+
 
 # Define the state for the LangGraph
 class AgentState(TypedDict):
@@ -26,23 +28,25 @@ class AgentState(TypedDict):
     requires_approval: bool
     actions_to_review: Optional[Dict]
 
+
 # Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
 tool_list = [
     tools.task_execution_api.search_users,
     tools.task_execution_api.update_user,
-    tools.task_execution_api.get_roles,
-    tools.task_execution_api.get_entities,
-    tools.task_execution_api.get_modules,
-    tools.task_execution_api.get_navigation_points,
+    # tools.task_execution_api.get_roles,
+    # tools.task_execution_api.get_entities,
+    # tools.task_execution_api.get_modules,
+    # tools.task_execution_api.get_navigation_points,
     tools.task_execution_api.get_user_by_id,
-    tools.task_execution_api.get_roles_by_user_id,
-    tools.task_execution_api.get_role_by_id,
-    tools.task_execution_api.get_product_models,
-    tools.task_execution_api.get_templates_by_module_id,
-    tools.task_execution_api.get_form_execution_summary,
-    tools.task_execution_api.get_areas_needing_attention,
+    # tools.task_execution_api.get_roles_by_user_id,
+    # tools.task_execution_api.get_role_by_id,
+    # tools.task_execution_api.get_product_models,
+    # tools.task_execution_api.get_templates_by_module_id,
+    # tools.task_execution_api.get_form_execution_summary,
+    # tools.task_execution_api.get_areas_needing_attention,
 ]
+
 
 @tool
 def list_tool_names():
@@ -54,25 +58,13 @@ def list_tool_names():
     """
     return tools.list_tool_names(tool_list)
 
+
 tool_list.append(list_tool_names)
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
-tool_dict = {
-    "search_users": tools.task_execution_api.search_users,
-    "update_user": tools.task_execution_api.update_user,
-    "get_roles": tools.task_execution_api.get_roles,
-    "get_entities": tools.task_execution_api.get_entities,
-    "get_modules": tools.task_execution_api.get_modules,
-    "get_navigation_points": tools.task_execution_api.get_navigation_points,
-    "get_user_by_id": tools.task_execution_api.get_user_by_id,
-    "get_roles_by_user_id": tools.task_execution_api.get_roles_by_user_id,
-    "get_role_by_id": tools.task_execution_api.get_role_by_id,
-    "get_product_models": tools.task_execution_api.get_product_models,
-    "get_templates_by_module_id": tools.task_execution_api.get_templates_by_module_id,
-    "get_form_execution_summary": tools.task_execution_api.get_form_execution_summary,
-    "get_areas_needing_attention": tools.task_execution_api.get_areas_needing_attention,
-    "list_tool_names": list_tool_names,
-}
+
+tool_dict = {tool.name: tool for tool in tool_list}
+
 
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 
@@ -87,9 +79,9 @@ chained_tool_chain = llm.create_chain_for_task(
 NO_RESPONSE = "We could not find any relevant information. Please rephrase the query"
 FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
+
 # Node to identify actions without executing them
 def identify_actions(state: AgentState) -> AgentState:
-    session = Session(db.engine)
     response = llm_with_tools.invoke(state["query"])
     state["identified_actions"] = response.tool_calls or []
 

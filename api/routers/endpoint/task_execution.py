@@ -170,3 +170,18 @@ async def handle_approval(
             "X-Accel-Buffering": "no",
         },
     )
+
+@router.get("/get_final_response/", response_model=None)
+async def get_final_response(
+    thread_id: str = Query(..., description="The thread ID to fetch the final response for"),
+):
+    try:
+        config = {"configurable": {"thread_id": thread_id}}
+        state_snapshot = agent.task_execution_graph.get_state(config)
+        final_response = state_snapshot.values.get("final_response", None)
+        if final_response is None:
+            return {"error": "No final_response found for the given thread_id"}
+        return {"final_response": final_response}
+    except Exception as e:
+        logger.error(f"Error fetching final_response for thread {thread_id}: {e}")
+        return {"error": str(e)}

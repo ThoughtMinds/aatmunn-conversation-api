@@ -105,17 +105,18 @@ def identify_actions(state: AgentState) -> AgentState:
             ],
             "query": state["query"],
         }
-    session.close()
     return state
 
+
 # Human approval node
-def human_approval(state: AgentState) -> Command[Literal["execute_approved_tools", "user_rejected"]]:
-    # Check if approval is already provided (resumed case)
+def human_approval(state: AgentState) -> AgentState:
+    # Check if approval is already provided (resumed case or prior approval)
     if state.get("user_approved", False):
         logger.info("Approval already provided, proceeding to execute approved tools")
         state["requires_approval"] = False
-        return Command(goto="execute_approved_tools")
-    
+        state["actions_to_review"] = None
+        return state  # Return updated state instead of Command
+
     # Initial approval request
     if state.get("requires_approval", False) and state.get("actions_to_review"):
         logger.warning("Triggering Interrupt for approval")
@@ -123,19 +124,25 @@ def human_approval(state: AgentState) -> Command[Literal["execute_approved_tools
         if is_approved:
             state["user_approved"] = True
             state["requires_approval"] = False
-            return Command(goto="execute_approved_tools")
+            state["actions_to_review"] = None
+            return state
         else:
             state["user_approved"] = False
             state["requires_approval"] = False
-            return Command(goto="user_rejected")
-    return Command(goto="execute_approved_tools")  # Fallback if no approval needed
+            state["actions_to_review"] = None
+            state["final_response"] = "Task execution cancelled by user."
+            return state
+    return state  # Return unchanged state if no action needed
 
-# Node for user rejection
+
+# Node for user rejection (now handled in human_approval)
 def user_rejected(state: AgentState) -> AgentState:
+    # This node is now redundant since rejection is handled in human_approval
     state["final_response"] = "Task execution cancelled by user."
     state["requires_approval"] = False
     state["actions_to_review"] = None
     return state
+
 
 # Node to execute approved tools
 def execute_approved_tools(state: AgentState) -> AgentState:
@@ -161,6 +168,7 @@ def execute_approved_tools(state: AgentState) -> AgentState:
         session.close()
 
     return state
+
 
 # Chained Tool Calling Node
 def chained_invoke_tools(state: AgentState) -> AgentState:
@@ -220,6 +228,7 @@ def chained_invoke_tools(state: AgentState) -> AgentState:
 
     return state
 
+
 # Node to summarize the tool response
 def summarize_response(state: AgentState) -> AgentState:
     if state["final_response"]:
@@ -233,11 +242,13 @@ def summarize_response(state: AgentState) -> AgentState:
     logger.info(f"Summarized Response: {state['summarized_response']}")
     return state
 
+
 # Router function
 def tool_call_router(state: AgentState) -> str:
     is_chained = state["chained"]
     logger.critical(f"Chained Tool Call: {is_chained}")
     return "chained_invoke_tools" if is_chained else "identify_actions"
+
 
 # Define the workflow
 workflow = StateGraph(AgentState)
@@ -246,7 +257,9 @@ workflow = StateGraph(AgentState)
 workflow.add_node("identify_actions", identify_actions)
 workflow.add_node("human_approval", human_approval)
 workflow.add_node("execute_approved_tools", execute_approved_tools)
-workflow.add_node("user_rejected", user_rejected)
+workflow.add_node(
+    "user_rejected", user_rejected
+)  # Kept for completeness, though redundant
 workflow.add_node("chained_invoke_tools", chained_invoke_tools)
 workflow.add_node("summarize_response", summarize_response)
 
@@ -263,7 +276,11 @@ workflow.set_conditional_entry_point(
 workflow.add_edge("identify_actions", "human_approval")
 workflow.add_conditional_edges(
     "human_approval",
-    lambda state: "execute_approved_tools" if state.get("user_approved", False) else "user_rejected",
+    lambda state: (
+        "execute_approved_tools"
+        if state.get("user_approved", False)
+        else "user_rejected"
+    ),
     {
         "execute_approved_tools": "execute_approved_tools",
         "user_rejected": "user_rejected",

@@ -135,18 +135,16 @@ async def handle_approval(
                 if not states:
                     logger.error("No state values returned from astream")
                     yield f"data: {dumps({'error': 'No state available'})}"
-                    break
+                    continue  # Continue to next event instead of breaking
                 
                 state = states[0] if states else {}
                 logger.debug(f"State type after selection: {type(state)}")
 
-                # Handle Interrupt case
-                if hasattr(state, '__interrupt__'):
-                    logger.warning("Encountered interrupt, continuing to next state")
-                    continue  # Skip interrupt and wait for next event
-
                 # Handle case where state might be unexpected
-                if not isinstance(state, dict):
+                if state is None:
+                    logger.warning("Received None state, waiting for next event")
+                    continue  # Skip None and wait for next state
+                elif not isinstance(state, dict):
                     logger.error(f"Unexpected state format: {state}")
                     yield f"data: {dumps({'error': 'Invalid state format'})}"
                     break

@@ -16,8 +16,12 @@ async def execute_task(
     session: SessionDep,
     query: str = Query(..., description="The user's query"),
     chained: bool = Query(False, description="Whether to use chained tool calls"),
-    thread_id: str = Query(None, description="Optional thread ID for resuming execution"),
-    resume_action: str = Query(None, description="Resume action (approve/reject) if resuming")
+    thread_id: str = Query(
+        None, description="Optional thread ID for resuming execution"
+    ),
+    resume_action: str = Query(
+        None, description="Resume action (approve/reject) if resuming"
+    ),
 ) -> StreamingResponse:
     """
     Execute a task for a given query using Server-Sent Events (SSE).
@@ -39,7 +43,7 @@ async def execute_task(
     thread_id = thread_id or uuid4().hex
 
     async def stream_task_execution() -> AsyncGenerator[str, None]:
-        
+
         try:
             config = {"configurable": {"thread_id": thread_id}}
 
@@ -59,8 +63,10 @@ async def execute_task(
             if thread_id and resume_action is not None:
                 initial_state["user_approved"] = resume_action == "approve"
 
-            async for event in agent.task_execution_graph.astream(initial_state, config=config):
-                
+            async for event in agent.task_execution_graph.astream(
+                initial_state, config=config
+            ):
+
                 state = list(event.values())[0]  # Get the first state dictionary
                 event_data = {
                     "response": state.get("final_response", ""),
@@ -70,7 +76,7 @@ async def execute_task(
                     "requires_approval": state.get("requires_approval", False),
                     "actions_to_review": state.get("actions_to_review"),
                 }
-                
+
                 # Send intermediate state
                 yield f"data: {dumps(event_data, default=lambda o: '<object>')}\n\n"
                 logger.info(f"Streamed event: {event_data}")
@@ -81,7 +87,9 @@ async def execute_task(
                     break  # Pause streaming until approval is received
 
                 # If final response is set, end the stream
-                if state.get("final_response", "") and not state.get("requires_approval", False):
+                if state.get("final_response", "") and not state.get(
+                    "requires_approval", False
+                ):
                     logger.info("Task execution completed")
                     break
 
@@ -103,11 +111,12 @@ async def execute_task(
         },
     )
 
+
 @router.get("/handle_approval/", response_model=None)
 async def handle_approval(
     session: SessionDep,
     thread_id: str = Query(..., description="The thread ID to resume"),
-    approved: bool = Query(..., description="Whether to approve the actions")
+    approved: bool = Query(..., description="Whether to approve the actions"),
 ) -> StreamingResponse:
     """
     Handle user approval/rejection of actions using SSE.
@@ -126,10 +135,14 @@ async def handle_approval(
         try:
             config = {"configurable": {"thread_id": thread_id}}
             input_update = {"user_approved": approved, "requires_approval": False}
-            async for event in agent.task_execution_graph.astream(input_update, config=config):
-                
+            async for event in agent.task_execution_graph.astream(
+                input_update, config=config
+            ):
+
                 logger.critical(event)
-                logger.info(f"Event values: {event.values()}, Type: {type(event.values())}")
+                logger.info(
+                    f"Event values: {event.values()}, Type: {type(event.values())}"
+                )
                 states = list(event.values())
                 if not states:
                     logger.error("No state values returned from astream")
@@ -155,7 +168,9 @@ async def handle_approval(
                 yield f"data: {dumps(event_data, default=lambda o: '<object>')}\n\n"
                 logger.info(f"Streamed approval result: {event_data}")
                 # Only break if the workflow has reached END and final_response is set
-                if state.get("final_response", "") and not state.get("requires_approval", False):
+                if state.get("final_response", "") and not state.get(
+                    "requires_approval", False
+                ):
                     logger.info("Approval process completed")
                     break
         except Exception as e:

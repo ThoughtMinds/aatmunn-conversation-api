@@ -246,9 +246,9 @@ export default function TaskExecutionPage() {
               </Button>
             </div>
             <div className="flex items-center space-x-2 pt-2">
-              <Checkbox id="chained" checked={chained} onCheckedChange={(checked) => setChained(Boolean(checked))} />
-              <label htmlFor="chained" className="text-sm font-medium leading-none">
-                Chained
+              <Checkbox id="chained" checked={chained} onCheckedChange={(checked) => setChained(Boolean(checked))} disabled />
+              <label htmlFor="chained" className="text-sm font-medium leading-none text-gray-400">
+                Chained (Coming Soon)
               </label>
             </div>
           </div>

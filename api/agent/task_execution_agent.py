@@ -1,10 +1,10 @@
-from typing import AsyncGenerator, Dict, TypedDict, Union, List, Literal, Optional
+from typing import Dict, TypedDict, Optional
 from pydantic import BaseModel
-from json import dumps, loads
+from json import dumps
 from langgraph.graph import StateGraph, END
-from langgraph.types import interrupt, Command
+from langgraph.types import interrupt
 from langgraph.checkpoint.memory import MemorySaver
-from api import db, llm, schema, tools
+from api import db, llm, tools
 from api.core.logging_config import logger
 from sqlmodel import Session
 from langchain_core.tools import tool
@@ -22,7 +22,6 @@ class AgentState(TypedDict):
     tool_calls: list
     identified_actions: list
     tool_response: str
-    summarized_response: str
     final_response: str
     user_approved: bool
     requires_approval: bool
@@ -34,17 +33,7 @@ chat_model = llm.get_ollama_chat_model()
 tool_list = [
     tools.task_execution_api.search_users,
     tools.task_execution_api.update_user,
-    # tools.task_execution_api.get_roles,
-    # tools.task_execution_api.get_entities,
-    # tools.task_execution_api.get_modules,
-    # tools.task_execution_api.get_navigation_points,
     tools.task_execution_api.get_user_by_id,
-    # tools.task_execution_api.get_roles_by_user_id,
-    # tools.task_execution_api.get_role_by_id,
-    # tools.task_execution_api.get_product_models,
-    # tools.task_execution_api.get_templates_by_module_id,
-    # tools.task_execution_api.get_form_execution_summary,
-    # tools.task_execution_api.get_areas_needing_attention,
 ]
 
 
@@ -69,12 +58,6 @@ tool_dict = {tool.name: tool for tool in tool_list}
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 
 llm_with_tools = chat_model.bind_tools(tool_list)
-summarize_chain = llm.create_chain_for_task(task="summarization", llm=chat_model)
-chained_tool_chain = llm.create_chain_for_task(
-    task="chained tool call",
-    llm=chat_model,
-    output_schema=schema.ChainedToolCall,
-)
 
 NO_RESPONSE = "We could not find any relevant information. Please rephrase the query"
 FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
@@ -82,12 +65,21 @@ FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
 # Node to identify actions without executing them
 def identify_actions(state: AgentState) -> AgentState:
-    response = llm_with_tools.invoke(state["query"])
-    state["identified_actions"] = response.tool_calls or []
+    # response = llm_with_tools.invoke(state["query"])
+    # state["identified_actions"] = response.tool_calls or []
+    # TODO: Uncomment
+    state["identified_actions"] = [
+        {
+            "name": "search_users",
+            "args": {"size": 2},
+            "id": "80e90a74-9566-4870-aec7-9cf7650bf982",
+            "type": "tool_call",
+        }
+    ]
 
     if not state["identified_actions"]:
         logger.info("No tool call detected!")
-        logger.error(f"NoToolCall: {response.content}")
+        # logger.error(f"NoToolCall: {response.content}")
         state["final_response"] = NO_RESPONSE
     else:
         logger.info(f"Found {len(state['identified_actions'])} actions to approve")
@@ -137,7 +129,6 @@ def human_approval(state: AgentState) -> AgentState:
 
 # Node for user rejection (now handled in human_approval)
 def user_rejected(state: AgentState) -> AgentState:
-    # This node is now redundant since rejection is handled in human_approval
     state["final_response"] = "Task execution cancelled by user."
     state["requires_approval"] = False
     state["actions_to_review"] = None
@@ -158,9 +149,12 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             logger.info(f"Executing approved tool: {name} | Args: {args}")
             args["session"] = session
             response = func.invoke(args)
-            logger.info(f"Tool Response: {response}")
+            logger.info(f"Tool Response:\n{response}")
             response_string = dumps(response)
-            state["tool_response"] += f"{name}: {response_string}"
+            state["tool_response"] += f"{name}: {response_string}\n"
+        state["final_response"] = state[
+            "tool_response"
+        ]  # Set tool response as final response
     except Exception as e:
         logger.error(f"Tool execution failed due to: {e}")
         state["final_response"] = FALLBACK_RESPONSE
@@ -170,84 +164,11 @@ def execute_approved_tools(state: AgentState) -> AgentState:
     return state
 
 
-# Chained Tool Calling Node
-def chained_invoke_tools(state: AgentState) -> AgentState:
-    session = Session(db.engine)
-    action_context = {"previous_results": [], "already_executed": []}
-    user_query = state["query"]
-
-    state["tool_response"] = ""
-
-    try:
-        iter_cnt = 0
-        while True:
-            if iter_cnt == 3:
-                break
-            iter_cnt += 1
-            logger.info({"query": user_query, "context": dumps(action_context)})
-            try:
-                tool_call: schema.ChainedToolCall = chained_tool_chain.invoke(
-                    {
-                        "query": user_query,
-                        "context": dumps(action_context),
-                        "available_actions": TOOL_DESCRIPTION,
-                    }
-                )
-                logger.info(f"Chained Response: {tool_call}")
-            except Exception as e:
-                logger.error(f"Invalid JSON in chained response: {e}")
-                break
-
-            if tool_call == {}:
-                break
-
-            name = tool_call.name
-            args = tool_call.parameters.copy()
-            func = tool_dict.get(name)
-            if func is None:
-                raise Exception(f"Function not found: {name}")
-            logger.info(f"Tool: {name} | Args: {args}")
-            args["session"] = session
-            tool_response = func.invoke(args)
-            logger.info(f"Tool Response: {tool_response}")
-            response_string = dumps(tool_response)
-            tool_response_str = f"{name}: {response_string}"
-
-            action_context["already_executed"].append(tool_call.model_dump())
-            action_context["previous_results"].append(tool_response_str)
-
-            state["tool_response"] += tool_response_str + "\n"
-    except Exception as e:
-        logger.error(f"Chained tool invocation failed due to: {e}")
-        state["final_response"] = FALLBACK_RESPONSE
-    finally:
-        session.close()
-
-    if not state["tool_response"]:
-        state["final_response"] = NO_RESPONSE
-
-    return state
-
-
-# Node to summarize the tool response
-def summarize_response(state: AgentState) -> AgentState:
-    if state["final_response"]:
-        return state
-
-    response = summarize_chain.invoke(
-        {"query": state["query"], "tool_response": state["tool_response"]}
-    )
-    state["summarized_response"] = response.content
-    state["final_response"] = response.content
-    logger.info(f"Summarized Response: {state['summarized_response']}")
-    return state
-
-
 # Router function
 def tool_call_router(state: AgentState) -> str:
     is_chained = state["chained"]
     logger.critical(f"Chained Tool Call: {is_chained}")
-    return "chained_invoke_tools" if is_chained else "identify_actions"
+    return "identify_actions"  # Always route to identify_actions since chaining is deferred
 
 
 # Define the workflow
@@ -257,18 +178,13 @@ workflow = StateGraph(AgentState)
 workflow.add_node("identify_actions", identify_actions)
 workflow.add_node("human_approval", human_approval)
 workflow.add_node("execute_approved_tools", execute_approved_tools)
-workflow.add_node(
-    "user_rejected", user_rejected
-)  # Kept for completeness, though redundant
-workflow.add_node("chained_invoke_tools", chained_invoke_tools)
-workflow.add_node("summarize_response", summarize_response)
+workflow.add_node("user_rejected", user_rejected)
 
 # Set conditional entry point
 workflow.set_conditional_entry_point(
     tool_call_router,
     {
         "identify_actions": "identify_actions",
-        "chained_invoke_tools": "chained_invoke_tools",
     },
 )
 
@@ -286,10 +202,8 @@ workflow.add_conditional_edges(
         "user_rejected": "user_rejected",
     },
 )
-workflow.add_edge("execute_approved_tools", "summarize_response")
-workflow.add_edge("chained_invoke_tools", "summarize_response")
+workflow.add_edge("execute_approved_tools", END)
 workflow.add_edge("user_rejected", END)
-workflow.add_edge("summarize_response", END)
 
 # Compile the graph with checkpointing
 memory = MemorySaver()

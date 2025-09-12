@@ -123,47 +123,46 @@ async def handle_approval(
 
     async def stream_approval_result() -> AsyncGenerator[str, None]:
         try:
+            
+            COUNT = 1
+            
             config = {"configurable": {"thread_id": thread_id}}
-            # Use a partial state update to set user_approved without overwriting the checkpoint
             input_update = {"user_approved": approved, "requires_approval": False}
-
             async for event in agent.task_execution_graph.astream(input_update, config=config):
-                # Debug the structure of the event
+                
+                logger.info(f"COUNT: {COUNT}")
+                COUNT += 1
+                
                 logger.critical(event)
                 logger.info(f"Event values: {event.values()}, Type: {type(event.values())}")
-                states = list(event.values())  # Convert dict_values to list
+                states = list(event.values())
                 if not states:
                     logger.error("No state values returned from astream")
                     yield f"data: {dumps({'error': 'No state available'})}"
-                    continue  # Continue to next event instead of breaking
-                
+                    continue
                 state = states[0] if states else {}
                 logger.debug(f"State type after selection: {type(state)}")
-
-                # Handle case where state might be unexpected
                 if state is None:
                     logger.warning("Received None state, waiting for next event")
-                    continue  # Skip None and wait for next state
+                    continue
                 elif not isinstance(state, dict):
                     logger.error(f"Unexpected state format: {state}")
                     yield f"data: {dumps({'error': 'Invalid state format'})}"
-                    break
-
+                    continue  # Continue instead of break to avoid premature exit
                 event_data = {
                     "response": state.get("final_response", "Approval processed"),
                     "status": True,
-                    "processing_time": 0,  # To be updated with actual time
+                    "processing_time": 0,
                     "thread_id": thread_id,
-                    "requires_approval": False,
-                    "actions_to_review": None,
+                    "requires_approval": state.get("requires_approval", False),
+                    "actions_to_review": state.get("actions_to_review"),
                 }
                 yield f"data: {dumps(event_data, default=lambda o: '<object>')}\n\n"
                 logger.info(f"Streamed approval result: {event_data}")
-
-                if state.get("final_response", ""):
+                # Only break if the workflow has reached END and final_response is set
+                if state.get("final_response", "") and not state.get("requires_approval", False):
                     logger.info("Approval process completed")
                     break
-
         except Exception as e:
             error_msg = {"error": str(e)}
             logger.error(f"Approval stream error: {e}")

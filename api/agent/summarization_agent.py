@@ -81,7 +81,9 @@ chained_tool_chain = llm.create_chain_for_task(
     output_schema=schema.ChainedToolCall,
 )
 content_moderation_chain = llm.create_chain_for_task(
-    task="content moderation", llm=cache_chat_model, output_schema=schema.ContentValidation
+    task="content moderation",
+    llm=cache_chat_model,
+    output_schema=schema.ContentValidation,
 )
 
 NO_SUMMARY_RESPONSE = (

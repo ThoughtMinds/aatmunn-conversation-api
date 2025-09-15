@@ -45,16 +45,14 @@ def with_cached_embeddings(func):
     return wrapper
 
 
-def get_ollama_chat_model(cache: bool=False):
+def get_ollama_chat_model(cache: bool = False):
     """Initialize an Ollama Chat Model for LLM inference
 
     Returns:
         ChatOllama: Ollam Chat Model
     """
     return ChatOllama(
-        base_url=settings.OLLAMA_BASE_URL,
-        model=settings.OLLAMA_CHAT_MODEL,
-        cache=cache
+        base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_CHAT_MODEL, cache=cache
     )
 
 
@@ -67,7 +65,7 @@ def get_ollama_chat_fallback_model():
     return ChatOllama(
         base_url=settings.OLLAMA_BASE_URL,
         model=settings.OLLAMA_CHAT_FALLBACK_MODEL,
-        cache=False
+        cache=False,
     )
 
 

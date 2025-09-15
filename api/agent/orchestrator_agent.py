@@ -6,9 +6,8 @@ from api.core.logging_config import logger
 
 
 chat_model = llm.get_ollama_chat_model(cache=True)
-orchestrator_chain = llm.create_chain_for_task(
-    task="orchestration", llm=chat_model
-)
+orchestrator_chain = llm.create_chain_for_task(task="orchestration", llm=chat_model)
+
 
 class State(TypedDict):
     """

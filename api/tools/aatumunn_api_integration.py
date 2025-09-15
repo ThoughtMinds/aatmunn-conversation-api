@@ -129,52 +129,54 @@ def search_users(
         return None
 
 
-# New update_user tool
 @tool
 def update_user(
     user_id: int,
-    first_name: str,
-    last_name: str,
-    user_name: str,
-    email: str,
-    uuid: str,
-    middle_name: str = "",
-    type: str = "USER",
-    job_title: str = "",
-    emp_id: str = "",
-    supervisor: bool = False,
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    middle_name: Optional[str] = None,
+    type: Optional[str] = None,
+    job_title: Optional[str] = None,
+    emp_id: Optional[str] = None,
+    supervisor: Optional[bool] = None,
     contractor_company: Optional[str] = None,
-    emergency_contact_email: str = "",
-    emergency_contact_number: str = "",
+    emergency_contact_email: Optional[str] = None,
+    emergency_contact_number: Optional[str] = None,
     emergency_contact_relationship: Optional[str] = None,
-    external_reference_id: str = "",
-    profile_image_url: str = "",
-    profile_image_thumbnail_url: str = "",
+    user_name: Optional[str] = None,
+    phone: Optional[str] = None,
+    email: Optional[str] = None,
+    external_reference_id: Optional[str] = None,
+    profile_image_url: Optional[str] = None,
+    profile_image_thumbnail_url: Optional[str] = None,
+    uuid: Optional[str] = None,
 ) -> Optional[str]:
     """
     Updates details of a specific user in the IIOP API (customer4).
 
     This tool updates user details for a given user ID, using the organization ID from TASK_EXECUTION_ORG_ID.
+    All fields except user_id are optional, allowing partial updates as supported by the API.
 
     Args:
         user_id (int): The ID of the user to update.
-        first_name (str): The user's first name.
-        last_name (str): The user's last name.
-        user_name (str): The user's username.
-        email (str): The user's email address.
-        uuid (str): The user's unique identifier.
-        middle_name (str, optional): The user's middle name. Defaults to empty string.
-        type (str, optional): The user type (e.g., USER). Defaults to "USER".
-        job_title (str, optional): The user's job title. Defaults to empty string.
-        emp_id (str, optional): The user's employee ID. Defaults to empty string.
-        supervisor (bool, optional): Whether the user is a supervisor. Defaults to False.
-        contractor_company (Optional[str], optional): The contractor company, if applicable. Defaults to None.
-        emergency_contact_email (str, optional): Emergency contact email. Defaults to empty string.
-        emergency_contact_number (str, optional): Emergency contact number. Defaults to empty string.
-        emergency_contact_relationship (Optional[str], optional): Emergency contact relationship. Defaults to None.
-        external_reference_id (str, optional): External reference ID. Defaults to empty string.
-        profile_image_url (str, optional): URL of the user's profile image. Defaults to empty string.
-        profile_image_thumbnail_url (str, optional): URL of the user's profile image thumbnail. Defaults to empty string.
+        first_name (Optional[str]): The user's first name.
+        last_name (Optional[str]): The user's last name.
+        middle_name (Optional[str]): The user's middle name.
+        type (Optional[str]): The user type (e.g., USER or WORKER).
+        job_title (Optional[str]): The user's job title.
+        emp_id (Optional[str]): The user's employee ID.
+        supervisor (Optional[bool]): Whether the user is a supervisor.
+        contractor_company (Optional[str]): The contractor company, if applicable.
+        emergency_contact_email (Optional[str]): Emergency contact email.
+        emergency_contact_number (Optional[str]): Emergency contact number.
+        emergency_contact_relationship (Optional[str]): Emergency contact relationship.
+        user_name (Optional[str]): The user's username.
+        phone (Optional[str]): The user's phone number.
+        email (Optional[str]): The user's email address.
+        external_reference_id (Optional[str]): External reference ID.
+        profile_image_url (Optional[str]): URL of the user's profile image.
+        profile_image_thumbnail_url (Optional[str]): URL of the user's profile image thumbnail.
+        uuid (Optional[str]): The user's unique identifier.
 
     Returns:
         Optional[str]: A formatted string confirming the updated user ID, or None on error.
@@ -188,13 +190,13 @@ def update_user(
         type=type,
         jobTitle=job_title,
         empId=emp_id,
-        supervisor=supervisor,
+        supervisor=supervisor if supervisor is not None else False,
         contractorCompany=contractor_company,
         emergencyContactEmail=emergency_contact_email,
         emergencyContactNumber=emergency_contact_number,
         emergencyContactRelationship=emergency_contact_relationship,
         userName=user_name,
-        phone="",
+        phone=phone,
         email=email,
         externalReferenceId=external_reference_id,
         profileImageUrl=profile_image_url,
@@ -206,7 +208,9 @@ def update_user(
     try:
         headers = get_auth_header()
         response = requests.put(
-            f"{BASE_API_URL}/users/{user_id}", json=payload.dict(), headers=headers
+            f"{BASE_API_URL}/users/{user_id}",
+            json=payload.dict(exclude_none=True),
+            headers=headers,
         )
         response.raise_for_status()
         data = response.json()

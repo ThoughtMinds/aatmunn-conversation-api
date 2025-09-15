@@ -5,6 +5,7 @@ from langgraph.graph import StateGraph, END
 from api import db, llm, schema, tools
 from api.core.logging_config import logger
 from sqlmodel import Session
+from langchain_core.tools import tool
 
 
 class ToolCall(BaseModel):
@@ -41,35 +42,34 @@ chat_model = llm.get_ollama_chat_model()
 cache_chat_model = llm.get_ollama_chat_model(cache=True)
 
 tool_list = [
-    tools.summarization_api.get_issues,
-    tools.summarization_api.get_navigation_points,
-    tools.summarization_api.get_users,
-    tools.summarization_api.get_navigation_points,
-    tools.summarization_api.get_issues,
-    tools.summarization_api.get_users,
-    tools.summarization_api.get_roles,
-    tools.summarization_api.get_organization,
-    tools.summarization_api.get_product_models,
-    tools.summarization_api.get_historical_data,
-    tools.summarization_api.get_form_execution_summary,
-    tools.summarization_api.get_areas_needing_attention,
-    tools.summarization_api.get_user_statuses,
+    tools.aatumunn_api_integration.search_users,
+    tools.aatumunn_api_integration.update_user,
+    tools.aatumunn_api_integration.get_user_by_id,
+    tools.aatumunn_api_integration.get_navigation_points,
+    tools.aatumunn_api_integration.get_navigation_points,
+    tools.aatumunn_api_integration.get_roles,
+    tools.aatumunn_api_integration.get_product_models,
+    tools.aatumunn_api_integration.get_form_execution_summary,
+    tools.aatumunn_api_integration.get_areas_needing_attention,
 ]
+
+
+@tool
+def list_tool_names():
+    """
+    Lists all available tools
+
+    Returns:
+        str: Formatted string containing all tools.
+    """
+    return tools.list_tool_names(tool_list)
+
+
+tool_list.append(list_tool_names)
 
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
-tool_dict = {
-    "get_issues": tools.summarization_api.get_issues,
-    "get_navigation_points": tools.summarization_api.get_navigation_points,
-    "get_users": tools.summarization_api.get_users,
-    "get_roles": tools.summarization_api.get_roles,
-    "get_organization": tools.summarization_api.get_organization,
-    "get_product_models": tools.summarization_api.get_product_models,
-    "get_historical_data": tools.summarization_api.get_historical_data,
-    "get_form_execution_summary": tools.summarization_api.get_form_execution_summary,
-    "get_areas_needing_attention": tools.summarization_api.get_areas_needing_attention,
-    "get_user_statuses": tools.summarization_api.get_user_statuses,
-}
+tool_dict = {tool.name: tool for tool in tool_list}
 
 
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
@@ -237,7 +237,7 @@ def moderate_content(state: AgentState) -> AgentState:
 # Router function to decide between invoke_tools and chained_invoke_tools
 def tool_call_router(state: AgentState) -> str:
     is_chained = state["chained"]
-    logger.info(f"Chained Tool Call: {is_chained}")
+    logger.warning(f"Chained Tool Call: {is_chained}")
 
     if is_chained:
         return "chained_invoke_tools"

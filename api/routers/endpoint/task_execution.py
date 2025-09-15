@@ -64,7 +64,9 @@ async def execute_task(
                 # Resume graph with user approval decision
                 resume_value = resume_action.lower() == "approve"
                 command = Command(resume=resume_value)
-                async for event in agent.task_execution_graph.astream(command, config=config):
+                async for event in agent.task_execution_graph.astream(
+                    command, config=config
+                ):
                     state = list(event.values())[0]
                     event_data = {
                         "response": state.get("final_response", ""),
@@ -74,11 +76,15 @@ async def execute_task(
                         "actions_to_review": state.get("actions_to_review"),
                     }
                     yield f"data: {dumps(event_data)}\n\n"
-                    if state.get("final_response", "") and not state.get("requires_approval", False):
+                    if state.get("final_response", "") and not state.get(
+                        "requires_approval", False
+                    ):
                         break
             else:
                 # Start new execution with initial state
-                async for event in agent.task_execution_graph.astream(initial_state, config=config):
+                async for event in agent.task_execution_graph.astream(
+                    initial_state, config=config
+                ):
                     state = list(event.values())[0]
                     event_data = {
                         "response": state.get("final_response", ""),
@@ -92,7 +98,9 @@ async def execute_task(
                         # Pause streaming until approval is received
                         logger.warning("Approval required, awaiting user decision")
                         break
-                    if state.get("final_response", "") and not state.get("requires_approval", False):
+                    if state.get("final_response", "") and not state.get(
+                        "requires_approval", False
+                    ):
                         logger.info("Task execution completed")
                         break
 
@@ -140,7 +148,9 @@ async def handle_approval(
         try:
             config = {"configurable": {"thread_id": thread_id}}
             command = Command(resume=approved)
-            async for event in agent.task_execution_graph.astream(command, config=config):
+            async for event in agent.task_execution_graph.astream(
+                command, config=config
+            ):
                 state = list(event.values())[0]
                 event_data = {
                     "response": state.get("final_response", "Approval processed"),
@@ -150,7 +160,9 @@ async def handle_approval(
                     "actions_to_review": state.get("actions_to_review"),
                 }
                 yield f"data: {dumps(event_data)}\n\n"
-                if state.get("final_response", "") and not state.get("requires_approval", False):
+                if state.get("final_response", "") and not state.get(
+                    "requires_approval", False
+                ):
                     logger.info("Approval process completed")
                     break
         except Exception as e:
@@ -171,9 +183,12 @@ async def handle_approval(
         },
     )
 
+
 @router.get("/get_final_response/", response_model=None)
 async def get_final_response(
-    thread_id: str = Query(..., description="The thread ID to fetch the final response for"),
+    thread_id: str = Query(
+        ..., description="The thread ID to fetch the final response for"
+    ),
 ):
     try:
         config = {"configurable": {"thread_id": thread_id}}

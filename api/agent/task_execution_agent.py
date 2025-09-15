@@ -181,9 +181,7 @@ workflow.add_edge("identify_actions", "human_approval")
 workflow.add_conditional_edges(
     "human_approval",
     lambda state: (
-        "execute_approved_tools"
-        if state.get("user_approved", False)
-        else END
+        "execute_approved_tools" if state.get("user_approved", False) else END
     ),
     {
         "execute_approved_tools": "execute_approved_tools",

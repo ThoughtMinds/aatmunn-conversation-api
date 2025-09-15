@@ -5,7 +5,6 @@ from io import BytesIO
 import time
 import json
 import asyncio
-import aiohttp
 from api.core.logging_config import logger
 from api import agent, db, llm, schema
 from sqlmodel import Session
@@ -25,8 +24,6 @@ chat_model = llm.get_ollama_chat_model()
 score_chain = llm.create_chain_for_task(
     task="summary score", llm=chat_model, output_schema=schema.ScoreResponse
 )
-
-API_BASE_URL = "http://localhost:8000"
 
 
 @router.get("/run_tests_stream/")
@@ -117,195 +114,195 @@ async def run_tests(
         try:
             df = pd.read_excel(BytesIO(file_content))
 
-            async with aiohttp.ClientSession() as http_session:
-                for index, row in df.iterrows():
-                    start_time = time.time()
-                    query = row.get("Input", "")
-                    expected_intent = row.get("Actual Intent", "")
-                    expected_response = row.get("Actual Response", "")
-                    directives = row.get("Directives", "")
+            for index, row in df.iterrows():
+                start_time = time.time()
+                query = row.get("Input", "")
+                expected_intent = row.get("Actual Intent", "")
+                expected_response = row.get("Actual Response", "")
+                directives = row.get("Directives", "")
 
-                    if not query or not expected_intent:
-                        await test_queue.put(
-                            {
-                                "error": f"Invalid row {index + 1}: Missing query or expected intent"
+                if not query or not expected_intent:
+                    await test_queue.put(
+                        {
+                            "error": f"Invalid row {index + 1}: Missing query or expected intent"
+                        }
+                    )
+                    continue
+
+                orch_response = await agent.get_orchestrator_response(query)
+
+                predicted_intent = orch_response.category if orch_response else "error"
+                logger.info(
+                    f"{index+1}) Input: {query} | Predicted: {predicted_intent} | Actual: {expected_intent}"
+                )
+
+                predicted_response = ""
+                summarization_analysis = ""
+                summarization_score = None
+                status = "Failure"
+
+                if predicted_intent != expected_intent:
+                    status = "Failure"
+                else:
+                    status = "Success"
+                    try:
+                        if predicted_intent == "navigation":
+                            logger.info(f"[[Navigation]]")
+                            graph_result = await agent.navigation_graph.ainvoke(
+                                {"query": query}
+                            )
+                            nav = graph_result["navigation"]
+                            predicted_response_id = nav.id
+                            predicted_response = db.get_intent_name_by_chroma_id_db(
+                                chroma_id=predicted_response_id, session=session
+                            )
+                            if predicted_response != expected_response:
+                                status = "Failure"
+
+                        elif predicted_intent == "summarization":
+                            logger.info(f"[[Summarization]]")
+                            chained = False
+                            initial_state = {
+                                "query": query,
+                                "chained": chained,
+                                "tool_calls": [],
+                                "tool_response": "",
+                                "summarized_response": "",
+                                "is_moderated": False,
+                                "final_response": "",
                             }
+                            graph_result = await agent.summarization_graph.ainvoke(
+                                initial_state
+                            )
+                            predicted_response = graph_result["final_response"]
+                            is_moderated = graph_result["is_moderated"]
+                            summarized = graph_result["summarized_response"]
+                            if is_moderated:
+                                status = "Failure"
+                                summarization_analysis = "Flagged by content policy"
+                                summarization_score = 0
+                            elif directives:
+                                score_response: schema.ScoreResponse = (
+                                    score_chain.invoke(
+                                        {
+                                            "query": query,
+                                            "summary": summarized,
+                                            "directive": directives,
+                                        }
+                                    )
+                                )
+                                summarization_score = score_response.score
+                                logger.info(f"Score: {score_response}")
+                                if isinstance(summarization_score, float) and (
+                                    math.isnan(summarization_score)
+                                    or math.isinf(summarization_score)
+                                ):
+                                    summarization_score = None
+                                    summarization_analysis = (
+                                        "Invalid score returned by LLM"
+                                    )
+                                    status = "Failure"
+                                else:
+                                    summarization_analysis = score_response.analysis
+                                    if summarization_score < 50:
+                                        status = "Failure"
+                            else:
+                                summarization_analysis = "No directives provided"
+                                summarization_score = None
+
+                        elif predicted_intent == "task_execution":
+                            logger.info(f"[[Task Execution]]")
+                            # Parse directives for chained parameter
+                            chained = False
+                            # if directives.lower() in ["chained=true", "chained"]:
+                            #     chained = True
+                            # Execute task directly using graph
+                            thread_id = uuid4().hex
+                            config = {"configurable": {"thread_id": thread_id}}
+                            initial_state = {
+                                "query": query,
+                                "chained": chained,
+                                "tool_calls": [],
+                                "identified_actions": [],
+                                "tool_response": "",
+                                "final_response": "",
+                                "user_approved": False,
+                                "requires_approval": False,
+                                "actions_to_review": None,
+                            }
+                            final_state = None
+                            async for event in agent.task_execution_graph.astream(
+                                initial_state, config=config
+                            ):
+                                final_state = list(event.values())[0]
+                            if final_state is None:
+                                raise Exception(
+                                    "No state generated by task execution graph"
+                                )
+                            requires_approval = False
+                            identified_actions = final_state[0].value["actions"]
+                            if not identified_actions:
+                                raise Exception(
+                                    "No identified actions found in response"
+                                )
+                            predicted_response = json.dumps(identified_actions)
+                            summarization_analysis = (
+                                "Identified actions retrieved, approval required"
+                                if requires_approval
+                                else "Identified actions retrieved"
+                            )
+                            # Compare JSON responses
+                            try:
+                                _predicted_json = json.loads(predicted_response)
+
+                                predicted_json = [
+                                    {
+                                        "name": item["tool"],
+                                        "args": item["parameters"],
+                                    }
+                                    for item in _predicted_json
+                                ]
+                                predicted_response = json.dumps(predicted_json)
+
+                                logger.critical(expected_response)
+                                
+                                expected_json = json.loads(
+                                    expected_response.replace("'", '"')
+                                )
+
+                                if json.dumps(
+                                    predicted_json, sort_keys=True
+                                ) != json.dumps(expected_json, sort_keys=True):
+                                    status = "Failure"
+
+                            except json.JSONDecodeError as e:
+                                logger.error(f"JSON decode error: {e}")
+                                status = "Failure"
+                                summarization_analysis = (
+                                    f"Invalid JSON in response: {str(e)}"
+                                )
+
+                    except Exception as e:
+                        logger.error(f"Error processing row {index + 1}: {e}")
+                        await test_queue.put(
+                            {"error": f"Error processing row {index + 1}: {str(e)}"}
                         )
                         continue
 
-                    orch_response = await agent.get_orchestrator_response(query)
+                tat = f"{(time.time() - start_time):.1f} s"
 
-                    predicted_intent = (
-                        orch_response.category if orch_response else "error"
-                    )
-                    logger.info(
-                        f"{index+1}) Input: {query} | Predicted: {predicted_intent} | Actual: {expected_intent}"
-                    )
+                result = {
+                    "id": str(index + 1),
+                    "predicted_intent": predicted_intent,
+                    "predicted_response": predicted_response,
+                    "actual_response": expected_response,
+                    "status": status,
+                    "summarization_analysis": summarization_analysis,
+                    "summarization_score": summarization_score,
+                    "tat": tat,
+                }
 
-                    predicted_response = ""
-                    summarization_analysis = ""
-                    summarization_score = None
-                    status = "Failure"
-
-                    if predicted_intent != expected_intent:
-                        status = "Failure"
-                    else:
-                        status = "Success"
-                        try:
-                            if predicted_intent == "navigation":
-                                logger.info(f"[[Navigation]]")
-                                graph_result = await agent.navigation_graph.ainvoke(
-                                    {"query": query}
-                                )
-                                nav = graph_result["navigation"]
-                                predicted_response_id = nav.id
-                                predicted_response = db.get_intent_name_by_chroma_id_db(
-                                    chroma_id=predicted_response_id, session=session
-                                )
-                                if predicted_response != expected_response:
-                                    status = "Failure"
-
-                            elif predicted_intent == "summarization":
-                                logger.info(f"[[Summarization]]")
-                                chained = False
-                                initial_state = {
-                                    "query": query,
-                                    "chained": chained,
-                                    "tool_calls": [],
-                                    "tool_response": "",
-                                    "summarized_response": "",
-                                    "is_moderated": False,
-                                    "final_response": "",
-                                }
-                                graph_result = await agent.summarization_graph.ainvoke(
-                                    initial_state
-                                )
-                                predicted_response = graph_result["final_response"]
-                                is_moderated = graph_result["is_moderated"]
-                                summarized = graph_result["summarized_response"]
-                                if is_moderated:
-                                    status = "Failure"
-                                    summarization_analysis = "Flagged by content policy"
-                                    summarization_score = 0
-                                elif directives:
-                                    score_response: schema.ScoreResponse = (
-                                        score_chain.invoke(
-                                            {
-                                                "query": query,
-                                                "summary": summarized,
-                                            }
-                                        )
-                                    )
-                                    summarization_score = score_response.score
-                                    logger.info(f"Score: {score_response}")
-                                    if isinstance(summarization_score, float) and (
-                                        math.isnan(summarization_score)
-                                        or math.isinf(summarization_score)
-                                    ):
-                                        summarization_score = None
-                                        summarization_analysis = (
-                                            "Invalid score returned by LLM"
-                                        )
-                                        status = "Failure"
-                                    else:
-                                        summarization_analysis = score_response.analysis
-                                        if summarization_score < 50:
-                                            status = "Failure"
-                                else:
-                                    summarization_analysis = "No directives provided"
-                                    summarization_score = None
-
-                            elif predicted_intent == "task_execution":
-                                logger.info(f"[[Task Execution]]")
-                                # Parse directives for chained parameter
-                                chained = False
-                                # if directives.lower() in ["chained=true", "chained"]:
-                                #     chained = True
-                                # Execute task directly using graph
-                                thread_id = uuid4().hex
-                                config = {"configurable": {"thread_id": thread_id}}
-                                initial_state = {
-                                    "query": query,
-                                    "chained": chained,
-                                    "tool_calls": [],
-                                    "identified_actions": [],
-                                    "tool_response": "",
-                                    "final_response": "",
-                                    "user_approved": False,
-                                    "requires_approval": False,
-                                    "actions_to_review": None,
-                                }
-                                final_state = None
-                                async for event in agent.task_execution_graph.astream(
-                                    initial_state, config=config
-                                ):
-                                    final_state = list(event.values())[0]
-                                if final_state is None:
-                                    raise Exception(
-                                        "No state generated by task execution graph"
-                                    )
-                                requires_approval = False
-                                identified_actions = final_state[0].value["actions"]
-                                if not identified_actions:
-                                    raise Exception(
-                                        "No identified actions found in response"
-                                    )
-                                predicted_response = json.dumps(identified_actions)
-                                summarization_analysis = (
-                                    "Identified actions retrieved, approval required"
-                                    if requires_approval
-                                    else "Identified actions retrieved"
-                                )
-                                # Compare JSON responses
-                                try:
-                                    _predicted_json = json.loads(predicted_response)
-
-                                    predicted_json = [
-                                        {
-                                            "name": item["tool"],
-                                            "args": item["parameters"],
-                                        }
-                                        for item in _predicted_json
-                                    ]
-                                    predicted_response = json.dumps(predicted_json)
-
-                                    expected_json = json.loads(
-                                        expected_response.replace("'", '"')
-                                    )
-
-                                    if json.dumps(
-                                        predicted_json, sort_keys=True
-                                    ) != json.dumps(expected_json, sort_keys=True):
-                                        status = "Failure"
-
-                                except json.JSONDecodeError as e:
-                                    logger.error(f"JSON decode error: {e}")
-                                    status = "Failure"
-                                    summarization_analysis = (
-                                        f"Invalid JSON in response: {str(e)}"
-                                    )
-
-                        except Exception as e:
-                            logger.error(f"Error processing row {index + 1}: {e}")
-                            await test_queue.put(
-                                {"error": f"Error processing row {index + 1}: {str(e)}"}
-                            )
-                            continue
-
-                    tat = f"{(time.time() - start_time):.1f} s"
-
-                    result = {
-                        "id": str(index + 1),
-                        "predicted_intent": predicted_intent,
-                        "predicted_response": predicted_response,
-                        "actual_response": expected_response,
-                        "status": status,
-                        "summarization_analysis": summarization_analysis,
-                        "summarization_score": summarization_score,
-                        "tat": tat,
-                    }
-
-                    await test_queue.put(result)
+                await test_queue.put(result)
         except Exception as e:
             logger.error(f"Error in file processing: {e}")
             await test_queue.put({"error": f"Error in file processing: {str(e)}"})

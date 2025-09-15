@@ -45,7 +45,7 @@ export function Footer() {
   const fetchHealth = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/`, {
-        method: 'HEAD',
+        method: 'GET',
         headers: {
           'Accept': 'application/json',
         },

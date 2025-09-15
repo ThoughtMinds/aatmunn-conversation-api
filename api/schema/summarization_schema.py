@@ -33,7 +33,7 @@ __all__ = [
     "UserStatus",
     "SingleUserResponse",
     "UserStatusResponse",
-    "UserUpdateRequest"
+    "UserUpdateRequest",
 ]
 
 # Navigation Options

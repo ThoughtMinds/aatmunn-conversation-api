@@ -21,6 +21,7 @@ __all__ = [
 # Shared base API URL
 BASE_API_URL = "https://iiop-demo.aatmunn.net/io/api/v3"
 
+
 def get_aatmunn_access_token() -> Optional[Dict[str, Any]]:
     """
     Fetches an access token from the Aatmunn authentication API.
@@ -42,9 +43,7 @@ def get_aatmunn_access_token() -> Optional[Dict[str, Any]]:
     }
 
     try:
-        response = requests.post(
-            f"{BASE_API_URL}/auth/login", json=payload
-        )
+        response = requests.post(f"{BASE_API_URL}/auth/login", json=payload)
         response.raise_for_status()
         data = response.json()
 
@@ -88,9 +87,7 @@ def get_navigation_points() -> Optional[schema.NavigationResponse]:
     """
     headers = get_auth_header()
     try:
-        response = requests.get(
-            f"{BASE_API_URL}/navigation-points", headers=headers
-        )
+        response = requests.get(f"{BASE_API_URL}/navigation-points", headers=headers)
         response.raise_for_status()
         data = response.json()
         navigation_points = schema.NavigationResponse(**data)

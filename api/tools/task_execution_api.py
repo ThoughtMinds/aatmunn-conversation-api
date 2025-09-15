@@ -18,7 +18,7 @@ __all__ = [
     "get_templates_by_module_id",
     "get_form_execution_summary",
     "get_areas_needing_attention",
-    "update_user"
+    "update_user",
 ]
 
 # Shared base API URL for customer4
@@ -70,7 +70,6 @@ def get_auth_header() -> Dict[str, str]:
     return {"Authorization": f"Bearer {ACCESS_TOKEN}"}
 
 
-
 # Format function for user list
 def format_users_list(users_response: schema.UsersResponse) -> str:
     user_strings = []
@@ -88,6 +87,7 @@ def format_users_list(users_response: schema.UsersResponse) -> str:
         user_strings.append(user_string)
     return "\n---\n".join(user_strings) if user_strings else "No users found."
 
+
 @tool
 def search_users(
     size: int = 5,
@@ -97,14 +97,13 @@ def search_users(
     # search (str, optional): General search string (e.g., name or ID). Defaults to empty string.
     # email (str, optional): Filter by email. Defaults to empty string.
     # user_name (str, optional): Filter by username. Defaults to empty string.
-
 ) -> Optional[str]:
     """
     Searches for active users in the organization specified by TASK_EXECUTION_ORG_ID to retrieve their details and IDs. Use this to find user_id for other tools like get_user_by_id or get_roles_by_user_id.
 
     Args:
         size (int): Number of results per page. Defaults to 5.
-        
+
     Returns:
         Optional[str]: Formatted string of matching users, or None on error.
     """
@@ -129,6 +128,7 @@ def search_users(
         print(f"Error making request: {e}")
         return None
 
+
 # New update_user tool
 @tool
 def update_user(
@@ -149,7 +149,7 @@ def update_user(
     emergency_contact_relationship: Optional[str] = None,
     external_reference_id: str = "",
     profile_image_url: str = "",
-    profile_image_thumbnail_url: str = ""
+    profile_image_thumbnail_url: str = "",
 ) -> Optional[str]:
     """
     Updates details of a specific user in the IIOP API (customer4).
@@ -201,14 +201,12 @@ def update_user(
         profileImageThumbnailUrl=profile_image_thumbnail_url,
         orgId=settings.TASK_EXECUTION_ORG_ID,
         id=user_id,
-        uuid=uuid
+        uuid=uuid,
     )
     try:
         headers = get_auth_header()
         response = requests.put(
-            f"{BASE_API_URL}/users/{user_id}",
-            json=payload.dict(),
-            headers=headers
+            f"{BASE_API_URL}/users/{user_id}", json=payload.dict(), headers=headers
         )
         response.raise_for_status()
         data = response.json()
@@ -216,6 +214,7 @@ def update_user(
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None
+
 
 # Format function for roles list (similar to format_user_roles_string but for list)
 def format_roles_list(roles_response: schema.RolesResponse) -> str:
@@ -234,12 +233,10 @@ def format_roles_list(roles_response: schema.RolesResponse) -> str:
         role_strings.append(role_string)
     return "\n---\n".join(role_strings) if role_strings else "No roles found."
 
+
 @tool
 def get_roles(
-    search: str = "",
-    page: int = 0,
-    size: int = 25,
-    sort: str = "updatedOn"
+    search: str = "", page: int = 0, size: int = 25, sort: str = "updatedOn"
 ) -> Optional[str]:
     """
     Retrieves a list of roles to find role IDs. Use this to get role_id for get_role_by_id.
@@ -259,19 +256,19 @@ def get_roles(
         response = requests.get(f"{BASE_API_URL}/roles", params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
-        roles_response = schema.RolesResponse(**data)  # Assume or add model (similar to UserRolesResponse)
+        roles_response = schema.RolesResponse(
+            **data
+        )  # Assume or add model (similar to UserRolesResponse)
         return format_roles_list(roles_response)
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None
 
+
 # Similar for entities (format function omitted for brevity; similar to above)
 @tool
 def get_entities(
-    entity_type: str = "",
-    search: str = "",
-    page: int = 0,
-    size: int = 25
+    entity_type: str = "", search: str = "", page: int = 0, size: int = 25
 ) -> Optional[str]:
     """
     Retrieves a list of entities to find entity_ids for tools like get_form_execution_summary.
@@ -288,7 +285,9 @@ def get_entities(
     params = {"entityType": entity_type, "search": search, "page": page, "size": size}
     try:
         headers = get_auth_header()
-        response = requests.get(f"{BASE_API_URL}/entities", params=params, headers=headers)
+        response = requests.get(
+            f"{BASE_API_URL}/entities", params=params, headers=headers
+        )
         response.raise_for_status()
         data = response.json()
         # Format similarly; assume EntitiesResponse model
@@ -297,13 +296,10 @@ def get_entities(
         print(f"Error making request: {e}")
         return None
 
+
 # Similar for modules (if needed for module_id)
 @tool
-def get_modules(
-    search: str = "",
-    page: int = 0,
-    size: int = 25
-) -> Optional[str]:
+def get_modules(search: str = "", page: int = 0, size: int = 25) -> Optional[str]:
     """
     Retrieves a list of modules to find module_id for get_templates_by_module_id.
 
@@ -318,7 +314,9 @@ def get_modules(
     params = {"search": search, "page": page, "size": size}
     try:
         headers = get_auth_header()
-        response = requests.get(f"{BASE_API_URL}/modules", params=params, headers=headers)
+        response = requests.get(
+            f"{BASE_API_URL}/modules", params=params, headers=headers
+        )
         response.raise_for_status()
         data = response.json()
         # Format similarly; assume ModulesResponse
@@ -326,6 +324,7 @@ def get_modules(
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")
         return None
+
 
 @tool
 def get_navigation_points() -> Optional[schema.NavigationResponse]:

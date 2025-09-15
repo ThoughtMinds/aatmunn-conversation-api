@@ -1,32 +1,40 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date
+from typing import Dict, List, Literal, Optional
+
+
+class ApprovalRequest(BaseModel):
+    thread_id: str
+    approved: bool
 
 
 class TaskRequest(BaseModel):
-    """
-    Pydantic model for a task execution request.
-
-    Attributes:
-        query (str): The user's query for task execution.
-        chained (bool): Whether to use chained tool calls.
-    """
-
     query: str
     chained: bool = False
+    thread_id: Optional[str] = None
+    resume_action: Optional[Literal["approve", "reject"]] = None
 
 
 class TaskResponse(BaseModel):
-    """
-    Pydantic model for a task execution response.
-
-    Attributes:
-        response (str): The response from the task execution.
-        status (bool): The status of the task execution.
-    """
-
     response: str
     status: bool
     processing_time: float
+    thread_id: Optional[str] = None
+    requires_approval: bool = False
+    actions_to_review: Optional[List[Dict]] = None
+
+
+class ActionReviewItem(BaseModel):
+    tool: str
+    parameters: Dict
+    description: str
+
+
+class ApprovalDialogData(BaseModel):
+    question: str
+    actions: List[ActionReviewItem]
+    query: str
+    thread_id: str
 
 
 class EmployeeCreate(BaseModel):

@@ -29,7 +29,7 @@ async def get_summary(
         schema.SummaryResponse: The generated summary and content moderation status.
     """
     query, chained = data.query, data.chained
-    logger.info(f"Summarization Query: {query}")
+    logger.warning(f"Summarization Query: {query}")
 
     start_time = time()
     try:

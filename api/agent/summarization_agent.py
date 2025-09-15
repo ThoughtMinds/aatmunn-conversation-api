@@ -74,14 +74,14 @@ tool_dict = {
 
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 llm_with_tools = chat_model.bind_tools(tool_list)
-summarize_chain = llm.create_chain_for_task(task="summarization", llm=chat_model)
+summarize_chain = llm.create_chain_for_task(task="summarization", llm=cache_chat_model)
 chained_tool_chain = llm.create_chain_for_task(
     task="chained tool call",
     llm=chat_model,
     output_schema=schema.ChainedToolCall,
 )
 content_moderation_chain = llm.create_chain_for_task(
-    task="content moderation", llm=chat_model, output_schema=schema.ContentValidation
+    task="content moderation", llm=cache_chat_model, output_schema=schema.ContentValidation
 )
 
 NO_SUMMARY_RESPONSE = (

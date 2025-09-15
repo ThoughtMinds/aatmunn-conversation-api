@@ -117,7 +117,10 @@ def invoke_tools(state: AgentState) -> AgentState:
             args["session"] = session
             response = func.invoke(args)
             logger.info(f"Tool Response: {response}")
-            response_string = dumps(response)
+            if response == None:
+                response_string = "No tools were made due to connection error"
+            else:
+                response_string = dumps(response)
             state["tool_response"] += f"{name}: {response_string}"
     except Exception as e:
         logger.error(f"Tool invocation failed due to: {e}")

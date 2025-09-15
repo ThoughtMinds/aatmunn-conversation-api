@@ -45,8 +45,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
-    # volumes:
-    #   - ./frontend:/app
+    volumes:
+      - ./frontend:/app
     ports:
       - "3000:3000"
     restart: unless-stopped

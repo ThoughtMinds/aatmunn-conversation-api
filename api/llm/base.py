@@ -6,10 +6,13 @@ from langchain_core.embeddings import Embeddings
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import LocalFileStore
 from api.core.logging_config import logger
+from langchain_community.cache import SQLiteCache
+from langchain.globals import set_llm_cache
 
 
 docs_store = LocalFileStore("./static/cache/docs_cache")
 query_store = LocalFileStore("./static/cache/query_cache")
+set_llm_cache(SQLiteCache(database_path="./static/cache/llm_cache.db"))
 
 
 def with_cached_embeddings(func):
@@ -35,21 +38,21 @@ def with_cached_embeddings(func):
             document_embedding_cache=docs_store,
             query_embedding_cache=query_store,
             namespace="embedding_namespace",
+            key_encoder="sha256",  # Use SHA-256 instead of SHA-1
         )
         return cached_embedder
 
     return wrapper
 
 
-def get_ollama_chat_model():
+def get_ollama_chat_model(cache: bool = False):
     """Initialize an Ollama Chat Model for LLM inference
 
     Returns:
         ChatOllama: Ollam Chat Model
     """
     return ChatOllama(
-        base_url=settings.OLLAMA_BASE_URL,
-        model=settings.OLLAMA_CHAT_MODEL,
+        base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_CHAT_MODEL, cache=cache
     )
 
 
@@ -62,6 +65,7 @@ def get_ollama_chat_fallback_model():
     return ChatOllama(
         base_url=settings.OLLAMA_BASE_URL,
         model=settings.OLLAMA_CHAT_FALLBACK_MODEL,
+        cache=False,
     )
 
 

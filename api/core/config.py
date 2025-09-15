@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     This class uses pydantic-settings to load configuration from a .env file.
     It defines settings for the Ollama models, database initialization,
-    ChromaDB persistence, and project metadata.
+    ChromaDB persistence, task execution, and project metadata.
 
     Attributes:
         OLLAMA_BASE_URL (str): The base URL for the Ollama API.
@@ -23,6 +23,11 @@ class Settings(BaseSettings):
         AATMUNN_CLIENT_ID (str): Aatmunn portal (iiop) Client ID
         AATMUNN_CLIENT_SECRET (str): Aatmunn portal (iiop) Client Secret
         AATMUNN_ORG_ID (int): Aatmunn portal (iiop) Organization ID
+        TASK_EXECUTION_ENVIRONMENT (str): The environment for task execution
+        TASK_EXECUTION_ORG_ID (str): The organization ID for task execution
+        TASK_EXECUTION_ORG_NAME (str): The organization name for task execution
+        TASK_EXECUTION_USERNAME (str): The username for task execution
+        TASK_EXECUTION_PASSWORD (str): The password for task execution
         PROJECT_NAME (Optional[str]): The name of the project.
         VERSION (Optional[str]): The version of the project.
     """
@@ -45,6 +50,12 @@ class Settings(BaseSettings):
     AATMUNN_CLIENT_ID: str
     AATMUNN_CLIENT_SECRET: str
     AATMUNN_ORG_ID: int
+
+    TASK_EXECUTION_ENVIRONMENT: str
+    TASK_EXECUTION_ORG_ID: str
+    TASK_EXECUTION_ORG_NAME: str
+    TASK_EXECUTION_USERNAME: str
+    TASK_EXECUTION_PASSWORD: str
 
     PROJECT_NAME: Optional[str] = "Aatmanunn Conversation API"
     VERSION: Optional[str] = "0.1.0"

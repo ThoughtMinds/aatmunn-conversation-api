@@ -31,7 +31,9 @@ __all__ = [
     "AreaData",
     "AreasNeedingAttentionResponse",
     "UserStatus",
+    "SingleUserResponse",
     "UserStatusResponse",
+    "UserUpdateRequest",
 ]
 
 # Navigation Options
@@ -39,16 +41,16 @@ __all__ = [
 
 class NavigationPoint(BaseModel):
     id: int
-    name: str
-    displayName: str
-    channelType: str
-    description: str
+    name: Optional[str] = None
+    displayName: Optional[str] = None
+    channelType: Optional[str] = None
+    description: Optional[str] = None
     modules: List[int]
 
 
 class NavigationResponse(BaseModel):
     totalCount: int
-    message: str
+    message: Optional[str] = None
     navigationPointData: List[NavigationPoint]
 
 
@@ -56,11 +58,11 @@ class NavigationResponse(BaseModel):
 
 
 class PriorityInfo(BaseModel):
-    priority: str
+    priority: Optional[str] = None
 
 
 class StatusInfo(BaseModel):
-    status: str
+    status: Optional[str] = None
 
 
 class AssignedUserInfo(BaseModel):
@@ -93,10 +95,10 @@ class ParentSourceEntityInfo(BaseModel):
 
 
 class IssueDto(BaseModel):
-    id: str
-    issueName: str
-    description: str
-    issueType: str
+    id: Optional[str] = None
+    issueName: Optional[str] = None
+    description: Optional[str] = None
+    issueType: Optional[str] = None
     orgId: int
     priorityInfo: PriorityInfo
     statusInfo: StatusInfo
@@ -107,13 +109,13 @@ class IssueDto(BaseModel):
     dueDate: Optional[datetime] = None
     createdOn: datetime
     updatedOn: datetime
-    createdBy: str
-    updatedBy: str
+    createdBy: Optional[str] = None
+    updatedBy: Optional[str] = None
 
 
 class IssueResponse(BaseModel):
     totalCount: int
-    message: str
+    message: Optional[str] = None
     allIssueDto: List[IssueDto]
 
 
@@ -122,46 +124,46 @@ class IssueResponse(BaseModel):
 
 class Status(BaseModel):
     id: int
-    statusName: str
-    status: str
+    statusName: Optional[str] = None
+    status: Optional[str] = None
 
 
 class UserData(BaseModel):
     empId: Optional[str] = None
-    lastName: str
-    jobTitle: str
+    lastName: Optional[str] = None
+    jobTitle: Optional[str] = None
     emergencyContactRelationship: Optional[str] = None
     locale: Optional[str] = None
-    type: str
-    uuid: str
+    type: Optional[str] = None
+    uuid: Optional[str] = None
     createdOn: datetime
     orgId: int
-    externalReferenceId: str
+    externalReferenceId: Optional[str] = None
     profileImageThumbnailUrl: Optional[str] = None
-    emergencyContactEmail: str
+    emergencyContactEmail: Optional[str] = None
     id: int
     ssoProviderName: Optional[str] = None
     reportingToUserName: Optional[str] = None
-    profileImageUrl: str
-    email: str
+    profileImageUrl: Optional[str] = None
+    email: Optional[str] = None
     contractorCompany: Optional[str] = None
-    updatedBy: str
+    updatedBy: Optional[str] = None
     employmentType: Optional[str] = None
-    emergencyContactNumber: str
+    emergencyContactNumber: Optional[str] = None
     reportingUserId: Optional[int] = None
     updatedOn: datetime
     userName: Optional[str] = None
-    firstName: str
-    phone: str
-    createdBy: str
-    middleName: str
+    firstName: Optional[str] = None
+    phone: Optional[str] = None
+    createdBy: Optional[str] = None
+    middleName: Optional[str] = None
     supervisor: bool
     status: Status
 
 
 class UserResponse(BaseModel):
     totalCount: int
-    message: str
+    message: Optional[str] = None
     userData: List[UserData]
 
 
@@ -170,20 +172,20 @@ class UserResponse(BaseModel):
 
 class RoleData(BaseModel):
     id: int
-    name: str
-    description: str
+    name: Optional[str] = None
+    description: Optional[str] = None
     orgId: int
-    createdBy: str
+    createdBy: Optional[str] = None
     createdOn: datetime
     updatedOn: datetime
-    updatedBy: str
+    updatedBy: Optional[str] = None
     noOfUsers: int
-    status: str
+    status: Optional[str] = None
 
 
 class RoleResponse(BaseModel):
     totalCount: int
-    message: str
+    message: Optional[str] = None
     rolesData: List[RoleData]
 
 
@@ -192,23 +194,23 @@ class RoleResponse(BaseModel):
 
 class OrgStatus(BaseModel):
     id: int
-    statusName: str
-    status: str
+    statusName: Optional[str] = None
+    status: Optional[str] = None
 
 
 class Organization(BaseModel):
     id: int
-    name: str
-    legalName: str
-    orgType: str
+    name: Optional[str] = None
+    legalName: Optional[str] = None
+    orgType: Optional[str] = None
     isPartner: bool
-    email: str
-    phone: str
-    timezone: str
-    language: str
-    createdBy: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    timezone: Optional[str] = None
+    language: Optional[str] = None
+    createdBy: Optional[str] = None
     createdOn: datetime
-    updatedBy: str
+    updatedBy: Optional[str] = None
     updatedOn: datetime
     imageUrl: Optional[str] = None
     imageThumbnailUrl: Optional[str] = None
@@ -229,10 +231,10 @@ class ProductCounts(BaseModel):
 
 
 class ProductModel(BaseModel):
-    id: str
-    name: str
-    description: str
-    status: str
+    id: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
     guid: Optional[str] = None
     profileImage: Optional[str] = None
     profileImageThumbnail: Optional[str] = None
@@ -248,7 +250,7 @@ class ProductModel(BaseModel):
 class HistoricalDataResponse(BaseModel):
     totalEventCount: int
     criticalEventCount: int
-    message: str
+    message: Optional[str] = None
     data: List[Any]
 
 
@@ -256,32 +258,32 @@ class HistoricalDataResponse(BaseModel):
 
 
 class FormStatus(BaseModel):
-    status: str
-    displayName: str
+    status: Optional[str] = None
+    displayName: Optional[str] = None
     count: int
 
 
 class EntitySummary(BaseModel):
     entityId: int
-    entityName: str
+    entityName: Optional[str] = None
     totalCount: int
     statuses: List[FormStatus]
 
 
 class AdditionalInfo(BaseModel):
-    name: str
+    name: Optional[str] = None
     value: List[str]
 
 
 class FormExecutionData(BaseModel):
     id: int
-    name: str
+    name: Optional[str] = None
     entitySummary: List[EntitySummary]
     additionalInfo: List[AdditionalInfo]
 
 
 class FormExecutionSummaryResponse(BaseModel):
-    message: str
+    message: Optional[str] = None
     data: FormExecutionData
 
 
@@ -289,8 +291,8 @@ class FormExecutionSummaryResponse(BaseModel):
 
 
 class AreaData(BaseModel):
-    areaName: str
-    areaId: str
+    areaName: Optional[str] = None
+    areaId: Optional[str] = None
     noOfCompletedForms: int
     noOfLateForms: int
     noOfIssues: int
@@ -299,7 +301,7 @@ class AreaData(BaseModel):
 
 class AreasNeedingAttentionResponse(BaseModel):
     totalCount: int
-    message: str
+    message: Optional[str] = None
     data: List[AreaData]
 
 
@@ -308,9 +310,84 @@ class AreasNeedingAttentionResponse(BaseModel):
 
 class UserStatus(BaseModel):
     id: int
-    statusName: str
-    status: str
+    statusName: Optional[str] = None
+    status: Optional[str] = None
 
 
 class UserStatusResponse(BaseModel):
     userStatuses: List[UserStatus]
+
+
+class OrgsEntityStatus(BaseModel):
+    entityStatus: Status
+    orgId: int
+    statusName: Optional[str] = None
+    id: int
+    createdOn: datetime
+    createdBy: Optional[str] = None
+    updatedOn: datetime
+    updatedBy: Optional[str] = None
+
+
+class SingleUserResponse(BaseModel):
+    userName: Optional[str] = None
+    orgId: int
+    orgsEntityStatus: OrgsEntityStatus
+    ssoProviderName: Optional[str] = None
+    workerState: Optional[str] = None
+    id: int
+    createdOn: datetime
+    createdBy: Optional[str] = None
+    updatedOn: datetime
+    updatedBy: Optional[str] = None
+    empId: Optional[str] = None
+    firstName: Optional[str] = None
+    middleName: Optional[str] = None
+    lastName: Optional[str] = None
+    jobTitle: Optional[str] = None
+    uuid: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    externalReferenceId: Optional[str] = None
+    profileImageUrl: Optional[str] = None
+    profileImageThumbnailUrl: Optional[str] = None
+    locale: Optional[str] = None
+    emergencyContactNumber: Optional[str] = None
+    emergencyContactEmail: Optional[str] = None
+    emergencyContactRelationship: Optional[str] = None
+    type: Optional[str] = None
+    employmentType: Optional[str] = None
+    contractorCompany: Optional[str] = None
+    supervisor: bool
+    status: Status
+    reportingUserId: Optional[int] = None
+    reportingToUserName: Optional[str] = None
+
+
+# ... (other existing classes unchanged)
+
+
+# New model for user update request
+class UserUpdateRequest(BaseModel):
+    selectedProducts: dict = {"selectedEntities": []}
+    selectedAreas: dict = {"selectedEntities": []}
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    middleName: Optional[str] = None
+    type: Optional[str] = None
+    jobTitle: Optional[str] = None
+    empId: Optional[str] = None
+    supervisor: bool = False
+    contractorCompany: Optional[str] = None
+    emergencyContactEmail: Optional[str] = None
+    emergencyContactNumber: Optional[str] = None
+    emergencyContactRelationship: Optional[str] = None
+    userName: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    externalReferenceId: Optional[str] = None
+    profileImageUrl: Optional[str] = None
+    profileImageThumbnailUrl: Optional[str] = None
+    orgId: int
+    id: int
+    uuid: Optional[str] = None

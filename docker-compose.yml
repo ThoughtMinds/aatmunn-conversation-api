@@ -30,6 +30,7 @@ services:
       - ./static/scripts/entrypoint.sh:/entrypoint.sh
     tty: true
     restart: unless-stopped
+    attach: false
     environment:
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_HOST=0.0.0.0
@@ -44,8 +45,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
-    # volumes:
-    #   - ./frontend:/app
+    volumes:
+      - ./frontend:/app
     ports:
       - "3000:3000"
     restart: unless-stopped

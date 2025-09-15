@@ -262,10 +262,16 @@ async def run_tests(
                                     }
                                     for item in _predicted_json
                                 ]
+                                for item in predicted_json:
+                                    args = item["args"]
+                                    # Ensure "" are converted to null
+                                    for key in args:
+                                        value = args[key]
+                                        if value == "":
+                                            args[key] = None
+                                
                                 predicted_response = json.dumps(predicted_json)
 
-                                logger.critical(expected_response)
-                                
                                 expected_json = json.loads(
                                     expected_response.replace("'", '"')
                                 )

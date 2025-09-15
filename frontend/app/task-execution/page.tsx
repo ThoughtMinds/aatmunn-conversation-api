@@ -42,13 +42,15 @@ export default function TaskExecutionPage() {
   const [result, setResult] = useState<TaskResult | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [currentApprovalRequest, setCurrentApprovalRequest] = useState<ApprovalRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const handleStartTask = () => {
-    if (!taskName.trim() || eventSourceRef.current) return;
+    if (!taskName.trim() || eventSourceRef.current || isLoading) return;
 
     setResult(null);
+    setIsLoading(true);
     const eventSource = new EventSource(
       `${API_BASE_URL}/api/task_execution/execute_task/?query=${encodeURIComponent(taskName)}&chained=${chained}`,
       { withCredentials: true }
@@ -68,11 +70,13 @@ export default function TaskExecutionPage() {
         });
         eventSource.close();
         eventSourceRef.current = null;
+        setIsLoading(false);
       } else if (data.requires_approval && data.actions_to_review) {
         setCurrentApprovalRequest(data.actions_to_review);
         setApprovalDialogOpen(true);
         eventSource.close();
         eventSourceRef.current = null;
+        setIsLoading(false);
       } else if (data.response && !data.requires_approval) {
         toast({
           title: "Task Completed",
@@ -82,6 +86,7 @@ export default function TaskExecutionPage() {
         setTaskName("");
         eventSource.close();
         eventSourceRef.current = null;
+        setIsLoading(false);
       }
     };
 
@@ -93,6 +98,7 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
+      setIsLoading(false);
     };
   };
 
@@ -270,10 +276,17 @@ export default function TaskExecutionPage() {
               />
               <Button 
                 onClick={handleStartTask} 
-                disabled={!taskName.trim() || !!eventSourceRef.current} 
-                className={(!taskName.trim() || !!eventSourceRef.current) ? "opacity-50 cursor-not-allowed" : ""}
+                disabled={!taskName.trim() || !!eventSourceRef.current || isLoading} 
+                className={(!taskName.trim() || !!eventSourceRef.current || isLoading) ? "opacity-50 cursor-not-allowed" : ""}
               >
-                Start Task
+                {isLoading ? (
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  "Start Task"
+                )}
               </Button>
             </div>
             <div className="flex items-center space-x-2 pt-2">
@@ -366,7 +379,6 @@ export default function TaskExecutionPage() {
                 {currentApprovalRequest.actions.map((action, index) => (
                   <div key={index} className="p-3 border rounded-md">
                     <p className="font-medium text-green-600">{action.tool}</p>
-                    <p className="text-sm text-black">{action.description}</p>
                     <pre className="text-xs mt-2 bg-muted p-2 rounded overflow-x-auto text-orange-600">
                       {JSON.stringify(action.parameters, null, 2)}
                     </pre>

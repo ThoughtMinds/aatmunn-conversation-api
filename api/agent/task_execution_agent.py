@@ -63,11 +63,10 @@ FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
 # Node to identify actions without executing them
 def identify_actions(state: AgentState) -> AgentState:
-    # TODO: Replace with actual LLM call to identify tool calls
     response = llm_with_tools.invoke(state["query"])
     state["identified_actions"] = response.tool_calls or []
 
-    # Temporary hardcoded example for demonstration
+    # Mock examples for testing
     # state["identified_actions"] = [
     #     {
     #         "name": "search_users",
@@ -76,6 +75,7 @@ def identify_actions(state: AgentState) -> AgentState:
     #         "type": "tool_call",
     #     }
     # ]
+    # state["identified_actions"] = [{"name": "update_user", "args": {"first_name": "THIS_USER", "user_id": "1336"}}]
 
     if not state["identified_actions"]:
         logger.info("No tool call detected!")

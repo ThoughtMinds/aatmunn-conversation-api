@@ -38,6 +38,7 @@ class AgentState(TypedDict):
 
 # Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
+cache_chat_model = llm.get_ollama_chat_model(cache=True)
 
 tool_list = [
     tools.summarization_api.get_issues,

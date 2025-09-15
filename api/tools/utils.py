@@ -10,13 +10,14 @@ def list_tool_names(tools: List[BaseTool]):
         name = tool.name
         normalized_name = name.replace("_", " ")
         tool_list.append(normalized_name)
-    
+
     description = ""
     for index, name in enumerate(tool_list, start=1):
         description += f"{index}) {name}\n"
-    
+
     return description
-        
+
+
 def render_text_description(tools: List[BaseTool]) -> str:
     """
     Render a text description of a list of tools.

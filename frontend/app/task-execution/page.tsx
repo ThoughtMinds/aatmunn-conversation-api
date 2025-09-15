@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,14 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Play, CheckCircle, Clock, AlertTriangle, Copy } from "lucide-react";
+import {
+  Zap,
+  Play,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Copy,
+} from "lucide-react";
 import { API_BASE_URL } from "@/constants/api";
 
 interface ApprovalRequest {
@@ -41,16 +48,21 @@ export default function TaskExecutionPage() {
   const [chained, setChained] = useState(false);
   const [result, setResult] = useState<TaskResult | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
-  const [currentApprovalRequest, setCurrentApprovalRequest] = useState<ApprovalRequest | null>(null);
+  const [currentApprovalRequest, setCurrentApprovalRequest] =
+    useState<ApprovalRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const handleStartTask = () => {
-    if (!taskName.trim() || eventSourceRef.current) return;
+    if (!taskName.trim() || eventSourceRef.current || isLoading) return;
 
     setResult(null);
+    setIsLoading(true);
     const eventSource = new EventSource(
-      `${API_BASE_URL}/api/task_execution/execute_task/?query=${encodeURIComponent(taskName)}&chained=${chained}`,
+      `${API_BASE_URL}/api/task_execution/execute_task/?query=${encodeURIComponent(
+        taskName
+      )}&chained=${chained}`,
       { withCredentials: true }
     );
 
@@ -68,11 +80,13 @@ export default function TaskExecutionPage() {
         });
         eventSource.close();
         eventSourceRef.current = null;
+        setIsLoading(false);
       } else if (data.requires_approval && data.actions_to_review) {
         setCurrentApprovalRequest(data.actions_to_review);
         setApprovalDialogOpen(true);
         eventSource.close();
         eventSourceRef.current = null;
+        setIsLoading(false);
       } else if (data.response && !data.requires_approval) {
         toast({
           title: "Task Completed",
@@ -82,6 +96,7 @@ export default function TaskExecutionPage() {
         setTaskName("");
         eventSource.close();
         eventSourceRef.current = null;
+        setIsLoading(false);
       }
     };
 
@@ -93,6 +108,7 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
+      setIsLoading(false);
     };
   };
 
@@ -108,7 +124,12 @@ export default function TaskExecutionPage() {
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setResult((prev) => ({ ...prev, ...data, requires_approval: false, actions_to_review: null }));
+      setResult((prev) => ({
+        ...prev,
+        ...data,
+        requires_approval: false,
+        actions_to_review: null,
+      }));
       setApprovalDialogOpen(false);
 
       if (data.response) {
@@ -118,7 +139,6 @@ export default function TaskExecutionPage() {
           className: "bg-green-50 border-green-200 text-green-800",
         });
       } else if (!data.response && data.thread_id) {
-        // Fallback to get final response if not in stream
         fetchFinalResponse();
       }
     };
@@ -131,7 +151,7 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
-      fetchFinalResponse(); // Fallback on error
+      fetchFinalResponse();
     };
   };
 
@@ -147,7 +167,12 @@ export default function TaskExecutionPage() {
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setResult((prev) => ({ ...prev, ...data, requires_approval: false, actions_to_review: null }));
+      setResult((prev) => ({
+        ...prev,
+        ...data,
+        requires_approval: false,
+        actions_to_review: null,
+      }));
       setApprovalDialogOpen(false);
 
       if (data.response) {
@@ -186,7 +211,12 @@ export default function TaskExecutionPage() {
           className: "bg-red-50 border-red-200 text-red-800",
         });
       } else {
-        setResult((prev) => ({ ...prev, ...data, requires_approval: false, actions_to_review: null }));
+        setResult((prev) => ({
+          ...prev,
+          ...data,
+          requires_approval: false,
+          actions_to_review: null,
+        }));
         toast({
           title: "Task Completed",
           description: "Final response fetched successfully",
@@ -216,8 +246,10 @@ export default function TaskExecutionPage() {
     if (!result) return null;
 
     if (result.error) return <AlertTriangle className="h-5 w-5 text-red-500" />;
-    if (result.requires_approval) return <Clock className="h-5 w-5 text-yellow-500" />;
-    if (result.response) return <CheckCircle className="h-5 w-5 text-green-500" />;
+    if (result.requires_approval)
+      return <Clock className="h-5 w-5 text-yellow-500" />;
+    if (result.response)
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
     return <Clock className="h-5 w-5 text-blue-500" />;
   };
 
@@ -267,22 +299,87 @@ export default function TaskExecutionPage() {
                 value={taskName}
                 onChange={(e) => setTaskName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleStartTask()}
+                disabled={isLoading}
               />
-              <Button 
-                onClick={handleStartTask} 
-                disabled={!taskName.trim() || !!eventSourceRef.current} 
-                className={(!taskName.trim() || !!eventSourceRef.current) ? "opacity-50 cursor-not-allowed" : ""}
+              <Button
+                onClick={handleStartTask}
+                disabled={
+                  !taskName.trim() || !!eventSourceRef.current || isLoading
+                }
+                className={
+                  !taskName.trim() || !!eventSourceRef.current || isLoading
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }
               >
-                Start Task
+                {isLoading ? (
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  "Start Task"
+                )}
               </Button>
             </div>
             <div className="flex items-center space-x-2 pt-2">
-              <Checkbox id="chained" checked={chained} onCheckedChange={(checked) => setChained(Boolean(checked))} disabled />
-              <label htmlFor="chained" className="text-sm font-medium leading-none text-gray-400">
+              <Checkbox
+                id="chained"
+                checked={chained}
+                onCheckedChange={(checked) => setChained(Boolean(checked))}
+                disabled
+              />
+              <label
+                htmlFor="chained"
+                className="text-sm font-medium leading-none text-gray-400"
+              >
                 Chained (Coming Soon)
               </label>
             </div>
           </div>
+          {isLoading && (
+            <div className="flex items-center justify-center py-4">
+              <svg
+                className="animate-spin h-8 w-8 text-blue-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <span className="ml-2 text-sm text-muted-foreground">
+                Processing task...
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -301,7 +398,9 @@ export default function TaskExecutionPage() {
                 </Button>
               )}
             </CardTitle>
-            <CardDescription>Execution result for task: "{taskName}"</CardDescription>
+            <CardDescription>
+              Execution result for task: "{taskName}"
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -334,7 +433,9 @@ export default function TaskExecutionPage() {
 
             {result.error && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-red-600">Error Details</Label>
+                <Label className="text-sm font-medium text-red-600">
+                  Error Details
+                </Label>
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-800">{result.error}</p>
                 </div>
@@ -343,7 +444,9 @@ export default function TaskExecutionPage() {
 
             {result.requires_approval && result.actions_to_review && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-yellow-600">Awaiting Approval</Label>
+                <Label className="text-sm font-medium text-yellow-600">
+                  Awaiting Approval
+                </Label>
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">
                     Please review and approve the actions in the dialog above.
@@ -358,15 +461,18 @@ export default function TaskExecutionPage() {
       {approvalDialogOpen && currentApprovalRequest && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-4xl mx-auto max-h-[80vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4 text-black">Action Approval Required</h3>
+            <h3 className="text-lg font-semibold mb-4 text-black">
+              Action Approval Required
+            </h3>
             <p className="mb-4 text-black">{currentApprovalRequest.question}</p>
             <div className="mb-4">
-              <h4 className="font-medium mb-2 text-black">Query: {currentApprovalRequest.query}</h4>
+              <h4 className="font-medium mb-2 text-black">
+                Query: {currentApprovalRequest.query}
+              </h4>
               <div className="space-y-2">
                 {currentApprovalRequest.actions.map((action, index) => (
                   <div key={index} className="p-3 border rounded-md">
                     <p className="font-medium text-green-600">{action.tool}</p>
-                    <p className="text-sm text-black">{action.description}</p>
                     <pre className="text-xs mt-2 bg-muted p-2 rounded overflow-x-auto text-orange-600">
                       {JSON.stringify(action.parameters, null, 2)}
                     </pre>
@@ -375,14 +481,14 @@ export default function TaskExecutionPage() {
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <Button 
-                onClick={handleApprove} 
+              <Button
+                onClick={handleApprove}
                 className="bg-green-500 text-white hover:bg-green-600"
               >
                 Approve
               </Button>
-              <Button 
-                onClick={handleReject} 
+              <Button
+                onClick={handleReject}
                 className="bg-red-500 text-white hover:bg-red-600"
               >
                 Reject

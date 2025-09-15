@@ -38,6 +38,7 @@ class AgentState(TypedDict):
 
 # Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
+cache_chat_model = llm.get_ollama_chat_model(cache=True)
 
 tool_list = [
     tools.summarization_api.get_issues,
@@ -73,14 +74,16 @@ tool_dict = {
 
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
 llm_with_tools = chat_model.bind_tools(tool_list)
-summarize_chain = llm.create_chain_for_task(task="summarization", llm=chat_model)
+summarize_chain = llm.create_chain_for_task(task="summarization", llm=cache_chat_model)
 chained_tool_chain = llm.create_chain_for_task(
     task="chained tool call",
     llm=chat_model,
     output_schema=schema.ChainedToolCall,
 )
 content_moderation_chain = llm.create_chain_for_task(
-    task="content moderation", llm=chat_model, output_schema=schema.ContentValidation
+    task="content moderation",
+    llm=cache_chat_model,
+    output_schema=schema.ContentValidation,
 )
 
 NO_SUMMARY_RESPONSE = (
@@ -116,7 +119,10 @@ def invoke_tools(state: AgentState) -> AgentState:
             args["session"] = session
             response = func.invoke(args)
             logger.info(f"Tool Response: {response}")
-            response_string = dumps(response)
+            if response == None:
+                response_string = "No tools were made due to connection error"
+            else:
+                response_string = dumps(response)
             state["tool_response"] += f"{name}: {response_string}"
     except Exception as e:
         logger.error(f"Tool invocation failed due to: {e}")
@@ -217,6 +223,8 @@ def moderate_content(state: AgentState) -> AgentState:
     state["is_moderated"] = not content_validity["content_valid"]
 
     logger.info(f"Content Moderation: {state['is_moderated']}")
+    if state["is_moderated"]:
+        logger.critical(f"Flagged summary: {state['summarized_response']}")
 
     state["final_response"] = (
         state["summarized_response"]

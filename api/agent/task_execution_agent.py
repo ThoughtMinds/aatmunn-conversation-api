@@ -6,7 +6,6 @@ from langgraph.types import interrupt
 from langgraph.checkpoint.memory import MemorySaver
 from api import db, llm, tools
 from api.core.logging_config import logger
-from sqlmodel import Session
 from langchain_core.tools import tool
 
 

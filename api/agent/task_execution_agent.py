@@ -31,9 +31,9 @@ class AgentState(TypedDict):
 # Initialize tools and models
 chat_model = llm.get_ollama_chat_model()
 tool_list = [
-    tools.task_execution_api.search_users,
-    tools.task_execution_api.update_user,
-    tools.task_execution_api.get_user_by_id,
+    tools.aatumunn_api_integration.search_users,
+    tools.aatumunn_api_integration.update_user,
+    tools.aatumunn_api_integration.get_user_by_id,
 ]
 
 

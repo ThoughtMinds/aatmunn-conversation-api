@@ -75,6 +75,7 @@ FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
 # Node to identify actions without executing them
 def identify_actions(state: AgentState) -> AgentState:
+    logger.critical("Performing normal Action Identification")
     response = llm_with_tools.invoke(state["query"])
     state["identified_actions"] = response.tool_calls or []
 
@@ -101,12 +102,17 @@ def identify_actions(state: AgentState) -> AgentState:
 
 
 def chained_identify_actions(state: AgentState) -> AgentState:
-    if state.get("iter_count", 0) >= 3:
+    logger.critical("Performing chained Action Identification")
+
+    iter_count = state.get("iter_count", 0)
+    if iter_count >= 3:
         state["final_response"] = state["tool_response"] or NO_RESPONSE
         return state
 
     if "action_context" not in state:
         state["action_context"] = {"previous_results": [], "already_executed": []}
+
+    logger.info(f"#{iter_count} Action Context: {state['action_context']}")
 
     input_dict = {
         "query": state["query"],
@@ -128,7 +134,10 @@ def chained_identify_actions(state: AgentState) -> AgentState:
                 "type": "tool_call",
             }
         ]
-        logger.info(f"Found chained action to approve: {state['identified_actions']}")
+
+        logger.info(
+            f"#{iter_count} Found chained action to approve: {state['identified_actions']}"
+        )
         state["requires_approval"] = True
         state["actions_to_review"] = {
             "question": "Please review and approve the following actions:",
@@ -146,7 +155,7 @@ def chained_identify_actions(state: AgentState) -> AgentState:
         logger.error(f"Chained identify failed: {e}")
         state["final_response"] = FALLBACK_RESPONSE
 
-    state["iter_count"] = state.get("iter_count", 0) + 1
+    state["iter_count"] = iter_count + 1
     return state
 
 
@@ -178,8 +187,22 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             tool_response_str = f"{name}: {response_string}"
             state["tool_response"] += f"{tool_response_str}\n"
             if state["chained"]:
-                if "action_context" not in state:
-                    state["action_context"] = {"previous_results": [], "already_executed": []}
+                # Safely initialize action_context and its lists
+                if "action_context" not in state or not isinstance(
+                    state["action_context"], dict
+                ):
+                    state["action_context"] = {
+                        "previous_results": [],
+                        "already_executed": [],
+                    }
+                if "previous_results" not in state["action_context"] or not isinstance(
+                    state["action_context"]["previous_results"], list
+                ):
+                    state["action_context"]["previous_results"] = []
+                if "already_executed" not in state["action_context"] or not isinstance(
+                    state["action_context"]["already_executed"], list
+                ):
+                    state["action_context"]["already_executed"] = []
                 state["action_context"]["previous_results"].append(tool_response_str)
                 state["action_context"]["already_executed"].append(
                     {"name": name, "parameters": args}

@@ -41,6 +41,7 @@ interface TaskResult {
   requires_approval?: boolean;
   actions_to_review?: ApprovalRequest;
   error?: string;
+  is_final?: boolean;
 }
 
 export default function TaskExecutionPage() {
@@ -87,7 +88,7 @@ export default function TaskExecutionPage() {
         eventSource.close();
         eventSourceRef.current = null;
         setIsLoading(false);
-      } else if (data.response && !data.requires_approval) {
+      } else if (data.is_final) {
         toast({
           title: "Task Completed",
           description: `Task "${taskName}" has completed successfully`,
@@ -130,12 +131,11 @@ export default function TaskExecutionPage() {
         requires_approval: data.requires_approval ?? false,
         actions_to_review: data.actions_to_review ?? null,
       }));
-      // Close modal if approval is processed (no further approval required or response is set)
-      if (!data.requires_approval || data.response || data.error) {
+      if (!data.requires_approval || data.is_final || data.error) {
         setApprovalDialogOpen(false);
       }
 
-      if (data.response && !data.requires_approval) {
+      if (data.response && data.is_final) {
         toast({
           title: "Task Approved",
           description: "Task execution completed successfully",
@@ -143,6 +143,9 @@ export default function TaskExecutionPage() {
         });
       } else if (!data.response && data.thread_id && !data.requires_approval) {
         fetchFinalResponse();
+      } else if (data.requires_approval && data.actions_to_review) {
+        setCurrentApprovalRequest(data.actions_to_review);
+        setApprovalDialogOpen(true);
       }
     };
 
@@ -154,7 +157,7 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
-      setApprovalDialogOpen(false); // Close modal on error
+      setApprovalDialogOpen(false);
       fetchFinalResponse();
     };
   };
@@ -177,7 +180,6 @@ export default function TaskExecutionPage() {
         requires_approval: data.requires_approval ?? false,
         actions_to_review: data.actions_to_review ?? null,
       }));
-      // Close modal after rejection
       setApprovalDialogOpen(false);
 
       if (data.response) {
@@ -197,7 +199,7 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
-      setApprovalDialogOpen(false); // Close modal on error
+      setApprovalDialogOpen(false);
     };
   };
 
@@ -254,7 +256,7 @@ export default function TaskExecutionPage() {
     if (result.error) return <AlertTriangle className="h-5 w-5 text-red-500" />;
     if (result.requires_approval)
       return <Clock className="h-5 w-5 text-yellow-500" />;
-    if (result.response)
+    if (result.is_final)
       return <CheckCircle className="h-5 w-5 text-green-500" />;
     return <Clock className="h-5 w-5 text-blue-500" />;
   };
@@ -264,7 +266,7 @@ export default function TaskExecutionPage() {
 
     if (result.error) return "bg-red-500";
     if (result.requires_approval) return "bg-yellow-500";
-    if (result.response) return "bg-green-500";
+    if (result.is_final) return "bg-green-500";
     return "bg-blue-500";
   };
 
@@ -420,7 +422,7 @@ export default function TaskExecutionPage() {
                     ? "Failed"
                     : result.requires_approval
                     ? "Awaiting Approval"
-                    : result.response
+                    : result.is_final
                     ? "Completed"
                     : "Running"}
                 </Badge>

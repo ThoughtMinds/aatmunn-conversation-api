@@ -72,6 +72,9 @@ chained_tool_chain = llm.create_chain_for_task(
 NO_RESPONSE = "We could not find any relevant information. Please rephrase the query"
 FALLBACK_RESPONSE = "Task execution failed. Please rephrase or retry"
 
+# Configurable max iterations for chaining
+MAX_CHAIN_ITERATIONS = 10
+
 
 # Node to identify actions without executing them
 def identify_actions(state: AgentState) -> AgentState:
@@ -105,11 +108,13 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     logger.critical("Performing chained Action Identification")
 
     iter_count = state.get("iter_count", 0)
-    if iter_count >= 3:
+    if iter_count >= MAX_CHAIN_ITERATIONS:
         state["final_response"] = state["tool_response"] or NO_RESPONSE
+        state["requires_approval"] = False
+        state["actions_to_review"] = None
         return state
 
-    if "action_context" not in state:
+    if "action_context" not in state or not isinstance(state["action_context"], dict):
         state["action_context"] = {"previous_results": [], "already_executed": []}
 
     logger.info(f"#{iter_count} Action Context: {state['action_context']}")
@@ -123,7 +128,10 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     try:
         tool_call: ChainedToolCall = chained_tool_chain.invoke(input_dict)
         if not tool_call.name:
+            # No further action needed, end chain
             state["final_response"] = state["tool_response"] or NO_RESPONSE
+            state["requires_approval"] = False
+            state["actions_to_review"] = None
             return state
 
         state["identified_actions"] = [
@@ -154,6 +162,8 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     except Exception as e:
         logger.error(f"Chained identify failed: {e}")
         state["final_response"] = FALLBACK_RESPONSE
+        state["requires_approval"] = False
+        state["actions_to_review"] = None
 
     state["iter_count"] = iter_count + 1
     return state
@@ -187,33 +197,22 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             tool_response_str = f"{name}: {response_string}"
             state["tool_response"] += f"{tool_response_str}\n"
             if state["chained"]:
-                # Safely initialize action_context and its lists
-                if "action_context" not in state or not isinstance(
-                    state["action_context"], dict
-                ):
-                    state["action_context"] = {
-                        "previous_results": [],
-                        "already_executed": [],
-                    }
-                if "previous_results" not in state["action_context"] or not isinstance(
-                    state["action_context"]["previous_results"], list
-                ):
+                if "action_context" not in state or not isinstance(state["action_context"], dict):
+                    state["action_context"] = {"previous_results": [], "already_executed": []}
+                if "previous_results" not in state["action_context"]:
                     state["action_context"]["previous_results"] = []
-                if "already_executed" not in state["action_context"] or not isinstance(
-                    state["action_context"]["already_executed"], list
-                ):
+                if "already_executed" not in state["action_context"]:
                     state["action_context"]["already_executed"] = []
                 state["action_context"]["previous_results"].append(tool_response_str)
-                state["action_context"]["already_executed"].append(
-                    {"name": name, "parameters": args}
-                )
+                state["action_context"]["already_executed"].append({"name": name, "parameters": args})
+        # Do not set final_response here if chained, to allow next iteration
         if not state["chained"]:
             state["final_response"] = state["tool_response"]
     except Exception as e:
         logger.error(f"Tool execution failed due to: {e}")
         state["final_response"] = FALLBACK_RESPONSE
     finally:
-        state["user_approved"] = False  # Reset for next approval in chain
+        state["user_approved"] = False
 
     return state
 
@@ -270,7 +269,7 @@ workflow.add_conditional_edges(
 # Define conditional edges from execute_approved_tools
 workflow.add_conditional_edges(
     "execute_approved_tools",
-    lambda state: "chained_identify_actions" if state["chained"] else END,
+    lambda state: "chained_identify_actions" if state["chained"] and not state.get("final_response") else END,
     {
         "chained_identify_actions": "chained_identify_actions",
         END: END,

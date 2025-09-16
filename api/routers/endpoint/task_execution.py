@@ -24,22 +24,6 @@ async def execute_task(
         None, description="Resume action (approve/reject) if resuming"
     ),
 ) -> StreamingResponse:
-    """
-    Execute a task for a given query using Server-Sent Events (SSE).
-
-    Streams the task execution process, including interruptions for human approval,
-    and resumes execution based on user input.
-
-    Args:
-        session (SessionDep): The database session dependency.
-        query (str): The user's query.
-        chained (bool): Whether to use chained tool calls.
-        thread_id (str, optional): The thread ID for resuming execution.
-        resume_action (str, optional): Resume action if resuming (approve/reject).
-
-    Returns:
-        StreamingResponse: A stream of task execution states in SSE format.
-    """
     logger.warning(f"Task Execution Query: {query}")
     thread_id = thread_id or uuid4().hex
 
@@ -47,7 +31,6 @@ async def execute_task(
         try:
             config = {"configurable": {"thread_id": thread_id}}
 
-            # Initial state for new execution
             initial_state = {
                 "query": query,
                 "chained": chained,
@@ -63,7 +46,6 @@ async def execute_task(
             }
 
             if resume_action is not None:
-                # Resume graph with user approval decision
                 resume_value = resume_action.lower() == "approve"
                 command = Command(resume=resume_value)
                 async for event in agent.task_execution_graph.astream(
@@ -76,15 +58,14 @@ async def execute_task(
                         "thread_id": thread_id,
                         "requires_approval": state.get("requires_approval", False),
                         "actions_to_review": state.get("actions_to_review"),
-                        "is_final": chained and state.get("iter_count", 0) >= 3,
+                        "is_final": chained and state.get("final_response") is not None,
                     }
                     yield f"data: {dumps(event_data)}\n\n"
-                    if state.get("final_response", "") and not state.get(
+                    if state.get("final_response") and not state.get(
                         "requires_approval", False
-                    ) and not chained:
+                    ):
                         break
             else:
-                # Start new execution with initial state
                 async for event in agent.task_execution_graph.astream(
                     initial_state, config=config
                 ):
@@ -107,15 +88,15 @@ async def execute_task(
                         "thread_id": thread_id,
                         "requires_approval": state.get("requires_approval", False),
                         "actions_to_review": state.get("actions_to_review"),
-                        "is_final": chained and state.get("iter_count", 0) >= 3,
+                        "is_final": chained and state.get("final_response") is not None,
                     }
                     yield f"data: {dumps(event_data)}\n\n"
                     if state.get("requires_approval", False):
                         logger.warning("Approval required, awaiting user decision")
                         break
-                    if state.get("final_response", "") and not state.get(
+                    if state.get("final_response") and not state.get(
                         "requires_approval", False
-                    ) and not chained:
+                    ):
                         logger.info("Task execution completed")
                         break
 
@@ -144,19 +125,6 @@ async def handle_approval(
     thread_id: str = Query(..., description="The thread ID to resume"),
     approved: bool = Query(..., description="Whether to approve the actions"),
 ) -> StreamingResponse:
-    """
-    Handle user approval/rejection of actions using SSE.
-
-    Resumes the workflow with the user's approval decision.
-
-    Args:
-        session (SessionDep): The database session dependency.
-        thread_id (str): The thread ID to resume.
-        approved (bool): Whether to approve the actions.
-
-    Returns:
-        StreamingResponse: A stream confirming the approval result.
-    """
     logger.warning(f"Handling approval for thread {thread_id}: {approved}")
 
     async def stream_approval_result() -> AsyncGenerator[str, None]:
@@ -164,7 +132,7 @@ async def handle_approval(
             config = {"configurable": {"thread_id": thread_id}}
             state_snapshot = agent.task_execution_graph.get_state(config)
             state = state_snapshot.values
-            chained = state.get("chained", False)  # Retrieve chained status from state
+            chained = state.get("chained", False)
             updated_values = {
                 "user_approved": approved,
                 "requires_approval": False,
@@ -172,7 +140,9 @@ async def handle_approval(
             }
             if not approved:
                 updated_values["final_response"] = "Task execution cancelled by user."
-            agent.task_execution_graph.update_state(config, updated_values, as_node="human_approval")
+            agent.task_execution_graph.update_state(
+                config, updated_values, as_node="human_approval"
+            )
 
             async for event in agent.task_execution_graph.astream(
                 None, config=config
@@ -196,14 +166,14 @@ async def handle_approval(
                     "thread_id": thread_id,
                     "requires_approval": state.get("requires_approval", False),
                     "actions_to_review": state.get("actions_to_review"),
-                    "is_final": chained and state.get("iter_count", 0) >= 3,
+                    "is_final": chained and state.get("final_response") is not None,
                 }
                 yield f"data: {dumps(event_data)}\n\n"
                 if state.get("requires_approval", False):
                     break
-                if state.get("final_response", "") and not state.get(
+                if state.get("final_response") and not state.get(
                     "requires_approval", False
-                ) and not chained:
+                ):
                     logger.info("Approval process completed")
                     break
         except Exception as e:

@@ -2,7 +2,6 @@ from typing import Dict, TypedDict, Optional
 from pydantic import BaseModel
 from json import dumps
 from langgraph.graph import StateGraph, END
-from langgraph.types import interrupt
 from langgraph.checkpoint.memory import MemorySaver
 from api import db, llm, tools, schema
 from api.core.logging_config import logger
@@ -153,30 +152,11 @@ def chained_identify_actions(state: AgentState) -> AgentState:
 
 # Human approval node using LangGraph interrupt
 def human_approval(state: AgentState) -> AgentState:
-    # If approval already provided (resumed), proceed
     if state.get("user_approved", False):
         logger.info("Approval already provided, proceeding to execute approved tools")
         state["requires_approval"] = False
         state["actions_to_review"] = None
         return state
-
-    # If approval is required and actions to review exist, pause for human input
-    if state.get("requires_approval", False) and state.get("actions_to_review"):
-        logger.warning("Triggering interrupt for approval")
-        is_approved = interrupt(state["actions_to_review"])
-
-        # After resuming, interrupt returns the human input (True/False)
-        if is_approved:
-            state["user_approved"] = True
-            state["requires_approval"] = False
-            state["actions_to_review"] = None
-            return state
-        else:
-            state["user_approved"] = False
-            state["requires_approval"] = False
-            state["actions_to_review"] = None
-            state["final_response"] = "Task execution cancelled by user."
-            return state
 
     return state
 

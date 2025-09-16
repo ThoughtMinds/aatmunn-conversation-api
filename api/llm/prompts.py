@@ -57,7 +57,7 @@ SUMMARIZE_TEMPLATE = PromptTemplate.from_template(SUMMARIZE_PROMPT)
 
 CONTENT_MODERATION_PROMPT = """
 You are an assistant that has access to the user query and machine generated summary.
-Your role is to validate whether the summary is a proper response for the given query. 
+Your task is to validate the given summary.
 Ensure that it is not off-topic, out of context or an incorrect response for the given query
 Response Schema:
 {{

@@ -58,6 +58,8 @@ async def execute_task(
                 "user_approved": False,
                 "requires_approval": False,
                 "actions_to_review": None,
+                "action_context": None,
+                "iter_count": 0,
             }
 
             if resume_action is not None:
@@ -69,23 +71,23 @@ async def execute_task(
                 ):
                     state = list(event.values())[0]
                     event_data = {
-                        "response": state.get("final_response", ""),
-                        "status": bool(state.get("final_response", "")),
+                        "response": state.get("tool_response", ""),
+                        "status": bool(state.get("tool_response", "")),
                         "thread_id": thread_id,
                         "requires_approval": state.get("requires_approval", False),
                         "actions_to_review": state.get("actions_to_review"),
+                        "is_final": chained and state.get("iter_count", 0) >= 3,
                     }
                     yield f"data: {dumps(event_data)}\n\n"
                     if state.get("final_response", "") and not state.get(
                         "requires_approval", False
-                    ):
+                    ) and not chained:
                         break
             else:
                 # Start new execution with initial state
                 async for event in agent.task_execution_graph.astream(
                     initial_state, config=config
                 ):
-                    # Safely handle event structure
                     state = None
                     if isinstance(event, dict):
                         state = list(event.values())[0] if event.values() else {}
@@ -94,27 +96,26 @@ async def execute_task(
                     else:
                         state = {}
 
-                    # Ensure state is a dict before accessing
                     if not isinstance(state, dict):
                         logger.error(f"Unexpected state type: {type(state)}")
                         yield f"data: {dumps({'error': 'Invalid state format'})}\n\n"
                         break
 
                     event_data = {
-                        "response": state.get("final_response", ""),
-                        "status": bool(state.get("final_response", "")),
+                        "response": state.get("tool_response", ""),
+                        "status": bool(state.get("tool_response", "")),
                         "thread_id": thread_id,
                         "requires_approval": state.get("requires_approval", False),
                         "actions_to_review": state.get("actions_to_review"),
+                        "is_final": chained and state.get("iter_count", 0) >= 3,
                     }
                     yield f"data: {dumps(event_data)}\n\n"
                     if state.get("requires_approval", False):
-                        # Pause streaming until approval is received
                         logger.warning("Approval required, awaiting user decision")
                         break
                     if state.get("final_response", "") and not state.get(
                         "requires_approval", False
-                    ):
+                    ) and not chained:
                         logger.info("Task execution completed")
                         break
 
@@ -162,6 +163,8 @@ async def handle_approval(
         try:
             config = {"configurable": {"thread_id": thread_id}}
             state_snapshot = agent.task_execution_graph.get_state(config)
+            state = state_snapshot.values
+            chained = state.get("chained", False)  # Retrieve chained status from state
             updated_values = {
                 "user_approved": approved,
                 "requires_approval": False,
@@ -174,7 +177,6 @@ async def handle_approval(
             async for event in agent.task_execution_graph.astream(
                 None, config=config
             ):
-                # Safely handle event structure
                 state = None
                 if isinstance(event, dict):
                     state = list(event.values())[0] if event.values() else {}
@@ -183,25 +185,25 @@ async def handle_approval(
                 else:
                     state = {}
 
-                # Ensure state is a dict before accessing
                 if not isinstance(state, dict):
                     logger.error(f"Unexpected state type: {type(state)}")
                     yield f"data: {dumps({'error': 'Invalid state format'})}\n\n"
                     break
 
                 event_data = {
-                    "response": state.get("final_response", "Approval processed"),
+                    "response": state.get("tool_response", "Approval processed"),
                     "status": True,
                     "thread_id": thread_id,
                     "requires_approval": state.get("requires_approval", False),
                     "actions_to_review": state.get("actions_to_review"),
+                    "is_final": chained and state.get("iter_count", 0) >= 3,
                 }
                 yield f"data: {dumps(event_data)}\n\n"
                 if state.get("requires_approval", False):
                     break
                 if state.get("final_response", "") and not state.get(
                     "requires_approval", False
-                ):
+                ) and not chained:
                     logger.info("Approval process completed")
                     break
         except Exception as e:
@@ -235,7 +237,7 @@ async def get_final_response(
         final_response = state_snapshot.values.get("final_response", None)
         if final_response is None:
             return {"error": "No final_response found for the given thread_id"}
-        return {"final_response": final_response}
+        return {"final_response": final_response, "is_final": True}
     except Exception as e:
         logger.error(f"Error fetching final_response for thread {thread_id}: {e}")
         return {"error": str(e)}

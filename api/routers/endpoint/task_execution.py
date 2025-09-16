@@ -85,7 +85,21 @@ async def execute_task(
                 async for event in agent.task_execution_graph.astream(
                     initial_state, config=config
                 ):
-                    state = list(event.values())[0]
+                    # Safely handle event structure
+                    state = None
+                    if isinstance(event, dict):
+                        state = list(event.values())[0] if event.values() else {}
+                    elif isinstance(event, tuple):
+                        state = event[0] if len(event) > 0 else {}
+                    else:
+                        state = {}
+
+                    # Ensure state is a dict before accessing
+                    if not isinstance(state, dict):
+                        logger.error(f"Unexpected state type: {type(state)}")
+                        yield f"data: {dumps({'error': 'Invalid state format'})}\n\n"
+                        break
+
                     event_data = {
                         "response": state.get("final_response", ""),
                         "status": bool(state.get("final_response", "")),
@@ -147,11 +161,34 @@ async def handle_approval(
     async def stream_approval_result() -> AsyncGenerator[str, None]:
         try:
             config = {"configurable": {"thread_id": thread_id}}
-            command = Command(resume=approved)
+            state_snapshot = agent.task_execution_graph.get_state(config)
+            updated_values = {
+                "user_approved": approved,
+                "requires_approval": False,
+                "actions_to_review": None,
+            }
+            if not approved:
+                updated_values["final_response"] = "Task execution cancelled by user."
+            agent.task_execution_graph.update_state(config, updated_values, as_node="human_approval")
+
             async for event in agent.task_execution_graph.astream(
-                command, config=config
+                None, config=config
             ):
-                state = list(event.values())[0]
+                # Safely handle event structure
+                state = None
+                if isinstance(event, dict):
+                    state = list(event.values())[0] if event.values() else {}
+                elif isinstance(event, tuple):
+                    state = event[0] if len(event) > 0 else {}
+                else:
+                    state = {}
+
+                # Ensure state is a dict before accessing
+                if not isinstance(state, dict):
+                    logger.error(f"Unexpected state type: {type(state)}")
+                    yield f"data: {dumps({'error': 'Invalid state format'})}\n\n"
+                    break
+
                 event_data = {
                     "response": state.get("final_response", "Approval processed"),
                     "status": True,
@@ -160,6 +197,8 @@ async def handle_approval(
                     "actions_to_review": state.get("actions_to_review"),
                 }
                 yield f"data: {dumps(event_data)}\n\n"
+                if state.get("requires_approval", False):
+                    break
                 if state.get("final_response", "") and not state.get(
                     "requires_approval", False
                 ):

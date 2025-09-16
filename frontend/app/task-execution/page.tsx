@@ -127,18 +127,21 @@ export default function TaskExecutionPage() {
       setResult((prev) => ({
         ...prev,
         ...data,
-        requires_approval: false,
-        actions_to_review: null,
+        requires_approval: data.requires_approval ?? false,
+        actions_to_review: data.actions_to_review ?? null,
       }));
-      setApprovalDialogOpen(false);
+      // Close modal if approval is processed (no further approval required or response is set)
+      if (!data.requires_approval || data.response || data.error) {
+        setApprovalDialogOpen(false);
+      }
 
-      if (data.response) {
+      if (data.response && !data.requires_approval) {
         toast({
           title: "Task Approved",
           description: "Task execution completed successfully",
           className: "bg-green-50 border-green-200 text-green-800",
         });
-      } else if (!data.response && data.thread_id) {
+      } else if (!data.response && data.thread_id && !data.requires_approval) {
         fetchFinalResponse();
       }
     };
@@ -151,6 +154,7 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
+      setApprovalDialogOpen(false); // Close modal on error
       fetchFinalResponse();
     };
   };
@@ -170,9 +174,10 @@ export default function TaskExecutionPage() {
       setResult((prev) => ({
         ...prev,
         ...data,
-        requires_approval: false,
-        actions_to_review: null,
+        requires_approval: data.requires_approval ?? false,
+        actions_to_review: data.actions_to_review ?? null,
       }));
+      // Close modal after rejection
       setApprovalDialogOpen(false);
 
       if (data.response) {
@@ -192,6 +197,7 @@ export default function TaskExecutionPage() {
       });
       eventSource.close();
       eventSourceRef.current = null;
+      setApprovalDialogOpen(false); // Close modal on error
     };
   };
 

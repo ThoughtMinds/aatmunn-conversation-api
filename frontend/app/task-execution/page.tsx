@@ -343,13 +343,12 @@ export default function TaskExecutionPage() {
                 id="chained"
                 checked={chained}
                 onCheckedChange={(checked) => setChained(Boolean(checked))}
-                disabled
               />
               <label
                 htmlFor="chained"
-                className="text-sm font-medium leading-none text-gray-400"
+                className="text-sm font-medium leading-none"
               >
-                Chained (Coming Soon)
+                Chained Tool Calls
               </label>
             </div>
           </div>

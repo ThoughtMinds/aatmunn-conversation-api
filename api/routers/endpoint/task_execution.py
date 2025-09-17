@@ -39,7 +39,7 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
             "user_approved": False,
             "requires_approval": False,
             "actions_to_review": None,
-            "action_context": None,
+            "action_context": {"previous_results": [], "already_executed": []},
             "iter_count": 0,
         }
 
@@ -53,11 +53,14 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
         while True:
             try:
                 event = await stream_iter.__anext__()
+                logger.debug(f"Processing stream event: {event}")
             except StopAsyncIteration:
                 logger.info("Stream ended normally, closing WebSocket")
                 break
-
-            logger.debug(f"Event type: {type(event)}, keys: {list(event.keys()) if isinstance(event, dict) else 'N/A'}")
+            except Exception as e:
+                logger.error(f"Stream error: {e}")
+                await websocket.send_json({"error": f"Stream processing failed: {str(e)}"})
+                break
 
             # Handle interrupt event
             if isinstance(event, dict) and "__interrupt__" in event:
@@ -99,7 +102,7 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
 
                         current_state_values = current_state.values
                         current_state_values["user_approved"] = resume_value.lower() == "true"
-                        logger.debug(f"Updating state with user_approved={current_state_values['user_approved']}, tool_calls={current_state_values.get('tool_calls')}")
+                        logger.debug(f"Updating state with user_approved={current_state_values['user_approved']}, tool_calls={current_state_values.get('tool_calls')}, identified_actions={current_state_values.get('identified_actions')}")
                         await agent.task_execution_graph.aupdate_state(config, current_state_values)
 
                         # Resume stream from current checkpoint
@@ -148,47 +151,6 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
 
                 logger.debug(f"Sending event data: {event_data}")
                 await websocket.send_json(event_data)
-
-                if state.get("requires_approval", False):
-                    logger.warning(f"Approval required for thread {thread_id}, awaiting user decision")
-                    try:
-                        approval_data = await asyncio.wait_for(websocket.receive_json(), timeout=300.0)
-                        resume_value = approval_data.get("resume")
-                        if resume_value is None:
-                            logger.warning(f"No resume value received for thread {thread_id}, cancelling")
-                            await websocket.send_json({"error": "No approval decision provided"})
-                            break
-
-                        logger.info(f"Processing approval for thread {thread_id}: {resume_value}")
-
-                        # Update state with approval
-                        current_state = await agent.task_execution_graph.aget_state(config)
-                        if not current_state:
-                            logger.error(f"Failed to retrieve state for thread {thread_id}")
-                            await websocket.send_json({"error": "Failed to retrieve workflow state"})
-                            break
-
-                        current_state_values = current_state.values
-                        current_state_values["user_approved"] = resume_value.lower() == "true"
-                        logger.debug(f"Updating state with user_approved={current_state_values['user_approved']}, tool_calls={current_state_values.get('tool_calls')}")
-                        await agent.task_execution_graph.aupdate_state(config, current_state_values)
-
-                        # Resume stream from current checkpoint
-                        stream = agent.task_execution_graph.astream(
-                            Command(resume=resume_value.lower()),
-                            config=config
-                        )
-                        stream_iter = stream.__aiter__()
-                        continue
-
-                    except asyncio.TimeoutError:
-                        logger.error(f"Approval timeout for thread {thread_id}")
-                        await websocket.send_json({"error": "Approval request timed out"})
-                        break
-                    except Exception as e:
-                        logger.error(f"Error processing approval for thread {thread_id}: {e}")
-                        await websocket.send_json({"error": f"Approval processing failed: {str(e)}"})
-                        break
 
                 if state.get("final_response") and not state.get("requires_approval", False):
                     logger.info(f"Final response reached for thread {thread_id}: {state['final_response'][:50]}...")

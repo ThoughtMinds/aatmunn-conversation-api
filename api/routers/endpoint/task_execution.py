@@ -1,202 +1,181 @@
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from api import db, agent
 from sqlmodel import Session
 from api.core.logging_config import logger
-from typing import Annotated, AsyncGenerator
-from json import dumps
+from typing import Annotated, Dict, Any
 from uuid import uuid4
-from langgraph.types import Command
+from langgraph.types import Command, Interrupt
+import asyncio
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
 
+@router.websocket("/ws/task_execution/")
+async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
+    await websocket.accept()
+    thread_id = None
+    current_state = None
 
-@router.get("/execute_task/", response_model=None)
-async def execute_task(
-    session: SessionDep,
-    query: str = Query(..., description="The user's query"),
-    chained: bool = Query(False, description="Whether to use chained tool calls"),
-    thread_id: str = Query(
-        None, description="Optional thread ID for resuming execution"
-    ),
-    resume_action: str = Query(
-        None, description="Resume action (approve/reject) if resuming"
-    ),
-) -> StreamingResponse:
-    """
-    Execute a task for a given query using Server-Sent Events (SSE).
+    try:
+        # Receive initial message from client
+        initial_data = await websocket.receive_json()
+        query = initial_data.get("query", "")
+        chained = initial_data.get("chained", False)
+        thread_id = initial_data.get("thread_id") or str(uuid4().hex)
+        resume = initial_data.get("resume")
 
-    Streams the task execution process, including interruptions for human approval,
-    and resumes execution based on user input.
+        logger.warning(f"Task Execution Query: {query}, Thread ID: {thread_id}, Chained: {chained}")
 
-    Args:
-        session (SessionDep): The database session dependency.
-        query (str): The user's query.
-        chained (bool): Whether to use chained tool calls.
-        thread_id (str, optional): The thread ID for resuming execution.
-        resume_action (str, optional): Resume action if resuming (approve/reject).
+        config = {"configurable": {"thread_id": thread_id}}
 
-    Returns:
-        StreamingResponse: A stream of task execution states in SSE format.
-    """
-    logger.warning(f"Task Execution Query: {query}")
-    thread_id = thread_id or uuid4().hex
+        # Initialize state
+        initial_state = {
+            "query": query,
+            "chained": chained,
+            "tool_calls": [],
+            "identified_actions": [],
+            "tool_response": "",
+            "final_response": "",
+            "user_approved": False,
+            "requires_approval": False,
+            "actions_to_review": None,
+            "action_context": {"previous_results": [], "already_executed": []},
+            "iter_count": 0,
+        }
 
-    async def stream_task_execution() -> AsyncGenerator[str, None]:
-        try:
-            config = {"configurable": {"thread_id": thread_id}}
+        # Initialize stream and iterator
+        stream = agent.task_execution_graph.astream(
+            initial_state if resume is None else Command(resume=resume.lower()),
+            config=config
+        )
+        stream_iter = stream.__aiter__()
 
-            # Initial state for new execution
-            initial_state = {
-                "query": query,
-                "chained": chained,
-                "tool_calls": [],
-                "identified_actions": [],
-                "tool_response": "",
-                "final_response": "",
-                "user_approved": False,
-                "requires_approval": False,
-                "actions_to_review": None,
-            }
+        while True:
+            try:
+                event = await stream_iter.__anext__()
+                logger.debug(f"Processing stream event: {event}")
+            except StopAsyncIteration:
+                logger.info("Stream ended normally, closing WebSocket")
+                break
+            except Exception as e:
+                logger.error(f"Stream error: {e}")
+                await websocket.send_json({"error": f"Stream processing failed: {str(e)}"})
+                break
 
-            if resume_action is not None:
-                # Resume graph with user approval decision
-                resume_value = resume_action.lower() == "approve"
-                command = Command(resume=resume_value)
-                async for event in agent.task_execution_graph.astream(
-                    command, config=config
+            # Handle interrupt event
+            if isinstance(event, dict) and "__interrupt__" in event:
+                interrupt_tuple = event["__interrupt__"]
+                if (
+                    isinstance(interrupt_tuple, tuple)
+                    and len(interrupt_tuple) > 0
+                    and isinstance(interrupt_tuple[0], Interrupt)
                 ):
-                    state = list(event.values())[0]
-                    event_data = {
-                        "response": state.get("final_response", ""),
-                        "status": bool(state.get("final_response", "")),
-                        "thread_id": thread_id,
-                        "requires_approval": state.get("requires_approval", False),
-                        "actions_to_review": state.get("actions_to_review"),
-                    }
-                    yield f"data: {dumps(event_data)}\n\n"
-                    if state.get("final_response", "") and not state.get(
-                        "requires_approval", False
-                    ):
+                    interrupt_obj = interrupt_tuple[0]
+                    logger.info(f"Interrupt received - resumable: {interrupt_obj.resumable}, namespace: {interrupt_obj.ns}")
+
+                    await websocket.send_json(
+                        {
+                            "interrupt": True,
+                            "payload": interrupt_obj.value,
+                            "resumable": interrupt_obj.resumable,
+                            "namespace": interrupt_obj.ns,
+                            "thread_id": thread_id,
+                        }
+                    )
+
+                    try:
+                        approval_data = await asyncio.wait_for(websocket.receive_json(), timeout=300.0)
+                        resume_value = approval_data.get("resume")
+                        if resume_value is None:
+                            logger.warning(f"No resume value received for thread {thread_id}, cancelling")
+                            await websocket.send_json({"error": "No approval decision provided"})
+                            break
+
+                        logger.info(f"Received approval response: {resume_value}, thread_id: {thread_id}")
+
+                        # Update state with approval decision
+                        current_state = await agent.task_execution_graph.aget_state(config)
+                        if not current_state:
+                            logger.error(f"Failed to retrieve state for thread {thread_id}")
+                            await websocket.send_json({"error": "Failed to retrieve workflow state"})
+                            break
+
+                        current_state_values = current_state.values
+                        current_state_values["user_approved"] = resume_value.lower() == "true"
+                        logger.debug(f"Updating state with user_approved={current_state_values['user_approved']}, tool_calls={current_state_values.get('tool_calls')}, identified_actions={current_state_values.get('identified_actions')}")
+                        await agent.task_execution_graph.aupdate_state(config, current_state_values)
+
+                        # Resume stream from current checkpoint
+                        stream = agent.task_execution_graph.astream(
+                            Command(resume=resume_value.lower()),
+                            config=config
+                        )
+                        stream_iter = stream.__aiter__()
+                        continue
+
+                    except asyncio.TimeoutError:
+                        logger.error(f"Approval timeout for thread {thread_id}")
+                        await websocket.send_json({"error": "Approval request timed out"})
                         break
-            else:
-                # Start new execution with initial state
-                async for event in agent.task_execution_graph.astream(
-                    initial_state, config=config
-                ):
-                    state = list(event.values())[0]
-                    event_data = {
-                        "response": state.get("final_response", ""),
-                        "status": bool(state.get("final_response", "")),
-                        "thread_id": thread_id,
-                        "requires_approval": state.get("requires_approval", False),
-                        "actions_to_review": state.get("actions_to_review"),
-                    }
-                    yield f"data: {dumps(event_data)}\n\n"
-                    if state.get("requires_approval", False):
-                        # Pause streaming until approval is received
-                        logger.warning("Approval required, awaiting user decision")
-                        break
-                    if state.get("final_response", "") and not state.get(
-                        "requires_approval", False
-                    ):
-                        logger.info("Task execution completed")
+                    except Exception as e:
+                        logger.error(f"Error processing approval for thread {thread_id}: {e}")
+                        await websocket.send_json({"error": f"Approval processing failed: {str(e)}"})
                         break
 
-        except Exception as e:
-            error_msg = {"error": str(e)}
-            logger.error(f"Stream error: {e}")
-            yield f"data: {dumps(error_msg)}\n\n"
-        finally:
-            session.close()
-            logger.info("Stream response generator closed")
+                else:
+                    logger.error(f"Invalid interrupt format: {interrupt_tuple}")
+                    await websocket.send_json({"error": "Invalid interrupt format"})
+                    break
 
-    return StreamingResponse(
-        stream_task_execution(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+            # Handle normal state events
+            elif isinstance(event, dict) and len(event) == 1:
+                state_key = next(iter(event.keys()))
+                state = event[state_key]
 
+                if not isinstance(state, dict):
+                    logger.error(f"Unexpected state type: {type(state)}, state: {state}")
+                    await websocket.send_json({"error": "Invalid state format"})
+                    break
 
-@router.get("/handle_approval/", response_model=None)
-async def handle_approval(
-    session: SessionDep,
-    thread_id: str = Query(..., description="The thread ID to resume"),
-    approved: bool = Query(..., description="Whether to approve the actions"),
-) -> StreamingResponse:
-    """
-    Handle user approval/rejection of actions using SSE.
+                current_state = state
+                logger.debug(f"Processing state: {state}")
 
-    Resumes the workflow with the user's approval decision.
-
-    Args:
-        session (SessionDep): The database session dependency.
-        thread_id (str): The thread ID to resume.
-        approved (bool): Whether to approve the actions.
-
-    Returns:
-        StreamingResponse: A stream confirming the approval result.
-    """
-    logger.warning(f"Handling approval for thread {thread_id}: {approved}")
-
-    async def stream_approval_result() -> AsyncGenerator[str, None]:
-        try:
-            config = {"configurable": {"thread_id": thread_id}}
-            command = Command(resume=approved)
-            async for event in agent.task_execution_graph.astream(
-                command, config=config
-            ):
-                state = list(event.values())[0]
                 event_data = {
-                    "response": state.get("final_response", "Approval processed"),
-                    "status": True,
+                    "response": state.get("final_response") or state.get("tool_response", ""),
+                    "status": bool(state.get("final_response") or state.get("tool_response", "")),
                     "thread_id": thread_id,
                     "requires_approval": state.get("requires_approval", False),
                     "actions_to_review": state.get("actions_to_review"),
+                    "is_final": bool(state.get("final_response")) and not state.get("requires_approval", False),
                 }
-                yield f"data: {dumps(event_data)}\n\n"
-                if state.get("final_response", "") and not state.get(
-                    "requires_approval", False
-                ):
-                    logger.info("Approval process completed")
+
+                logger.debug(f"Sending event data: {event_data}")
+                await websocket.send_json(event_data)
+
+                if state.get("final_response") and not state.get("requires_approval", False):
+                    logger.info(f"Final response reached for thread {thread_id}: {state['final_response'][:50]}...")
+                    event_data["is_final"] = True
+                    await websocket.send_json(event_data)
                     break
-        except Exception as e:
-            error_msg = {"error": str(e)}
-            logger.error(f"Approval stream error: {e}")
-            yield f"data: {dumps(error_msg)}\n\n"
-        finally:
-            session.close()
-            logger.info("Approval stream generator closed")
 
-    return StreamingResponse(
-        stream_approval_result(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+            else:
+                logger.error(f"Unexpected event type: {type(event)}, event: {event}")
+                await websocket.send_json({"error": f"Invalid event format: {type(event)}"})
+                break
 
-
-@router.get("/get_final_response/", response_model=None)
-async def get_final_response(
-    thread_id: str = Query(
-        ..., description="The thread ID to fetch the final response for"
-    ),
-):
-    try:
-        config = {"configurable": {"thread_id": thread_id}}
-        state_snapshot = agent.task_execution_graph.get_state(config)
-        final_response = state_snapshot.values.get("final_response", None)
-        if final_response is None:
-            return {"error": "No final_response found for the given thread_id"}
-        return {"final_response": final_response}
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket connection closed by client, thread_id: {thread_id}")
+    except asyncio.TimeoutError:
+        logger.error(f"WebSocket operation timed out, thread_id: {thread_id}")
+        await websocket.send_json({"error": "Operation timed out"})
     except Exception as e:
-        logger.error(f"Error fetching final_response for thread {thread_id}: {e}")
-        return {"error": str(e)}
+        logger.error(f"WebSocket error for thread {thread_id}: {e}")
+        await websocket.send_json({"error": str(e)})
+    finally:
+        if session:
+            session.close()
+        logger.info(f"WebSocket connection closed for thread: {thread_id}")
+        try:
+            await websocket.close()
+        except:
+            pass

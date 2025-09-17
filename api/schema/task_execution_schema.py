@@ -32,6 +32,7 @@ __all__ = [
     "UserRoleData",
     "UserRolesResponse",
     "UsersResponse",
+    "UserUpdateRequest",
     "WidgetContent",
     "WidgetDataUrlResponse",
     "WidgetItem",
@@ -55,6 +56,30 @@ class OrgsEntityStatus(BaseModel):
     updatedBy: Optional[str] = None
 
 # User Models
+
+class UserUpdateRequest(BaseModel):
+    selectedProducts: dict = {"selectedEntities": []}
+    selectedAreas: dict = {"selectedEntities": []}
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    middleName: Optional[str] = None
+    type: Optional[str] = None
+    jobTitle: Optional[str] = None
+    empId: Optional[str] = None
+    supervisor: bool = False
+    contractorCompany: Optional[str] = None
+    emergencyContactEmail: Optional[str] = None
+    emergencyContactNumber: Optional[str] = None
+    emergencyContactRelationship: Optional[str] = None
+    userName: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    externalReferenceId: Optional[str] = None
+    profileImageUrl: Optional[str] = None
+    profileImageThumbnailUrl: Optional[str] = None
+    orgId: int
+    id: int
+    uuid: Optional[str] = None
 class SingleUserTaskResponse(BaseModel):
     userName: Optional[str] = None
     orgId: int
@@ -347,3 +372,4 @@ class AreasNeedingAttentionResponse(BaseModel):
     totalCount: int
     message: Optional[str] = None
     data: List[AreaData]    
+    

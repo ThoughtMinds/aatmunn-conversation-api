@@ -1,213 +1,119 @@
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from api import db, agent
 from sqlmodel import Session
 from api.core.logging_config import logger
-from typing import Annotated, AsyncGenerator
-from json import dumps
+from typing import Annotated, Dict, Any
 from uuid import uuid4
-from langgraph.types import Command
+from langgraph.types import Command, Interrupt
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
 
+@router.websocket("/ws/task_execution/")
+async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
+    await websocket.accept()
+    thread_id = None
+    try:
+        # Receive initial message from client
+        initial_data = await websocket.receive_json()
+        query = initial_data.get("query", "")
+        chained = initial_data.get("chained", False)
+        thread_id = initial_data.get("thread_id") or uuid4().hex
+        resume = initial_data.get("resume")
 
-@router.get("/execute_task/", response_model=None)
-async def execute_task(
-    session: SessionDep,
-    query: str = Query(..., description="The user's query"),
-    chained: bool = Query(False, description="Whether to use chained tool calls"),
-    thread_id: str = Query(
-        None, description="Optional thread ID for resuming execution"
-    ),
-    resume_action: str = Query(
-        None, description="Resume action (approve/reject) if resuming"
-    ),
-) -> StreamingResponse:
-    logger.warning(f"Task Execution Query: {query}")
-    thread_id = thread_id or uuid4().hex
+        logger.warning(f"Task Execution Query: {query}, Thread ID: {thread_id}")
 
-    async def stream_task_execution() -> AsyncGenerator[str, None]:
-        try:
-            config = {"configurable": {"thread_id": thread_id}}
+        config = {"configurable": {"thread_id": thread_id}}
 
-            initial_state = {
-                "query": query,
-                "chained": chained,
-                "tool_calls": [],
-                "identified_actions": [],
-                "tool_response": "",
-                "final_response": "",
-                "user_approved": False,
-                "requires_approval": False,
-                "actions_to_review": None,
-                "action_context": None,
-                "iter_count": 0,
-            }
+        command = Command(resume=resume) if resume is not None else None
+        initial_state = {
+            "query": query,
+            "chained": chained,
+            "tool_calls": [],
+            "identified_actions": [],
+            "tool_response": "",
+            "final_response": "",
+            "user_approved": False,
+            "requires_approval": False,
+            "actions_to_review": None,
+            "action_context": None,
+            "iter_count": 0,
+        }
 
-            if resume_action is not None:
-                resume_value = resume_action.lower() == "approve"
-                command = Command(resume=resume_value)
-                async for event in agent.task_execution_graph.astream(
-                    command, config=config
-                ):
-                    state = list(event.values())[0]
-                    event_data = {
-                        "response": state.get("tool_response", ""),
-                        "status": bool(state.get("tool_response", "")),
+        # Start the stream with either the resume command or initial state
+        stream = agent.task_execution_graph.astream(command if command else initial_state, config=config)
+
+        async for event in stream:
+            logger.info(f"Event: {event}")
+
+            # Handle interrupt inside '__interrupt__' key
+            if isinstance(event, dict) and "__interrupt__" in event:
+                interrupt_tuple = event["__interrupt__"]
+                if isinstance(interrupt_tuple, tuple) and len(interrupt_tuple) > 0 and isinstance(interrupt_tuple[0], Interrupt):
+                    interrupt_obj = interrupt_tuple[0]
+                    await websocket.send_json({
+                        "interrupt": True,
+                        "payload": interrupt_obj.value,
+                        "resumable": interrupt_obj.resumable,
+                        "namespace": interrupt_obj.ns,
                         "thread_id": thread_id,
-                        "requires_approval": state.get("requires_approval", False),
-                        "actions_to_review": state.get("actions_to_review"),
-                        "is_final": chained and state.get("final_response") is not None,
-                    }
-                    yield f"data: {dumps(event_data)}\n\n"
-                    if state.get("final_response") and not state.get(
-                        "requires_approval", False
-                    ):
-                        break
-            else:
-                async for event in agent.task_execution_graph.astream(
-                    initial_state, config=config
-                ):
-                    state = None
-                    if isinstance(event, dict):
-                        state = list(event.values())[0] if event.values() else {}
-                    elif isinstance(event, tuple):
-                        state = event[0] if len(event) > 0 else {}
+                    })
+                    approval_data = await websocket.receive_json()
+                    resume_value = approval_data.get("resume")
+                    if resume_value is not None:
+                        command = Command(resume=resume_value)
+                        stream = agent.task_execution_graph.astream(command, config=config)
+                        continue
                     else:
-                        state = {}
-
-                    if not isinstance(state, dict):
-                        logger.error(f"Unexpected state type: {type(state)}")
-                        yield f"data: {dumps({'error': 'Invalid state format'})}\n\n"
                         break
-
-                    event_data = {
-                        "response": state.get("tool_response", ""),
-                        "status": bool(state.get("tool_response", "")),
-                        "thread_id": thread_id,
-                        "requires_approval": state.get("requires_approval", False),
-                        "actions_to_review": state.get("actions_to_review"),
-                        "is_final": chained and state.get("final_response") is not None,
-                    }
-                    yield f"data: {dumps(event_data)}\n\n"
-                    if state.get("requires_approval", False):
-                        logger.warning("Approval required, awaiting user decision")
-                        break
-                    if state.get("final_response") and not state.get(
-                        "requires_approval", False
-                    ):
-                        logger.info("Task execution completed")
-                        break
-
-        except Exception as e:
-            error_msg = {"error": str(e)}
-            logger.error(f"Stream error: {e}")
-            yield f"data: {dumps(error_msg)}\n\n"
-        finally:
-            session.close()
-            logger.info("Stream response generator closed")
-
-    return StreamingResponse(
-        stream_task_execution(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
-@router.get("/handle_approval/", response_model=None)
-async def handle_approval(
-    session: SessionDep,
-    thread_id: str = Query(..., description="The thread ID to resume"),
-    approved: bool = Query(..., description="Whether to approve the actions"),
-) -> StreamingResponse:
-    logger.warning(f"Handling approval for thread {thread_id}: {approved}")
-
-    async def stream_approval_result() -> AsyncGenerator[str, None]:
-        try:
-            config = {"configurable": {"thread_id": thread_id}}
-            state_snapshot = agent.task_execution_graph.get_state(config)
-            state = state_snapshot.values
-            chained = state.get("chained", False)
-            updated_values = {
-                "user_approved": approved,
-                "requires_approval": False,
-                "actions_to_review": None,
-            }
-            if not approved:
-                updated_values["final_response"] = "Task execution cancelled by user."
-            agent.task_execution_graph.update_state(
-                config, updated_values, as_node="human_approval"
-            )
-
-            async for event in agent.task_execution_graph.astream(
-                None, config=config
-            ):
-                state = None
-                if isinstance(event, dict):
-                    state = list(event.values())[0] if event.values() else {}
-                elif isinstance(event, tuple):
-                    state = event[0] if len(event) > 0 else {}
                 else:
-                    state = {}
+                    logger.error(f"Invalid interrupt format: {interrupt_tuple}")
+                    await websocket.send_json({"error": "Invalid interrupt format"})
+                    break
 
+            # Handle normal dict state events
+            elif isinstance(event, dict):
+                state = list(event.values())[0] if event.values() else {}
                 if not isinstance(state, dict):
-                    logger.error(f"Unexpected state type: {type(state)}")
-                    yield f"data: {dumps({'error': 'Invalid state format'})}\n\n"
+                    logger.error(f"Unexpected state type: {type(state)}, state: {state}")
+                    await websocket.send_json({"error": "Invalid state format"})
                     break
 
                 event_data = {
-                    "response": state.get("tool_response", "Approval processed"),
-                    "status": True,
+                    "response": state.get("tool_response", ""),
+                    "status": bool(state.get("tool_response", "")),
                     "thread_id": thread_id,
                     "requires_approval": state.get("requires_approval", False),
                     "actions_to_review": state.get("actions_to_review"),
-                    "is_final": chained and state.get("final_response") is not None,
+                    "is_final": state.get("final_response") is not None,
                 }
-                yield f"data: {dumps(event_data)}\n\n"
+                await websocket.send_json(event_data)
+
                 if state.get("requires_approval", False):
+                    logger.warning("Approval required, awaiting user decision")
+                    approval_data = await websocket.receive_json()
+                    resume_value = approval_data.get("resume")
+                    if resume_value is not None:
+                        state["user_approved"] = resume_value.lower() == "true"
+                        command = Command(resume=resume_value.lower())
+                        stream = agent.task_execution_graph.astream(command, config=config)
+                        continue
+
+                if state.get("final_response") and not state.get("requires_approval", False):
                     break
-                if state.get("final_response") and not state.get(
-                    "requires_approval", False
-                ):
-                    logger.info("Approval process completed")
-                    break
-        except Exception as e:
-            error_msg = {"error": str(e)}
-            logger.error(f"Approval stream error: {e}")
-            yield f"data: {dumps(error_msg)}\n\n"
-        finally:
-            session.close()
-            logger.info("Approval stream generator closed")
 
-    return StreamingResponse(
-        stream_approval_result(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+            else:
+                logger.error(f"Unexpected event type: {type(event)}, event: {event}")
+                await websocket.send_json({"error": f"Invalid event format: {type(event)}"})
+                break
 
 
-@router.get("/get_final_response/", response_model=None)
-async def get_final_response(
-    thread_id: str = Query(
-        ..., description="The thread ID to fetch the final response for"
-    ),
-):
-    try:
-        config = {"configurable": {"thread_id": thread_id}}
-        state_snapshot = agent.task_execution_graph.get_state(config)
-        final_response = state_snapshot.values.get("final_response", None)
-        if final_response is None:
-            return {"error": "No final_response found for the given thread_id"}
-        return {"final_response": final_response, "is_final": True}
+    except WebSocketDisconnect:
+        logger.info("WebSocket connection closed by client")
     except Exception as e:
-        logger.error(f"Error fetching final_response for thread {thread_id}: {e}")
-        return {"error": str(e)}
+        logger.error(f"WebSocket error: {e}")
+        await websocket.send_json({"error": str(e)})
+    finally:
+        session.close()
+        logger.info("WebSocket connection closed")
+        await websocket.close()

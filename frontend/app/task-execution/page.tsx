@@ -42,6 +42,8 @@ interface TaskResult {
   actions_to_review?: ApprovalRequest;
   error?: string;
   is_final?: boolean;
+  interrupt?: boolean; // For interrupt detection
+  payload?: ApprovalRequest; // Interrupt payload
 }
 
 export default function TaskExecutionPage() {
@@ -53,25 +55,45 @@ export default function TaskExecutionPage() {
     useState<ApprovalRequest | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const threadIdRef = useRef<string | null>(null);
 
-  const handleStartTask = () => {
-    if (!taskName.trim() || eventSourceRef.current || isLoading) return;
+  const connectWebSocket = (initialData: {
+    query?: string;
+    chained?: boolean;
+    thread_id?: string | null;
+    resume?: string;
+  }) => {
+    if (!taskName.trim() && !threadIdRef.current && !initialData.resume) return;
 
-    setResult(null);
     setIsLoading(true);
-    const eventSource = new EventSource(
-      `${API_BASE_URL}/api/task_execution/execute_task/?query=${encodeURIComponent(
-        taskName
-      )}&chained=${chained}`,
-      { withCredentials: true }
-    );
+    setApprovalDialogOpen(false);
 
-    eventSourceRef.current = eventSource;
+    const url = `${API_BASE_URL.replace("http", "ws")}/api/task_execution/ws/task_execution/`;
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
 
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    ws.onopen = () => {
+      ws.send(JSON.stringify(initialData));
+    };
+
+    ws.onmessage = (event) => {
+      const data: TaskResult = JSON.parse(event.data);
+
+      // Handle interrupt message from backend
+      if (data.interrupt) {
+        setCurrentApprovalRequest(data.payload || null);
+        setApprovalDialogOpen(true);
+        setIsLoading(false);
+        if (data.thread_id) threadIdRef.current = data.thread_id;
+        return; // Skip further processing for this message
+      }
+
       setResult((prev) => ({ ...prev, ...data }));
+
+      if (data.thread_id) {
+        threadIdRef.current = data.thread_id;
+      }
 
       if (data.error) {
         toast({
@@ -79,14 +101,13 @@ export default function TaskExecutionPage() {
           description: data.error,
           className: "bg-red-50 border-red-200 text-red-800",
         });
-        eventSource.close();
-        eventSourceRef.current = null;
+        ws.close();
+        wsRef.current = null;
         setIsLoading(false);
+        setApprovalDialogOpen(false);
       } else if (data.requires_approval && data.actions_to_review) {
         setCurrentApprovalRequest(data.actions_to_review);
         setApprovalDialogOpen(true);
-        eventSource.close();
-        eventSourceRef.current = null;
         setIsLoading(false);
       } else if (data.is_final) {
         toast({
@@ -95,149 +116,55 @@ export default function TaskExecutionPage() {
           className: "bg-green-50 border-green-200 text-green-800",
         });
         setTaskName("");
-        eventSource.close();
-        eventSourceRef.current = null;
+        ws.close();
+        wsRef.current = null;
         setIsLoading(false);
+        setApprovalDialogOpen(false);
+        threadIdRef.current = null;
+      } else {
+        setIsLoading(true);
       }
     };
 
-    eventSource.onerror = () => {
+    ws.onerror = () => {
       toast({
         title: "Connection Error",
-        description: "Failed to maintain stream connection",
+        description: "Failed to maintain WebSocket connection",
         className: "bg-red-50 border-red-200 text-red-800",
       });
-      eventSource.close();
-      eventSourceRef.current = null;
+      ws.close();
+      wsRef.current = null;
+      setIsLoading(false);
+      setApprovalDialogOpen(false);
+      threadIdRef.current = null;
+    };
+
+    ws.onclose = () => {
+      wsRef.current = null;
       setIsLoading(false);
     };
   };
 
-  const handleApprove = async () => {
-    if (!result?.thread_id) return;
-
-    const eventSource = new EventSource(
-      `${API_BASE_URL}/api/task_execution/handle_approval/?thread_id=${result.thread_id}&approved=true`,
-      { withCredentials: true }
-    );
-
-    eventSourceRef.current = eventSource;
-
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setResult((prev) => ({
-        ...prev,
-        ...data,
-        requires_approval: data.requires_approval ?? false,
-        actions_to_review: data.actions_to_review ?? null,
-      }));
-      if (!data.requires_approval || data.is_final || data.error) {
-        setApprovalDialogOpen(false);
-      }
-
-      if (data.response && data.is_final) {
-        toast({
-          title: "Task Approved",
-          description: "Task execution completed successfully",
-          className: "bg-green-50 border-green-200 text-green-800",
-        });
-      } else if (!data.response && data.thread_id && !data.requires_approval) {
-        fetchFinalResponse();
-      } else if (data.requires_approval && data.actions_to_review) {
-        setCurrentApprovalRequest(data.actions_to_review);
-        setApprovalDialogOpen(true);
-      }
-    };
-
-    eventSource.onerror = () => {
-      toast({
-        title: "Approval Failed",
-        description: "Failed to process approval",
-        className: "bg-red-50 border-red-200 text-red-800",
-      });
-      eventSource.close();
-      eventSourceRef.current = null;
-      setApprovalDialogOpen(false);
-      fetchFinalResponse();
-    };
+  const handleStartTask = () => {
+    threadIdRef.current = null;
+    setResult(null);
+    connectWebSocket({ query: taskName, chained, thread_id: null });
   };
 
-  const handleReject = async () => {
-    if (!result?.thread_id) return;
-
-    const eventSource = new EventSource(
-      `${API_BASE_URL}/api/task_execution/handle_approval/?thread_id=${result.thread_id}&approved=false`,
-      { withCredentials: true }
+  const handleApprove = () => {
+    if (!threadIdRef.current || !wsRef.current) return;
+    setApprovalDialogOpen(false);
+    wsRef.current.send(
+      JSON.stringify({ thread_id: threadIdRef.current, resume: "true" })
     );
-
-    eventSourceRef.current = eventSource;
-
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setResult((prev) => ({
-        ...prev,
-        ...data,
-        requires_approval: data.requires_approval ?? false,
-        actions_to_review: data.actions_to_review ?? null,
-      }));
-      setApprovalDialogOpen(false);
-
-      if (data.response) {
-        toast({
-          title: "Task Rejected",
-          description: "Task execution was cancelled",
-          className: "bg-yellow-50 border-yellow-200 text-yellow-800",
-        });
-      }
-    };
-
-    eventSource.onerror = () => {
-      toast({
-        title: "Rejection Failed",
-        description: "Failed to process rejection",
-        className: "bg-red-50 border-red-200 text-red-800",
-      });
-      eventSource.close();
-      eventSourceRef.current = null;
-      setApprovalDialogOpen(false);
-    };
   };
 
-  const fetchFinalResponse = async () => {
-    if (!result?.thread_id) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/task_execution/get_final_response/?thread_id=${result.thread_id}`,
-        { credentials: "include" }
-      );
-      const data = await response.json();
-      if (data.error) {
-        toast({
-          title: "Fetch Failed",
-          description: data.error,
-          className: "bg-red-50 border-red-200 text-red-800",
-        });
-      } else {
-        setResult((prev) => ({
-          ...prev,
-          ...data,
-          requires_approval: false,
-          actions_to_review: null,
-        }));
-        toast({
-          title: "Task Completed",
-          description: "Final response fetched successfully",
-          className: "bg-green-50 border-green-200 text-green-800",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Fetch Error",
-        description: "Failed to fetch final response",
-        className: "bg-red-50 border-red-200 text-red-800",
-      });
-    }
+  const handleReject = () => {
+    if (!threadIdRef.current || !wsRef.current) return;
+    setApprovalDialogOpen(false);
+    wsRef.current.send(
+      JSON.stringify({ thread_id: threadIdRef.current, resume: "false" })
+    );
   };
 
   const copyOutput = () => {
@@ -272,9 +199,9 @@ export default function TaskExecutionPage() {
 
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, []);
@@ -311,11 +238,9 @@ export default function TaskExecutionPage() {
               />
               <Button
                 onClick={handleStartTask}
-                disabled={
-                  !taskName.trim() || !!eventSourceRef.current || isLoading
-                }
+                disabled={!taskName.trim() || isLoading}
                 className={
-                  !taskName.trim() || !!eventSourceRef.current || isLoading
+                  !taskName.trim() || isLoading
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }
@@ -360,33 +285,6 @@ export default function TaskExecutionPage() {
               </label>
             </div>
           </div>
-          {isLoading && (
-            <div className="flex items-center justify-center py-4">
-              <svg
-                className="animate-spin h-8 w-8 text-blue-500"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <span className="ml-2 text-sm text-muted-foreground">
-                Processing task...
-              </span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -445,19 +343,6 @@ export default function TaskExecutionPage() {
                 </Label>
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-800">{result.error}</p>
-                </div>
-              </div>
-            )}
-
-            {result.requires_approval && result.actions_to_review && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-yellow-600">
-                  Awaiting Approval
-                </Label>
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    Please review and approve the actions in the dialog above.
-                  </p>
                 </div>
               </div>
             )}

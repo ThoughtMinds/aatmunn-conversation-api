@@ -16,11 +16,6 @@ class ToolCall(BaseModel):
     parameters: Dict
 
 
-class ChainedToolCall(BaseModel):
-    name: str = ""
-    parameters: Dict = {}
-
-
 class AgentState(TypedDict):
     query: str
     chained: bool

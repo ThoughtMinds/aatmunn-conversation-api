@@ -31,6 +31,7 @@ class AgentState(TypedDict):
     actions_to_review: Optional[Dict]
     action_context: Optional[Dict]
     iter_count: Optional[int]
+    identified_actions: list
 
 
 chat_model = llm.get_ollama_chat_model(cache=True)
@@ -48,7 +49,9 @@ def list_tool_names():
     Returns:
         str: Formatted string containing all tools.
     """
-    return tools.list_tool_names(tool_list)
+    result = tools.list_tool_names(tool_list)
+    logger.info(f"list_tool_names result: {result}")
+    return result
 
 tool_list.append(list_tool_names)
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
@@ -67,7 +70,7 @@ MAX_CHAIN_ITERATIONS = 10
 
 
 def identify_actions(state: AgentState) -> AgentState:
-    logger.critical("Performing normal Action Identification")
+    logger.critical(f"Performing normal Action Identification for query: {state['query']}")
     response = llm_with_tools.invoke(state["query"])
     state["tool_calls"] = response.tool_calls or []
 
@@ -90,12 +93,17 @@ def identify_actions(state: AgentState) -> AgentState:
         ],
         "query": state["query"],
     }
-    interrupt(state["actions_to_review"])  # This triggers the Interrupt event
+    logger.info(f"Prepared actions for approval: {state['actions_to_review']}")
+    interrupt(state["actions_to_review"])
     return state
 
+
 def chained_identify_actions(state: AgentState) -> AgentState:
-    iter_count = state.get("iter_count", 0)
+    iter_count = state.get("iter_count", 0) + 1
+    state["iter_count"] = iter_count
+
     if iter_count >= MAX_CHAIN_ITERATIONS:
+        logger.warning(f"Max iterations ({MAX_CHAIN_ITERATIONS}) reached")
         state["final_response"] = state["tool_response"] or NO_RESPONSE
         return state
 
@@ -116,6 +124,7 @@ def chained_identify_actions(state: AgentState) -> AgentState:
         return state
 
     if not tool_call.name:
+        logger.info("No further chained tool calls identified")
         state["final_response"] = state["tool_response"] or NO_RESPONSE
         return state
 
@@ -142,20 +151,28 @@ def chained_identify_actions(state: AgentState) -> AgentState:
         ],
         "query": state["query"],
     }
+    logger.info(f"Prepared chained actions for approval: {state['actions_to_review']}")
     interrupt(state["actions_to_review"])
     return state
 
 
 def execute_approved_tools(state: AgentState) -> AgentState:
+    logger.info(f"Executing tools with state: user_approved={state.get('user_approved')}, chained={state['chained']}, tool_calls={state.get('tool_calls')}, identified_actions={state.get('identified_actions')}")
     state["tool_response"] = state.get("tool_response", "")
 
     if not state.get("user_approved", False):
-        # User rejected, end chain
+        logger.warning("Execution cancelled due to lack of user approval")
         state["final_response"] = "Task execution cancelled by user."
         return state
 
     try:
-        for tool_call in state.get("identified_actions", state.get("tool_calls", [])):
+        tool_calls_to_execute = state.get("tool_calls", []) if not state["chained"] else state.get("identified_actions", [])
+        if not tool_calls_to_execute:
+            logger.info("No tools to execute")
+            state["final_response"] = NO_RESPONSE
+            return state
+
+        for tool_call in tool_calls_to_execute:
             name = tool_call["name"]
             args = tool_call.get("args") or tool_call.get("parameters")
             func = tool_dict.get(name)
@@ -165,8 +182,9 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             response = func.invoke(args)
             logger.info(f"Tool Response:\n{response}")
             response_string = dumps(response)
-            tool_response_str = f"{name}: {response_string}"
-            state["tool_response"] += f"{tool_response_str}\n"
+            tool_response_str = f"{name}: {response_string}\n"
+            state["tool_response"] += tool_response_str
+
             if state["chained"]:
                 if "action_context" not in state or not isinstance(state["action_context"], dict):
                     state["action_context"] = {"previous_results": [], "already_executed": []}
@@ -176,20 +194,33 @@ def execute_approved_tools(state: AgentState) -> AgentState:
                     state["action_context"]["already_executed"] = []
                 state["action_context"]["previous_results"].append(tool_response_str)
                 state["action_context"]["already_executed"].append({"name": name, "parameters": args})
+
+        # Set final_response for non-chained calls
         if not state["chained"]:
-            state["final_response"] = state["tool_response"]
+            state["final_response"] = state["tool_response"] or NO_RESPONSE
+            logger.info(f"Set final_response for non-chained call: {state['final_response'][:100]}...")
+
     except Exception as e:
         logger.error(f"Tool execution failed due to: {e}")
         state["final_response"] = FALLBACK_RESPONSE
+
     finally:
-        state["user_approved"] = False
-        state["requires_approval"] = False
-        state["actions_to_review"] = None
+        # Only clear tool_calls and identified_actions if workflow is complete
+        if state.get("final_response"):
+            state["user_approved"] = False
+            state["requires_approval"] = False
+            state["actions_to_review"] = None
+            state["tool_calls"] = []
+            state["identified_actions"] = []
+        logger.info(f"State after execution: {state}")
 
     return state
 
 
 def tool_call_router(state: AgentState) -> str:
+    logger.info(f"Routing with state: chained={state['chained']}, final_response={bool(state.get('final_response'))}, iter_count={state.get('iter_count', 0)}, tool_calls={state.get('tool_calls')}")
+    if state.get("final_response"):
+        return END
     if state["chained"]:
         return "chained_identify_actions"
     return "identify_actions"
@@ -205,6 +236,7 @@ workflow.set_conditional_entry_point(
     {
         "identify_actions": "identify_actions",
         "chained_identify_actions": "chained_identify_actions",
+        END: END,
     },
 )
 
@@ -213,7 +245,7 @@ workflow.add_edge("chained_identify_actions", "execute_approved_tools")
 
 workflow.add_conditional_edges(
     "execute_approved_tools",
-    lambda state: "chained_identify_actions" if state["chained"] and not state.get("final_response") else END,
+    lambda state: "chained_identify_actions" if state["chained"] and not state.get("final_response") and state.get("iter_count", 0) < MAX_CHAIN_ITERATIONS else END,
     {
         "chained_identify_actions": "chained_identify_actions",
         END: END,

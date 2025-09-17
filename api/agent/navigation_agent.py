@@ -1,10 +1,11 @@
 from typing_extensions import List, TypedDict
 from typing import Optional, AsyncGenerator, Dict
 from langchain_core.documents import Document
-from api import rag, llm, schema
+from api import llm, rag, schema
 from langgraph.graph import START, StateGraph
 import json
 from api.core.logging_config import logger
+from api.core.config import settings
 
 
 class State(TypedDict):
@@ -60,7 +61,7 @@ def generate(state: State):
 
     logger.info(f"Processing context with {len(context)} documents")
     try:
-        chat_model = llm.get_ollama_chat_fallback_model()
+        chat_model = llm.get_chat_model(model_name=settings.NAVIGATION_CHAT_MODEL)
         rag_chain = llm.create_chain_for_task(
             task="navigation", llm=chat_model, output_schema=schema.Navigation
         )

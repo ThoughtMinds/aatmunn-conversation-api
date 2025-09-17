@@ -8,6 +8,7 @@ from api import db, llm, tools, schema
 from api.core.logging_config import logger
 from langchain_core.tools import tool
 from uuid import uuid4
+from api.core.config import settings
 
 
 class ToolCall(BaseModel):
@@ -34,12 +35,12 @@ class AgentState(TypedDict):
     identified_actions: list
 
 
-chat_model = llm.get_ollama_chat_model(cache=False)  # Cache disabled
 tool_list = [
     tools.aatumunn_api_integration.search_users,
     tools.aatumunn_api_integration.update_user,
     tools.aatumunn_api_integration.get_user_by_id,
 ]
+
 
 @tool
 def list_tool_names():
@@ -53,14 +54,19 @@ def list_tool_names():
     logger.info(f"list_tool_names result: {result}")
     return result
 
+
 tool_list.append(list_tool_names)
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 tool_dict = {tool.name: tool for tool in tool_list}
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
-llm_with_tools = chat_model.bind_tools(tool_list)
+
+tool_llm, chained_llm = llm.get_chat_model(
+    model_name=settings.TASK_EXECUTION_CHAT_MODEL
+), llm.get_chat_model(model_name=settings.CHAINED_TOOL_CALL_CHAT_MODEL)
+llm_with_tools = tool_llm.bind_tools(tool_list)
 chained_tool_chain = llm.create_chain_for_task(
     task="chained tool call",
-    llm=chat_model,
+    llm=chained_llm,
     output_schema=schema.ChainedToolCall,
 )
 
@@ -70,7 +76,9 @@ MAX_CHAIN_ITERATIONS = 4
 
 
 def identify_actions(state: AgentState) -> AgentState:
-    logger.critical(f"Performing normal Action Identification for query: {state['query']}")
+    logger.critical(
+        f"Performing normal Action Identification for query: {state['query']}"
+    )
     response = llm_with_tools.invoke(state["query"])
     state["tool_calls"] = response.tool_calls or []
 

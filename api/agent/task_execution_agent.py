@@ -108,7 +108,9 @@ def identify_actions(state: AgentState) -> AgentState:
 
 
 def chained_identify_actions(state: AgentState) -> AgentState:
-    logger.info(f"Entering chained_identify_actions for query: {state['query']}, iter_count: {state.get('iter_count', 0)}")
+    logger.info(
+        f"Entering chained_identify_actions for query: {state['query']}, iter_count: {state.get('iter_count', 0)}"
+    )
     iter_count = state.get("iter_count", 0) + 1
     state["iter_count"] = iter_count
 
@@ -150,7 +152,9 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     # Check if the identified action was already executed
     action_key = {"name": tool_call.name, "parameters": tool_call.parameters}
     if action_key in already_executed:
-        logger.warning(f"Action {tool_call.name} with parameters {tool_call.parameters} already executed, skipping")
+        logger.warning(
+            f"Action {tool_call.name} with parameters {tool_call.parameters} already executed, skipping"
+        )
         state["final_response"] = state["tool_response"] or NO_RESPONSE
         state["requires_approval"] = False
         return state
@@ -184,7 +188,9 @@ def chained_identify_actions(state: AgentState) -> AgentState:
 
 
 def execute_approved_tools(state: AgentState) -> AgentState:
-    logger.info(f"Executing tools with state: user_approved={state.get('user_approved')}, chained={state['chained']}, tool_calls={state.get('tool_calls')}, identified_actions={state.get('identified_actions')}")
+    logger.info(
+        f"Executing tools with state: user_approved={state.get('user_approved')}, chained={state['chained']}, tool_calls={state.get('tool_calls')}, identified_actions={state.get('identified_actions')}"
+    )
     state["tool_response"] = state.get("tool_response", "")
 
     if not state.get("user_approved", False):
@@ -194,7 +200,11 @@ def execute_approved_tools(state: AgentState) -> AgentState:
         return state
 
     try:
-        tool_calls_to_execute = state.get("tool_calls", []) if not state["chained"] else state.get("identified_actions", [])
+        tool_calls_to_execute = (
+            state.get("tool_calls", [])
+            if not state["chained"]
+            else state.get("identified_actions", [])
+        )
         if not tool_calls_to_execute:
             logger.info("No tools to execute")
             state["final_response"] = NO_RESPONSE
@@ -210,25 +220,36 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             logger.info(f"Executing approved tool: {name} | Args: {args}")
             response = func.invoke(args)
             logger.info(f"Tool Response:\n{response}")
-            response_string = dumps(response) if isinstance(response, dict) else str(response)
+            response_string = (
+                dumps(response) if isinstance(response, dict) else str(response)
+            )
             tool_response_str = f"{name}: {response_string}\n"
             state["tool_response"] += tool_response_str
 
             if state["chained"]:
-                if "action_context" not in state or not isinstance(state["action_context"], dict):
-                    state["action_context"] = {"previous_results": [], "already_executed": []}
+                if "action_context" not in state or not isinstance(
+                    state["action_context"], dict
+                ):
+                    state["action_context"] = {
+                        "previous_results": [],
+                        "already_executed": [],
+                    }
                 if "previous_results" not in state["action_context"]:
                     state["action_context"]["previous_results"] = []
                 if "already_executed" not in state["action_context"]:
                     state["action_context"]["already_executed"] = []
                 state["action_context"]["previous_results"].append(tool_response_str)
-                state["action_context"]["already_executed"].append({"name": name, "parameters": args})
+                state["action_context"]["already_executed"].append(
+                    {"name": name, "parameters": args}
+                )
 
         # Set final_response for non-chained calls
         if not state["chained"]:
             state["final_response"] = state["tool_response"] or NO_RESPONSE
             state["requires_approval"] = False
-            logger.info(f"Set final_response for non-chained call: {state['final_response'][:100]}...")
+            logger.info(
+                f"Set final_response for non-chained call: {state['final_response'][:100]}..."
+            )
 
     except Exception as e:
         logger.error(f"Tool execution failed due to: {e}")
@@ -249,8 +270,15 @@ def execute_approved_tools(state: AgentState) -> AgentState:
 
 
 def tool_call_router(state: AgentState) -> str:
-    logger.info(f"Routing with state: chained={state['chained']}, final_response={bool(state.get('final_response'))}, iter_count={state.get('iter_count', 0)}, tool_calls={state.get('tool_calls')}, identified_actions={state.get('identified_actions')}")
-    if state.get("final_response") or (not state.get("requires_approval", False) and not state.get("tool_calls") and not state.get("identified_actions") and state.get("iter_count", 0) > 0):
+    logger.info(
+        f"Routing with state: chained={state['chained']}, final_response={bool(state.get('final_response'))}, iter_count={state.get('iter_count', 0)}, tool_calls={state.get('tool_calls')}, identified_actions={state.get('identified_actions')}"
+    )
+    if state.get("final_response") or (
+        not state.get("requires_approval", False)
+        and not state.get("tool_calls")
+        and not state.get("identified_actions")
+        and state.get("iter_count", 0) > 0
+    ):
         logger.info("Routing to END due to final_response or no pending actions")
         return END
     if state["chained"]:
@@ -279,7 +307,13 @@ workflow.add_edge("chained_identify_actions", "execute_approved_tools")
 
 workflow.add_conditional_edges(
     "execute_approved_tools",
-    lambda state: "chained_identify_actions" if state["chained"] and not state.get("final_response") and state.get("iter_count", 0) < MAX_CHAIN_ITERATIONS else END,
+    lambda state: (
+        "chained_identify_actions"
+        if state["chained"]
+        and not state.get("final_response")
+        and state.get("iter_count", 0) < MAX_CHAIN_ITERATIONS
+        else END
+    ),
     {
         "chained_identify_actions": "chained_identify_actions",
         END: END,

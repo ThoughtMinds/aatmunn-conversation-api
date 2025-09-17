@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from api.core.config import settings
-from api import db, llm, rag, routers, tools
-from api.db import log
+from api import db, llm, rag, routers
 from api.middlewares.logging_middleware import LoggingMiddleware
 from contextlib import asynccontextmanager
 
@@ -20,7 +19,7 @@ async def lifespan(app: FastAPI):
     Args:
         app (FastAPI): The FastAPI application instance.
     """
-    llm.preload_ollama_models()
+    llm.verify_credentials_and_preload()
     db.create_db_and_tables()
     rag.ensure_vectorstore_exists()
     yield

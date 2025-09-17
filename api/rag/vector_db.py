@@ -5,9 +5,10 @@ from .parse_data import get_document, get_documents
 from .load_data import load_sample_navigation_data
 from api import db, schema
 from sqlmodel import Session
+from api.core.config import settings
 
 
-embeddings = llm.get_ollama_embeddings_model()
+embeddings = llm.get_embeddings_model(model_name=settings.NAVIGATION_EMBEDDING_MODEL)
 
 
 def get_vectorstore() -> Chroma:

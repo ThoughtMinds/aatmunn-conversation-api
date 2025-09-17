@@ -3,9 +3,10 @@ from langgraph.graph import START, StateGraph
 from api import llm, schema
 from typing import Optional
 from api.core.logging_config import logger
+from api.core.config import settings
 
 
-chat_model = llm.get_ollama_chat_model(cache=True)
+chat_model = llm.get_chat_model(model_name=settings.ORCHESTRATOR_CHAT_MODEL,cache=True)
 orchestrator_chain = llm.create_chain_for_task(task="orchestration", llm=chat_model)
 
 

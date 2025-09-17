@@ -11,8 +11,8 @@ from sqlmodel import Session
 from typing import Annotated
 import math
 from uuid import uuid4
+from api.core.config import settings
 
-# Assume in llm.py, there is a prompt for task="score_summary" that uses the query, directives, and summary to generate analysis and score.
 
 # Global queue for streaming
 test_queue = asyncio.Queue()
@@ -20,9 +20,11 @@ SessionDep = Annotated[Session, Depends(db.get_session)]
 
 router = APIRouter()
 
-chat_model = llm.get_ollama_chat_model()
+score_llm = llm.get_chat_model(
+    model_name=settings.SUMMARIZATION_SCORE_MODEL, cache=True
+)
 score_chain = llm.create_chain_for_task(
-    task="summary score", llm=chat_model, output_schema=schema.ScoreResponse
+    task="summary score", llm=score_llm, output_schema=schema.ScoreResponse
 )
 
 
@@ -105,7 +107,7 @@ async def preview_test_cases(file: UploadFile = File(...)):
             status_code=400, detail=f"Error previewing test cases: {str(e)}"
         )
 
-
+# TODO: Handle WebSocket Testing Module
 @router.post("/run_tests/")
 async def run_tests(
     session: SessionDep, background_tasks: BackgroundTasks, file: UploadFile = File(...)

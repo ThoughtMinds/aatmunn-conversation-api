@@ -6,6 +6,7 @@ from api import db, llm, schema, tools
 from api.core.logging_config import logger
 from sqlmodel import Session
 from langchain_core.tools import tool
+from api.core.config import settings
 
 
 class ToolCall(BaseModel):
@@ -13,7 +14,6 @@ class ToolCall(BaseModel):
     parameters: Dict
 
 
-# Define the state for the LangGraph
 class AgentState(TypedDict):
     """
     Represents the state of the summarization agent.
@@ -36,10 +36,6 @@ class AgentState(TypedDict):
     is_moderated: bool
     final_response: str
 
-
-# Initialize tools and models
-chat_model = llm.get_ollama_chat_model()
-cache_chat_model = llm.get_ollama_chat_model(cache=True)
 
 tool_list = [
     tools.aatumunn_api_integration.search_users,
@@ -73,16 +69,24 @@ tool_dict = {tool.name: tool for tool in tool_list}
 
 
 logger.info(f"[Summarization Tools] {', '.join(tool_dict.keys())}")
-llm_with_tools = chat_model.bind_tools(tool_list)
-summarize_chain = llm.create_chain_for_task(task="summarization", llm=cache_chat_model)
+tool_llm, summarize_llm, chained_llm, moderation_llm = (
+    llm.get_chat_model(model_name=settings.SUMMARIZATION_CHAT_MODEL),
+    llm.get_chat_model(model_name=settings.SUMMARIZATION_CHAT_MODEL, cache=True),
+    llm.get_chat_model(model_name=settings.CHAINED_TOOL_CALL_CHAT_MODEL),
+    llm.get_chat_model(
+        model_name=settings.CONTENT_VALIDATION_CHAT_MODEL, cache=True
+    ),
+)
+llm_with_tools = tool_llm.bind_tools(tool_list)
+summarize_chain = llm.create_chain_for_task(task="summarization", llm=summarize_llm)
 chained_tool_chain = llm.create_chain_for_task(
     task="chained tool call",
-    llm=chat_model,
+    llm=chained_llm,
     output_schema=schema.ChainedToolCall,
 )
 content_moderation_chain = llm.create_chain_for_task(
     task="content moderation",
-    llm=cache_chat_model,
+    llm=moderation_llm,
     output_schema=schema.ContentValidation,
 )
 
@@ -94,8 +98,6 @@ FALLBACK_SUMMARY_RESPONSE = (
 )
 
 
-# Node to invoke tools based on the query
-# If 'chained' = False
 def invoke_tools(state: AgentState) -> AgentState:
     session = Session(db.engine)
     response = llm_with_tools.invoke(state["query"])

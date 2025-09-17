@@ -57,7 +57,7 @@ SUMMARIZE_TEMPLATE = PromptTemplate.from_template(SUMMARIZE_PROMPT)
 
 CONTENT_MODERATION_PROMPT = """
 You are an assistant that has access to the user query and machine generated summary.
-Your role is to validate whether the summary is a proper response for the given query. 
+Your task is to validate the given summary.
 Ensure that it is not off-topic, out of context or an incorrect response for the given query
 Response Schema:
 {{
@@ -86,12 +86,14 @@ You are an expert Action Identification Agent responsible for determining the ne
 {context}
 
 ## Instructions:
-1. Analyze the user's query carefully.
-2. Review the results from all previously executed actions.
-3. Do not repeat any actions that have already been executed unless absolutely necessary.
-4. From the **available actions**, select the **single next best action** that will help progress towards a complete and accurate response.
-5. If no further actions are required to answer the user query, return an **empty JSON object**: {{}}
-6. The session parameter will be provided by the system, assign it as null
+1. Analyze the user's query carefully, breaking it into sequential steps if it contains multiple actions (e.g., "get something, then update it").
+2. Review the results from all previously executed actions and use them to inform the next step.
+3. Extract relevant data from previous results and perform simple computations if needed (e.g., reverse a string, calculate something).
+4. Do not repeat any actions that have already been executed unless absolutely necessary.
+5. From the **available actions**, select the **single next best action** that will help progress towards a complete and accurate response.
+6. If the query has typos, correct them logically.
+7. If no further actions are required to answer the user query, return an **empty JSON object**: {{}}
+8. The session parameter will be provided by the system, assign it as null
 
 If no further action is required, return {{}}
 

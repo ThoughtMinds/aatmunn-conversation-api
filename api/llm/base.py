@@ -72,7 +72,6 @@ def verify_credentials_and_preload():
         # Collect unique chat model names
         chat_models = {
             settings.OLLAMA_CHAT_MODEL,
-            settings.OLLAMA_SMALL_CHAT_MODEL,
             settings.NAVIGATION_CHAT_MODEL,
             settings.SUMMARIZATION_CHAT_MODEL,
             settings.SUMMARIZATION_SCORE_MODEL,

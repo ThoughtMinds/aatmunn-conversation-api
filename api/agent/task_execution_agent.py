@@ -130,7 +130,7 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     logger.debug(f"LLM input for chained_identify_actions: {input_dict}")
 
     try:
-        tool_call: ChainedToolCall = chained_tool_chain.invoke(input_dict)
+        tool_call: schema.ChainedToolCall = chained_tool_chain.invoke(input_dict)
         logger.debug(f"LLM output: {tool_call}")
     except Exception as e:
         logger.error(f"Chained identify failed: {e}")

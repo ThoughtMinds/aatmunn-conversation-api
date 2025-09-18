@@ -108,6 +108,13 @@ async def preview_test_cases(file: UploadFile = File(...)):
         )
 
 
+def sort_tool_calls(tool_calls):
+    """Sort tool calls by name for order-independent comparison."""
+    return sorted(
+        tool_calls, key=lambda x: x["name"] if isinstance(x, dict) else str(x)
+    )
+
+
 @router.post("/run_tests/")
 async def run_tests(
     session: SessionDep, background_tasks: BackgroundTasks, file: UploadFile = File(...)
@@ -223,6 +230,7 @@ async def run_tests(
                             ws_url = f"ws://localhost:8000/api/task_execution/ws/task_execution/"
                             predicted_response = ""
                             requires_approval = False
+                            tool_call_match = False  # Track tool call comparison explicitly
                             try:
                                 async with websockets.connect(ws_url) as websocket:
                                     # Send initial data
@@ -238,7 +246,7 @@ async def run_tests(
                                                 websocket.recv(), timeout=300.0
                                             )
                                             event_data = json.loads(message)
-                                            logger.debug(
+                                            logger.info(
                                                 f"Received WebSocket event: {event_data}"
                                             )
 
@@ -262,7 +270,6 @@ async def run_tests(
                                                 break
 
                                             if event_data.get("interrupt"):
-                                                # Simulate automatic approval for testing
                                                 requires_approval = True
                                                 approval_response = {
                                                     "thread_id": thread_id,
@@ -277,6 +284,39 @@ async def run_tests(
                                                 "requires_approval"
                                             ) and event_data.get("actions_to_review"):
                                                 requires_approval = True
+                                                # Extract tool calls from actions_to_review
+                                                actions = event_data["actions_to_review"].get("actions", [])
+                                                predicted_json = [
+                                                    {
+                                                        "name": action["tool"],
+                                                        "args": {
+                                                            key: value
+                                                            for key, value in action["parameters"].items()
+                                                            if value not in [None, ""]
+                                                        },
+                                                    }
+                                                    for action in actions
+                                                ]
+                                                # Sort for order-independent comparison
+                                                predicted_json = sort_tool_calls(predicted_json)
+                                                predicted_response = json.dumps(predicted_json)
+                                                try:
+                                                    expected_json = json.loads(
+                                                        expected_response.replace("'", '"')
+                                                    )
+                                                    # Sort expected as well
+                                                    expected_json = sort_tool_calls(expected_json)
+                                                    if json.dumps(predicted_json, sort_keys=True) == json.dumps(
+                                                        expected_json, sort_keys=True
+                                                    ):
+                                                        tool_call_match = True
+                                                    else:
+                                                        tool_call_match = False
+                                                        summarization_analysis = "Tool calls do not match expected"
+                                                except json.JSONDecodeError as e:
+                                                    logger.error(f"JSON decode error: {e}")
+                                                    tool_call_match = False
+                                                    summarization_analysis = f"Invalid JSON in response: {str(e)}"
                                                 # Simulate automatic approval for testing
                                                 approval_response = {
                                                     "thread_id": thread_id,
@@ -287,59 +327,49 @@ async def run_tests(
                                                 )
                                                 continue
 
-                                            predicted_response = event_data.get(
-                                                "response", ""
-                                            )
                                             if event_data.get("is_final"):
-                                                predicted_response = event_data[
-                                                    "response"
-                                                ]
-                                                identified_actions = (
-                                                    json.loads(predicted_response)
-                                                    if predicted_response
-                                                    else []
-                                                )
-                                                predicted_json = [
-                                                    {
-                                                        "name": item["tool"],
-                                                        "args": {
-                                                            key: value
-                                                            for key, value in item[
-                                                                "parameters"
-                                                            ].items()
-                                                            if value not in [None, ""]
-                                                        },
-                                                    }
-                                                    for item in identified_actions
-                                                ]
-                                                predicted_response = json.dumps(
-                                                    predicted_json
-                                                )
-                                                try:
-                                                    expected_json = json.loads(
-                                                        expected_response.replace(
-                                                            "'", '"'
+                                                # If final response is received, use it only if no actions were previously matched
+                                                if not predicted_response:
+                                                    predicted_response = event_data.get("response", "")
+                                                    identified_actions = (
+                                                        json.loads(predicted_response)
+                                                        if predicted_response
+                                                        else []
+                                                    )
+                                                    predicted_json = [
+                                                        {
+                                                            "name": item["tool"],
+                                                            "args": {
+                                                                key: value
+                                                                for key, value in item["parameters"].items()
+                                                                if value not in [None, ""]
+                                                            },
+                                                        }
+                                                        for item in identified_actions
+                                                    ]
+                                                    predicted_json = sort_tool_calls(predicted_json)
+                                                    predicted_response = json.dumps(predicted_json)
+                                                    try:
+                                                        expected_json = json.loads(
+                                                            expected_response.replace("'", '"')
                                                         )
-                                                    )
-                                                    if json.dumps(
-                                                        predicted_json, sort_keys=True
-                                                    ) != json.dumps(
-                                                        expected_json, sort_keys=True
-                                                    ):
-                                                        status = "Failure"
-                                                except json.JSONDecodeError as e:
-                                                    logger.error(
-                                                        f"JSON decode error: {e}"
-                                                    )
-                                                    status = "Failure"
-                                                    summarization_analysis = f"Invalid JSON in response: {str(e)}"
+                                                        expected_json = sort_tool_calls(expected_json)
+                                                        if json.dumps(predicted_json, sort_keys=True) == json.dumps(
+                                                            expected_json, sort_keys=True
+                                                        ):
+                                                            tool_call_match = True
+                                                        else:
+                                                            tool_call_match = False
+                                                            summarization_analysis = "Tool calls do not match expected"
+                                                    except json.JSONDecodeError as e:
+                                                        logger.error(f"JSON decode error: {e}")
+                                                        tool_call_match = False
+                                                        summarization_analysis = f"Invalid JSON in response: {str(e)}"
                                                 break
 
                                         except asyncio.TimeoutError:
                                             status = "Failure"
-                                            summarization_analysis = (
-                                                "WebSocket operation timed out"
-                                            )
+                                            summarization_analysis = "WebSocket operation timed out"
                                             await test_queue.put(
                                                 {
                                                     "id": str(index + 1),
@@ -355,11 +385,16 @@ async def run_tests(
                                             break
 
                                     tat = f"{(time.time() - start_time):.1f} s"
-                                    summarization_analysis = (
-                                        "Identified actions retrieved, approval required"
-                                        if requires_approval
-                                        else "Identified actions retrieved"
-                                    )
+                                    if not tool_call_match:
+                                        status = "Failure"
+                                        if not summarization_analysis:
+                                            summarization_analysis = "Tool calls do not match expected"
+                                    else:
+                                        summarization_analysis = (
+                                            "Identified actions retrieved, approval required"
+                                            if requires_approval
+                                            else "Identified actions retrieved"
+                                        )
                                     await test_queue.put(
                                         {
                                             "id": str(index + 1),
@@ -374,9 +409,7 @@ async def run_tests(
                                     )
 
                             except Exception as e:
-                                logger.error(
-                                    f"WebSocket error for row {index + 1}: {e}"
-                                )
+                                logger.error(f"WebSocket error for row {index + 1}: {e}")
                                 status = "Failure"
                                 summarization_analysis = f"WebSocket error: {str(e)}"
                                 await test_queue.put(
@@ -398,8 +431,6 @@ async def run_tests(
                             {"error": f"Error processing row {index + 1}: {str(e)}"}
                         )
                         continue
-
-                tat = f"{(time.time() - start_time):.1f} s"
 
                 if predicted_intent != "task_execution":
                     result = {

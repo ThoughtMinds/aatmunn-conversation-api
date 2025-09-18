@@ -6,6 +6,8 @@ from typing import Annotated, Dict, Any
 from uuid import uuid4
 from langgraph.types import Command, Interrupt
 import asyncio
+from time import time
+from api.db.log import create_log_entry
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(db.get_session)]
@@ -15,6 +17,9 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
     await websocket.accept()
     thread_id = None
     current_state = None
+    start_time = time()  # Capture start time for processing time calculation
+    status = "success"  # Default status
+    response_data = ""  # To store final response or error message
 
     try:
         # Receive initial message from client
@@ -59,7 +64,9 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
                 break
             except Exception as e:
                 logger.error(f"Stream error: {e}")
-                await websocket.send_json({"error": f"Stream processing failed: {str(e)}"})
+                status = "error"
+                response_data = f"Stream processing failed: {str(e)}"
+                await websocket.send_json({"error": response_data})
                 break
 
             # Handle interrupt event
@@ -71,14 +78,16 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
                     and isinstance(interrupt_tuple[0], Interrupt)
                 ):
                     interrupt_obj = interrupt_tuple[0]
-                    logger.info(f"Interrupt received - resumable: {interrupt_obj.resumable}, namespace: {interrupt_obj.ns}")
+                    resumable = getattr(interrupt_obj, 'resumable', True)
+                    ns = getattr(interrupt_obj, 'ns', None)
+                    logger.info(f"Interrupt received - resumable: {resumable}, namespace: {ns}")
 
                     await websocket.send_json(
                         {
                             "interrupt": True,
                             "payload": interrupt_obj.value,
-                            "resumable": interrupt_obj.resumable,
-                            "namespace": interrupt_obj.ns,
+                            "resumable": resumable,
+                            "namespace": ns,
                             "thread_id": thread_id,
                         }
                     )
@@ -88,7 +97,9 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
                         resume_value = approval_data.get("resume")
                         if resume_value is None:
                             logger.warning(f"No resume value received for thread {thread_id}, cancelling")
-                            await websocket.send_json({"error": "No approval decision provided"})
+                            status = "error"
+                            response_data = "No approval decision provided"
+                            await websocket.send_json({"error": response_data})
                             break
 
                         logger.info(f"Received approval response: {resume_value}, thread_id: {thread_id}")
@@ -97,7 +108,9 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
                         current_state = await agent.task_execution_graph.aget_state(config)
                         if not current_state:
                             logger.error(f"Failed to retrieve state for thread {thread_id}")
-                            await websocket.send_json({"error": "Failed to retrieve workflow state"})
+                            status = "error"
+                            response_data = "Failed to retrieve workflow state"
+                            await websocket.send_json({"error": response_data})
                             break
 
                         current_state_values = current_state.values
@@ -115,16 +128,22 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
 
                     except asyncio.TimeoutError:
                         logger.error(f"Approval timeout for thread {thread_id}")
-                        await websocket.send_json({"error": "Approval request timed out"})
+                        status = "error"
+                        response_data = "Approval request timed out"
+                        await websocket.send_json({"error": response_data})
                         break
                     except Exception as e:
                         logger.error(f"Error processing approval for thread {thread_id}: {e}")
-                        await websocket.send_json({"error": f"Approval processing failed: {str(e)}"})
+                        status = "error"
+                        response_data = f"Approval processing failed: {str(e)}"
+                        await websocket.send_json({"error": response_data})
                         break
 
                 else:
                     logger.error(f"Invalid interrupt format: {interrupt_tuple}")
-                    await websocket.send_json({"error": "Invalid interrupt format"})
+                    status = "error"
+                    response_data = "Invalid interrupt format"
+                    await websocket.send_json({"error": response_data})
                     break
 
             # Handle normal state events
@@ -134,7 +153,9 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
 
                 if not isinstance(state, dict):
                     logger.error(f"Unexpected state type: {type(state)}, state: {state}")
-                    await websocket.send_json({"error": "Invalid state format"})
+                    status = "error"
+                    response_data = "Invalid state format"
+                    await websocket.send_json({"error": response_data})
                     break
 
                 current_state = state
@@ -155,23 +176,51 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
                 if state.get("final_response") and not state.get("requires_approval", False):
                     logger.info(f"Final response reached for thread {thread_id}: {state['final_response'][:50]}...")
                     event_data["is_final"] = True
+                    response_data = state['final_response']
                     await websocket.send_json(event_data)
+                    # Log successful task execution
+                    elapsed_time = round(time() - start_time, 3)
+                    create_log_entry(
+                        session=session,
+                        intent_type="task_execution",
+                        request_data=query,
+                        response_data=response_data,
+                        status="success",
+                        processing_time=elapsed_time,
+                    )
                     break
 
             else:
                 logger.error(f"Unexpected event type: {type(event)}, event: {event}")
-                await websocket.send_json({"error": f"Invalid event format: {type(event)}"})
+                status = "error"
+                response_data = f"Invalid event format: {type(event)}"
+                await websocket.send_json({"error": response_data})
                 break
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket connection closed by client, thread_id: {thread_id}")
+        status = "error"
+        response_data = "WebSocket connection closed by client"
     except asyncio.TimeoutError:
         logger.error(f"WebSocket operation timed out, thread_id: {thread_id}")
-        await websocket.send_json({"error": "Operation timed out"})
+        status = "error"
+        response_data = "Operation timed out"
+        await websocket.send_json({"error": response_data})
     except Exception as e:
         logger.error(f"WebSocket error for thread {thread_id}: {e}")
-        await websocket.send_json({"error": str(e)})
+        status = "error"
+        response_data = str(e)
+        await websocket.send_json({"error": response_data})
     finally:
+        elapsed_time = round(time() - start_time, 3)
+        create_log_entry(
+            session=session,
+            intent_type="task_execution",
+            request_data=query if 'query' in locals() else "",
+            response_data=response_data,
+            status=status,
+            processing_time=elapsed_time,
+        )
         if session:
             session.close()
         logger.info(f"WebSocket connection closed for thread: {thread_id}")

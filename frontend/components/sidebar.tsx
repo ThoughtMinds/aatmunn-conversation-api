@@ -14,7 +14,7 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: "Intent Identification",
+    name: "Chat Playground",
     href: "/intent-identification",
     icon: Target,
   },

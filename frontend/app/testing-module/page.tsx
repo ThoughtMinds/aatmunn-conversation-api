@@ -44,6 +44,16 @@ interface TestCase {
   Directives: string;
 }
 
+interface ApprovalRequest {
+  question: string;
+  actions: Array<{
+    tool: string;
+    parameters: any;
+    description: string;
+  }>;
+  query: string;
+}
+
 export default function TestingModule() {
   const [testResults, setTestResults] = useState<
     (TestResult & { sl_no: number; input: string; directives: string })[]
@@ -55,15 +65,24 @@ export default function TestingModule() {
   const [previewData, setPreviewData] = useState<TestCase[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [currentApprovalRequest, setCurrentApprovalRequest] = useState<ApprovalRequest | null>(null);
+  const [currentTestIndex, setCurrentTestIndex] = useState<number | null>(null);
   const { toast } = useToast();
   const eventSourceRef = useRef<EventSource | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const threadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Cleanup EventSource on component unmount
+    // Cleanup EventSource and WebSocket on component unmount
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, []);
@@ -164,7 +183,7 @@ export default function TestingModule() {
 
       eventSourceRef.current.onmessage = (event) => {
         try {
-          const testResult: TestResult = JSON.parse(event.data);
+          const testResult: TestResult & { interrupt?: boolean; payload?: ApprovalRequest } = JSON.parse(event.data);
 
           if (testResult.error) {
             toast({
@@ -175,6 +194,13 @@ export default function TestingModule() {
             eventSourceRef.current?.close();
             eventSourceRef.current = null;
             setIsLoading(false);
+            return;
+          }
+
+          if (testResult.interrupt && testResult.payload) {
+            setCurrentApprovalRequest(testResult.payload);
+            setCurrentTestIndex(completedTests);
+            setApprovalDialogOpen(true);
             return;
           }
 
@@ -228,6 +254,30 @@ export default function TestingModule() {
       });
       setIsLoading(false);
     }
+  };
+
+  const handleApprove = () => {
+    if (!threadIdRef.current || !wsRef.current || currentTestIndex === null) {
+      console.error("Cannot approve: missing thread_id, WebSocket, or test index");
+      return;
+    }
+
+    wsRef.current.send(
+      JSON.stringify({ thread_id: threadIdRef.current, resume: "true" })
+    );
+    setApprovalDialogOpen(false);
+  };
+
+  const handleReject = () => {
+    if (!threadIdRef.current || !wsRef.current || currentTestIndex === null) {
+      console.error("Cannot reject: missing thread_id, WebSocket, or test index");
+      return;
+    }
+
+    wsRef.current.send(
+      JSON.stringify({ thread_id: threadIdRef.current, resume: "false" })
+    );
+    setApprovalDialogOpen(false);
   };
 
   const getIntentIcon = (intent: string) => {
@@ -407,6 +457,82 @@ export default function TestingModule() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Approval Dialog */}
+      {approvalDialogOpen && currentApprovalRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-4xl mx-auto max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-black">
+                Action Approval Required
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setApprovalDialogOpen(false)}
+                className="h-6 w-6 p-0"
+              >
+                <span className="sr-only">Close</span>
+                ×
+              </Button>
+            </div>
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800 mb-2">{currentApprovalRequest.question}</p>
+              <p className="text-xs text-blue-700">
+                <strong>Original Query:</strong> {currentApprovalRequest.query}
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="font-medium mb-3 text-black text-sm">
+                Proposed Actions ({currentApprovalRequest.actions.length}):
+              </h4>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {currentApprovalRequest.actions.map((action, index) => (
+                  <div key={index} className="p-4 border rounded-lg bg-gray-50">
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="font-medium text-green-600 text-sm">{action.tool}</p>
+                      <Badge variant="secondary" className="text-xs">
+                        Action #{index + 1}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-3">{action.description}</p>
+                    <details className="mb-2">
+                      <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
+                        View Parameters
+                      </summary>
+                      <pre className="text-xs mt-2 bg-muted p-2 rounded overflow-x-auto text-orange-600 border">
+                        {JSON.stringify(action.parameters, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={handleReject}
+                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+              >
+                Reject & Cancel
+              </Button>
+              <Button
+                onClick={handleApprove}
+                className="bg-green-500 text-white hover:bg-green-600"
+              >
+                Approve & Continue
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500 mt-3 text-center">
+              This approval ensures safe execution of automated actions.
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Results Table */}

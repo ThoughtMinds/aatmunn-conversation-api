@@ -71,14 +71,17 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
                     and isinstance(interrupt_tuple[0], Interrupt)
                 ):
                     interrupt_obj = interrupt_tuple[0]
-                    logger.info(f"Interrupt received - resumable: {interrupt_obj.resumable}, namespace: {interrupt_obj.ns}")
+                    # Safely extract resumable and ns, defaulting to ensure no AttributeError
+                    resumable = getattr(interrupt_obj, 'resumable', True)
+                    ns = getattr(interrupt_obj, 'ns', None)
+                    logger.info(f"Interrupt received - resumable: {resumable}, namespace: {ns}")
 
                     await websocket.send_json(
                         {
                             "interrupt": True,
                             "payload": interrupt_obj.value,
-                            "resumable": interrupt_obj.resumable,
-                            "namespace": interrupt_obj.ns,
+                            "resumable": resumable,
+                            "namespace": ns,
                             "thread_id": thread_id,
                         }
                     )

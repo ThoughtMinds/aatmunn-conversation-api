@@ -119,9 +119,134 @@ export default function ChatPlaygroundPage() {
     }
   };
 
+  const renderNavigationState = (agentState?: Partial<AgentState>) => {
+    if (!agentState) return null;
+
+    const { context, navigation } = agentState;
+    const hasContext = context && context.length > 0;
+    const hasNavigation = navigation && navigation.reasoning;
+    // Find the matching document where DocumentContext.id matches NavigationState.id
+    const matchingDocument = hasNavigation && navigation.id && context?.find(doc => doc.id === navigation.id);
+
+    return (
+      <div className="space-y-4">
+        {/* Progress Steps for Navigation */}
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+          <div className={`flex items-center gap-1 ${hasContext ? 'text-blue-600' : ''}`}>
+            <div className={`w-2 h-2 rounded-full ${hasContext ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+            <span>Context Retrieval</span>
+          </div>
+          <div className="flex-1 h-px bg-gray-300 mx-2"></div>
+          <div className={`flex items-center gap-1 ${hasNavigation ? 'text-green-600' : ''}`}>
+            <div className={`w-2 h-2 rounded-full ${hasNavigation ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span>Navigation Generated</span>
+          </div>
+        </div>
+
+        {/* Retrieved Context - Show even if navigation is complete */}
+        {hasContext && (
+          <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="pt-4">
+              <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                Retrieved Context ({context.length} documents)
+              </h3>
+              <div className="space-y-3">
+                {context.map((doc, index) => (
+                  <div key={index} className="bg-blue-50 p-3 rounded">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-blue-700">Document {index + 1}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs text-gray-700 transition-colors duration-200 ${
+                          doc.id === navigation?.id ? 'hover:bg-blue-200 hover:text-blue-900 bg-blue-100' : ''
+                        }`}
+                      >
+                        ID: {doc.id}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-700">{doc.content}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reasoning - Show even if we have a final response */}
+        {hasNavigation && (
+          <Card className="border-l-4 border-l-green-500">
+            <CardContent className="pt-4">
+              <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                Reasoning
+              </h3>
+              <div className="bg-green-50 p-3 rounded">
+                <p className="text-sm text-gray-700">{navigation.reasoning}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Navigation Complete - Show only when we have final navigation */}
+        {hasNavigation && (
+          <Card className="border-l-4 border-l-green-500">
+            <CardContent className="pt-4">
+              <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                Navigation Complete
+              </h3>
+              <div className="bg-green-50 p-3 rounded space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-600">Target Document ID:</span>
+                  <Badge
+                    variant="secondary"
+                    className="bg-blue-100 text-blue-800 transition-colors duration-200 hover:bg-blue-200 hover:text-blue-900"
+                  >
+                    {navigation.id}
+                  </Badge>
+                </div>
+                {matchingDocument ? (
+                  <div className="border-t pt-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Matching Intent</h4>
+                    <div className="bg-blue-50 p-3 rounded">
+                      <p className="text-xs text-gray-700">{matchingDocument.content}</p>
+                    </div>
+                  </div>
+                ) : navigation.id ? (
+                  <p className="text-xs text-gray-500">No Matching Intent found for ID: {navigation.id}</p>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading state for navigation - Show only when we don't have context or navigation yet */}
+        {!hasContext && !hasNavigation && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-center gap-2 py-6">
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></span>
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-75"></span>
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-150"></span>
+                <span className="text-sm text-gray-500 ml-2">
+                  Retrieving context...
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   const renderAgentState = (agentState?: Partial<AgentState>, category?: string) => {
     if (!agentState) {
       return <p>Processing...</p>;
+    }
+
+    if (category === "navigation") {
+      return renderNavigationState(agentState);
     }
 
     const {
@@ -129,16 +254,15 @@ export default function ChatPlaygroundPage() {
       summarized_response = "",
       is_moderated = false,
       final_response = "",
-      context,
-      navigation,
+      tool_calls,
       requires_approval,
       actions_to_review,
     } = agentState;
 
+    const hasToolCalls = tool_calls && tool_calls.length > 1;
     const hasToolResponse = tool_response && tool_response !== "";
     const hasSummary = summarized_response && summarized_response !== "";
     const hasFinal = final_response && final_response !== "";
-    const hasContext = context && context.length > 0;
 
     if (category === "task_execution" && requires_approval && actions_to_review) {
       return (
@@ -160,50 +284,88 @@ export default function ChatPlaygroundPage() {
 
     return (
       <div className="space-y-4">
-        {hasContext && (
+        {/* Progress Steps */}
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+          <div className={`flex items-center gap-1 ${hasToolCalls ? 'text-blue-600' : ''}`}>
+            <div className={`w-2 h-2 rounded-full ${hasToolCalls ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+            <span>{hasToolCalls ? 'Chained Tools' : 'Tool Calls'}</span>
+          </div>
+          <div className="flex-1 h-px bg-gray-300 mx-2"></div>
+          <div className={`flex items-center gap-1 ${hasToolResponse ? 'text-green-600' : ''}`}>
+            <div className={`w-2 h-2 rounded-full ${hasToolResponse ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span>Response</span>
+          </div>
+          <div className="flex-1 h-px bg-gray-300 mx-2"></div>
+          <div className={`flex items-center gap-1 ${hasSummary ? 'text-purple-600' : ''}`}>
+            <div className={`w-2 h-2 rounded-full ${hasSummary ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+            <span>Summary</span>
+          </div>
+          <div className="flex-1 h-px bg-gray-300 mx-2"></div>
+          <div className={`flex items-center gap-1 ${hasFinal ? 'text-emerald-600' : ''}`}>
+            <div className={`w-2 h-2 rounded-full ${hasFinal ? 'bg-emerald-500' : 'bg-gray-300'}`}></div>
+            <span>Final</span>
+          </div>
+        </div>
+
+        {/* Tool Calls - Show chained indicator if multiple calls */}
+        {hasToolCalls && (
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="pt-4">
-              <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Retrieved Context
-              </h3>
-              <div className="bg-blue-50 p-3 rounded">
-                <p className="text-sm text-gray-700">{context[0].content}</p>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  {hasToolCalls ? 'Chained Tool Execution' : 'Tool Execution'}
+                </h3>
+                {hasToolCalls && (
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                    Chained
+                  </Badge>
+                )}
               </div>
+              {tool_calls.map((call, index) => (
+                <div key={index} className="mb-4 last:mb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-blue-400 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-white">{index + 1}</span>
+                    </div>
+                    <p className="font-medium text-sm text-blue-700">{call.name}</p>
+                  </div>
+                  <div className="bg-blue-50 p-3 rounded text-xs text-gray-700 font-mono ml-5">
+                    {JSON.stringify(call.args, null, 2)}
+                  </div>
+                  {index < tool_calls.length - 1 && (
+                    <div className="flex items-center justify-center my-2">
+                      <div className="w-4 h-4 bg-blue-200 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
 
-        {category === "navigation" && navigation?.reasoning && (
-          <Card className="border-l-4 border-l-blue-500">
-            <CardContent className="pt-4">
-              <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Navigation Reasoning
-              </h3>
-              <div className="bg-blue-50 p-3 rounded">
-                <p className="text-sm text-gray-700">{navigation.reasoning}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
+        {/* Tool Response */}
         {hasToolResponse && (
           <Card className="border-l-4 border-l-green-500">
             <CardContent className="pt-4">
               <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Tool Response
+                Raw Data
               </h3>
               <div className="bg-green-50 p-3 rounded">
-                <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                  {tool_response.replace(/\\n/g, "\n")}
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                  {tool_response.replace(/\\n/g, '\n')}
                 </pre>
               </div>
             </CardContent>
           </Card>
         )}
 
+        {/* Summarized Response */}
         {hasSummary && (
           <Card className="border-l-4 border-l-purple-500">
             <CardContent className="pt-4">
@@ -218,6 +380,7 @@ export default function ChatPlaygroundPage() {
           </Card>
         )}
 
+        {/* Moderation Status - Only show if moderated */}
         {is_moderated && (
           <Card className="border-l-4 border-l-red-500">
             <CardContent className="pt-4">
@@ -235,6 +398,7 @@ export default function ChatPlaygroundPage() {
           </Card>
         )}
 
+        {/* Final Response */}
         {hasFinal ? (
           <Card className="border-l-4 border-l-emerald-500">
             <CardContent className="pt-4">
@@ -248,6 +412,7 @@ export default function ChatPlaygroundPage() {
             </CardContent>
           </Card>
         ) : (
+          // Loading state
           <Card>
             <CardContent className="pt-4">
               <div className="flex items-center justify-center gap-2 py-6">

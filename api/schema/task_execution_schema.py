@@ -204,11 +204,23 @@ class SingleRoleResponse(BaseModel):
     updatedBy: Optional[str] = None
     roleAccessPermissions: RoleAccessPermissions
 
+
+class RoleData(BaseModel):
+    id: int
+    name: Optional[str] = None
+    description: Optional[str] = None
+    orgId: int
+    createdBy: Optional[str] = None
+    createdOn: datetime
+    updatedOn: datetime
+    updatedBy: Optional[str] = None
+    noOfUsers: int
+    status: str
+
 class RolesResponse(BaseModel):
-    rolesData: List[UserRoleData]
-    total: int
-    page: int
-    size: int
+    rolesData: List[RoleData]
+    totalCount: int
+    message: str
 
 # Widget Models
 class WidgetDataUrlResponse(BaseModel):

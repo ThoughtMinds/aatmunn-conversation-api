@@ -227,7 +227,7 @@ def format_roles_list(roles_response: schema.RolesResponse) -> str:
         role_id = role.id
         name = role.name or "No Name"
         description = role.description or "No Description"
-        status = role.entityStatus.status
+        status = role.status
         role_string = (
             f"Role ID: {role_id}\n"
             f"Name: {name}\n"
@@ -262,7 +262,7 @@ def get_roles(
         data = response.json()
         roles_response = schema.RolesResponse(
             **data
-        )  # Assume or add model (similar to UserRolesResponse)
+        )
         return format_roles_list(roles_response)
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")

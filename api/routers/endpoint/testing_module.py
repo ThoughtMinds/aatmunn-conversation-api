@@ -149,6 +149,7 @@ async def run_tests(
                 summarization_analysis = ""
                 summarization_score = None
                 status = "Failure"
+                tat = f"{(time.time() - start_time):.1f} s"  # Define tat here for all cases
 
                 if predicted_intent != expected_intent:
                     status = "Failure"
@@ -167,6 +168,7 @@ async def run_tests(
                             )
                             if predicted_response != expected_response:
                                 status = "Failure"
+                            tat = f"{(time.time() - start_time):.1f} s"  # Update tat
 
                         elif predicted_intent == "summarization":
                             logger.info(f"[[Summarization]]")
@@ -218,6 +220,7 @@ async def run_tests(
                             else:
                                 summarization_analysis = "No directives provided"
                                 summarization_score = None
+                            tat = f"{(time.time() - start_time):.1f} s"  # Update tat
 
                         elif predicted_intent == "task_execution":
                             logger.info(f"[[Task Execution]]")
@@ -230,7 +233,9 @@ async def run_tests(
                             ws_url = f"ws://localhost:8000/api/task_execution/ws/task_execution/"
                             predicted_response = ""
                             requires_approval = False
-                            tool_call_match = False  # Track tool call comparison explicitly
+                            tool_call_match = (
+                                False  # Track tool call comparison explicitly
+                            )
                             try:
                                 async with websockets.connect(ws_url) as websocket:
                                     # Send initial data
@@ -255,6 +260,7 @@ async def run_tests(
                                                 summarization_analysis = event_data[
                                                     "error"
                                                 ]
+                                                tat = f"{(time.time() - start_time):.1f} s"  # Update tat on error
                                                 await test_queue.put(
                                                     {
                                                         "id": str(index + 1),
@@ -264,7 +270,7 @@ async def run_tests(
                                                         "status": status,
                                                         "summarization_analysis": summarization_analysis,
                                                         "summarization_score": None,
-                                                        "tat": f"{(time.time() - start_time):.1f} s",
+                                                        "tat": tat,
                                                     }
                                                 )
                                                 break
@@ -285,28 +291,42 @@ async def run_tests(
                                             ) and event_data.get("actions_to_review"):
                                                 requires_approval = True
                                                 # Extract tool calls from actions_to_review
-                                                actions = event_data["actions_to_review"].get("actions", [])
+                                                actions = event_data[
+                                                    "actions_to_review"
+                                                ].get("actions", [])
                                                 predicted_json = [
                                                     {
                                                         "name": action["tool"],
                                                         "args": {
                                                             key: value
-                                                            for key, value in action["parameters"].items()
+                                                            for key, value in action[
+                                                                "parameters"
+                                                            ].items()
                                                             if value not in [None, ""]
                                                         },
                                                     }
                                                     for action in actions
                                                 ]
                                                 # Sort for order-independent comparison
-                                                predicted_json = sort_tool_calls(predicted_json)
-                                                predicted_response = json.dumps(predicted_json)
+                                                predicted_json = sort_tool_calls(
+                                                    predicted_json
+                                                )
+                                                predicted_response = json.dumps(
+                                                    predicted_json
+                                                )
                                                 try:
                                                     expected_json = json.loads(
-                                                        expected_response.replace("'", '"')
+                                                        expected_response.replace(
+                                                            "'", '"'
+                                                        )
                                                     )
                                                     # Sort expected as well
-                                                    expected_json = sort_tool_calls(expected_json)
-                                                    if json.dumps(predicted_json, sort_keys=True) == json.dumps(
+                                                    expected_json = sort_tool_calls(
+                                                        expected_json
+                                                    )
+                                                    if json.dumps(
+                                                        predicted_json, sort_keys=True
+                                                    ) == json.dumps(
                                                         expected_json, sort_keys=True
                                                     ):
                                                         tool_call_match = True
@@ -314,7 +334,9 @@ async def run_tests(
                                                         tool_call_match = False
                                                         summarization_analysis = "Tool calls do not match expected"
                                                 except json.JSONDecodeError as e:
-                                                    logger.error(f"JSON decode error: {e}")
+                                                    logger.error(
+                                                        f"JSON decode error: {e}"
+                                                    )
                                                     tool_call_match = False
                                                     summarization_analysis = f"Invalid JSON in response: {str(e)}"
                                                 # Simulate automatic approval for testing
@@ -330,7 +352,9 @@ async def run_tests(
                                             if event_data.get("is_final"):
                                                 # If final response is received, use it only if no actions were previously matched
                                                 if not predicted_response:
-                                                    predicted_response = event_data.get("response", "")
+                                                    predicted_response = event_data.get(
+                                                        "response", ""
+                                                    )
                                                     identified_actions = (
                                                         json.loads(predicted_response)
                                                         if predicted_response
@@ -341,35 +365,55 @@ async def run_tests(
                                                             "name": item["tool"],
                                                             "args": {
                                                                 key: value
-                                                                for key, value in item["parameters"].items()
-                                                                if value not in [None, ""]
+                                                                for key, value in item[
+                                                                    "parameters"
+                                                                ].items()
+                                                                if value
+                                                                not in [None, ""]
                                                             },
                                                         }
                                                         for item in identified_actions
                                                     ]
-                                                    predicted_json = sort_tool_calls(predicted_json)
-                                                    predicted_response = json.dumps(predicted_json)
+                                                    predicted_json = sort_tool_calls(
+                                                        predicted_json
+                                                    )
+                                                    predicted_response = json.dumps(
+                                                        predicted_json
+                                                    )
                                                     try:
                                                         expected_json = json.loads(
-                                                            expected_response.replace("'", '"')
+                                                            expected_response.replace(
+                                                                "'", '"'
+                                                            )
                                                         )
-                                                        expected_json = sort_tool_calls(expected_json)
-                                                        if json.dumps(predicted_json, sort_keys=True) == json.dumps(
-                                                            expected_json, sort_keys=True
+                                                        expected_json = sort_tool_calls(
+                                                            expected_json
+                                                        )
+                                                        if json.dumps(
+                                                            predicted_json,
+                                                            sort_keys=True,
+                                                        ) == json.dumps(
+                                                            expected_json,
+                                                            sort_keys=True,
                                                         ):
                                                             tool_call_match = True
                                                         else:
                                                             tool_call_match = False
                                                             summarization_analysis = "Tool calls do not match expected"
                                                     except json.JSONDecodeError as e:
-                                                        logger.error(f"JSON decode error: {e}")
+                                                        logger.error(
+                                                            f"JSON decode error: {e}"
+                                                        )
                                                         tool_call_match = False
                                                         summarization_analysis = f"Invalid JSON in response: {str(e)}"
                                                 break
 
                                         except asyncio.TimeoutError:
                                             status = "Failure"
-                                            summarization_analysis = "WebSocket operation timed out"
+                                            summarization_analysis = (
+                                                "WebSocket operation timed out"
+                                            )
+                                            tat = f"{(time.time() - start_time):.1f} s"  # Update tat on timeout
                                             await test_queue.put(
                                                 {
                                                     "id": str(index + 1),
@@ -379,16 +423,19 @@ async def run_tests(
                                                     "status": status,
                                                     "summarization_analysis": summarization_analysis,
                                                     "summarization_score": None,
-                                                    "tat": f"{(time.time() - start_time):.1f} s",
+                                                    "tat": tat,
                                                 }
                                             )
                                             break
 
-                                    tat = f"{(time.time() - start_time):.1f} s"
+                                    tat = f"{(time.time() - start_time):.1f} s"  # Update tat after processing
+                                    
                                     if not tool_call_match:
                                         status = "Failure"
                                         if not summarization_analysis:
-                                            summarization_analysis = "Tool calls do not match expected"
+                                            summarization_analysis = (
+                                                "Tool calls do not match expected"
+                                            )
                                     else:
                                         summarization_analysis = (
                                             "Identified actions retrieved, approval required"
@@ -409,9 +456,12 @@ async def run_tests(
                                     )
 
                             except Exception as e:
-                                logger.error(f"WebSocket error for row {index + 1}: {e}")
+                                logger.error(
+                                    f"WebSocket error for row {index + 1}: {e}"
+                                )
                                 status = "Failure"
                                 summarization_analysis = f"WebSocket error: {str(e)}"
+                                tat = f"{(time.time() - start_time):.1f} s"  # Update tat on error
                                 await test_queue.put(
                                     {
                                         "id": str(index + 1),
@@ -421,17 +471,19 @@ async def run_tests(
                                         "status": status,
                                         "summarization_analysis": summarization_analysis,
                                         "summarization_score": None,
-                                        "tat": f"{(time.time() - start_time):.1f} s",
+                                        "tat": tat,
                                     }
                                 )
 
                     except Exception as e:
                         logger.error(f"Error processing row {index + 1}: {e}")
+                        tat = f"{(time.time() - start_time):.1f} s"  # Update tat on exception
                         await test_queue.put(
                             {"error": f"Error processing row {index + 1}: {str(e)}"}
                         )
                         continue
 
+                # For non-task_execution intents, send result here
                 if predicted_intent != "task_execution":
                     result = {
                         "id": str(index + 1),

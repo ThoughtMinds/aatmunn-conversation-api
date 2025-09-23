@@ -98,6 +98,15 @@ FALLBACK_SUMMARY_RESPONSE = (
 
 
 def invoke_tools(state: AgentState) -> AgentState:
+    """
+    Invokes tools based on the query in the state.
+
+    Args:
+        state (AgentState): The current state of the agent.
+
+    Returns:
+        AgentState: The updated state with tool calls and responses.
+    """
     session = Session(db.engine)
     response = llm_with_tools.invoke(state["query"])
     state["tool_calls"] = response.tool_calls
@@ -201,6 +210,15 @@ def chained_invoke_tools(state: AgentState) -> AgentState:
 
 # Node to summarize the tool response
 def summarize_response(state: AgentState) -> AgentState:
+    """
+    Summarizes the tool response in the state.
+
+    Args:
+        state (AgentState): The current state of the agent.
+
+    Returns:
+        AgentState: The updated state with the summarized response.
+    """
     if state["final_response"]:
         return state  # Skip if final_response is already set (e.g., no tool calls or error)
 

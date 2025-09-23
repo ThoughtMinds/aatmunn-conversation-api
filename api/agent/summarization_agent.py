@@ -7,6 +7,7 @@ from api.core.logging_config import logger
 from sqlmodel import Session
 from langchain_core.tools import tool
 from api.core.config import settings
+from .nodes import moderate_summry_content
 
 
 class ToolCall(BaseModel):
@@ -73,9 +74,7 @@ tool_llm, summarize_llm, chained_llm, moderation_llm = (
     llm.get_chat_model(model_name=settings.SUMMARIZATION_CHAT_MODEL),
     llm.get_chat_model(model_name=settings.SUMMARIZATION_CHAT_MODEL, cache=True),
     llm.get_chat_model(model_name=settings.CHAINED_TOOL_CALL_CHAT_MODEL),
-    llm.get_chat_model(
-        model_name=settings.CONTENT_VALIDATION_CHAT_MODEL, cache=True
-    ),
+    llm.get_chat_model(model_name=settings.CONTENT_VALIDATION_CHAT_MODEL, cache=True),
 )
 llm_with_tools = tool_llm.bind_tools(tool_list)
 summarize_chain = llm.create_chain_for_task(task="summarization", llm=summarize_llm)
@@ -215,23 +214,32 @@ def summarize_response(state: AgentState) -> AgentState:
 
 # Node for content moderation
 def moderate_content(state: AgentState) -> AgentState:
+    """Moderate content node wrapper. Invokes the `moderate_summry_content` with query and summaery from the state
+
+    Args:
+        state (AgentState): Current Agent State
+
+    Returns:
+        AgentState: Agent state with moderation flag and final response changed if moderated
+    """
     if state["final_response"]:
         return state  # Skip if final_response is already set
 
     logger.info("Validating Content")
-    content_validity = content_moderation_chain.invoke(
-        {"query": state["query"], "summary": state["summarized_response"]}
+    content_valid, is_moderated = moderate_summry_content(
+        query=state["query"],
+        summarized_response=state["summarized_response"],
+        chain=content_moderation_chain,
     )
-    state["is_moderated"] = not content_validity["content_valid"]
+
+    state["is_moderated"] = is_moderated
 
     logger.info(f"Content Moderation: {state['is_moderated']}")
     if state["is_moderated"]:
         logger.critical(f"Flagged summary: {state['summarized_response']}")
 
     state["final_response"] = (
-        state["summarized_response"]
-        if content_validity["content_valid"]
-        else FALLBACK_SUMMARY_RESPONSE
+        state["summarized_response"] if content_valid else FALLBACK_SUMMARY_RESPONSE
     )
     return state
 

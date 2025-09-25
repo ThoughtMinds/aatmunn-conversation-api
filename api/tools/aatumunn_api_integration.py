@@ -260,9 +260,7 @@ def get_roles(
         response = requests.get(f"{BASE_API_URL}/roles", params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
-        roles_response = schema.RolesResponse(
-            **data
-        )
+        roles_response = schema.RolesResponse(**data)
         return format_roles_list(roles_response)
     except requests.exceptions.RequestException as e:
         print(f"Error making request: {e}")

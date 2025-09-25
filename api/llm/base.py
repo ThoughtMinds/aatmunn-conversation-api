@@ -158,7 +158,7 @@ def get_chat_model(model_name: Optional[str] = None, cache: bool = False):
         ValueError: If the LLM provider is unsupported or required model name is missing.
     """
     provider = settings.LLM_PROVIDER.lower()
-    
+
     # Set provider-specific default model if model_name is None
     if model_name is None:
         if provider == "ollama":
@@ -169,7 +169,7 @@ def get_chat_model(model_name: Optional[str] = None, cache: bool = False):
             model = settings.AZURE_OPENAI_API_DEPLOYMENT_NAME
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
-        
+
         if model is None:
             raise ValueError(f"No default chat model defined for provider: {provider}")
     else:
@@ -217,7 +217,7 @@ def get_embeddings_model(model_name: Optional[str] = None):
         ValueError: If the LLM provider is unsupported or required model name is missing.
     """
     provider = settings.LLM_PROVIDER.lower()
-    
+
     if model_name is None:
         if provider == "ollama":
             model = settings.OLLAMA_EMBEDDINGS_MODEL
@@ -227,9 +227,11 @@ def get_embeddings_model(model_name: Optional[str] = None):
             model = settings.AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
-        
+
         if model is None:
-            raise ValueError(f"No default embeddings model defined for provider: {provider}")
+            raise ValueError(
+                f"No default embeddings model defined for provider: {provider}"
+            )
     else:
         model = model_name
 

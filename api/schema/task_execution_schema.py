@@ -39,11 +39,13 @@ __all__ = [
     "WidgetType",
 ]
 
+
 # Status Models
 class Status(BaseModel):
     id: int
     statusName: Optional[str] = None
     status: Optional[str] = None
+
 
 class OrgsEntityStatus(BaseModel):
     entityStatus: Status
@@ -55,7 +57,9 @@ class OrgsEntityStatus(BaseModel):
     updatedOn: datetime
     updatedBy: Optional[str] = None
 
+
 # User Models
+
 
 class UserUpdateRequest(BaseModel):
     selectedProducts: dict = {"selectedEntities": []}
@@ -80,6 +84,8 @@ class UserUpdateRequest(BaseModel):
     orgId: int
     id: int
     uuid: Optional[str] = None
+
+
 class SingleUserTaskResponse(BaseModel):
     userName: Optional[str] = None
     orgId: int
@@ -111,6 +117,7 @@ class SingleUserTaskResponse(BaseModel):
     status: Status
     reportingUserId: Optional[int] = None
     reportingToUserName: Optional[str] = None
+
 
 class UserData(BaseModel):
     empId: Optional[str] = None
@@ -144,10 +151,12 @@ class UserData(BaseModel):
     supervisor: bool
     status: Status
 
+
 class UsersResponse(BaseModel):
     totalCount: int
     message: Optional[str] = None
     userData: List[UserData]
+
 
 # Role and Permission Models
 class ModulePermission(BaseModel):
@@ -157,26 +166,31 @@ class ModulePermission(BaseModel):
     active: bool
     setAsHomePage: bool
 
+
 class ApplicationPermission(BaseModel):
     id: int
     name: Optional[str] = None
     active: bool
+
 
 class EntityPermission(BaseModel):
     name: Optional[str] = None
     isEnabled: bool
     excludedAttributes: List[str]
 
+
 class EntityAccess(BaseModel):
     entityId: int
     entityName: Optional[str] = None
     permissions: List[EntityPermission]
+
 
 class RoleAccessPermissions(BaseModel):
     modules: List[ModulePermission]
     applications: List[ApplicationPermission]
     entities: List[EntityAccess]
     partners: List[Any]
+
 
 class UserRoleData(BaseModel):
     orgId: int
@@ -189,8 +203,10 @@ class UserRoleData(BaseModel):
     updatedOn: datetime
     updatedBy: Optional[str] = None
 
+
 class UserRolesResponse(BaseModel):
     rolesData: List[UserRoleData]
+
 
 class SingleRoleResponse(BaseModel):
     id: int
@@ -217,10 +233,12 @@ class RoleData(BaseModel):
     noOfUsers: int
     status: str
 
+
 class RolesResponse(BaseModel):
     rolesData: List[RoleData]
     totalCount: int
     message: str
+
 
 # Widget Models
 class WidgetDataUrlResponse(BaseModel):
@@ -229,6 +247,7 @@ class WidgetDataUrlResponse(BaseModel):
     protocol: Optional[str] = None
     method: Optional[str] = None
 
+
 class WidgetType(BaseModel):
     id: int
     name: Optional[str] = None
@@ -236,6 +255,7 @@ class WidgetType(BaseModel):
     formFactor: Optional[str] = None
     metaData: Optional[str] = None
     isActive: bool
+
 
 class WidgetItem(BaseModel):
     sequence: int
@@ -249,10 +269,12 @@ class WidgetItem(BaseModel):
     widgetType: WidgetType
     widgetIsActive: bool
 
+
 class WidgetContent(BaseModel):
     contentType: Optional[str] = None
     isParent: Optional[bool] = None
     items: List[WidgetItem]
+
 
 # Template Models
 class TemplateData(BaseModel):
@@ -274,9 +296,11 @@ class TemplateData(BaseModel):
     updatedBy: Optional[str] = None
     moduleId: Optional[int] = None
 
+
 class TemplateResponse(BaseModel):
     data: TemplateData
     message: Optional[str] = None
+
 
 # Entity Models
 class EntityData(BaseModel):
@@ -289,11 +313,13 @@ class EntityData(BaseModel):
     updatedOn: datetime
     updatedBy: Optional[str] = None
 
+
 class EntitiesResponse(BaseModel):
     data: List[EntityData]
     total: int
     page: int
     size: int
+
 
 # Module Models
 class ModuleData(BaseModel):
@@ -306,11 +332,13 @@ class ModuleData(BaseModel):
     updatedOn: datetime
     updatedBy: Optional[str] = None
 
+
 class ModulesResponse(BaseModel):
     data: List[ModuleData]
     total: int
     page: int
     size: int
+
 
 # Navigation Models
 class NavigationPoint(BaseModel):
@@ -321,16 +349,19 @@ class NavigationPoint(BaseModel):
     description: Optional[str] = None
     modules: List[int]
 
+
 class NavigationResponse(BaseModel):
     totalCount: int
     message: Optional[str] = None
     navigationPointData: List[NavigationPoint]
+
 
 # Product Models
 class ProductCounts(BaseModel):
     countOfProductModels: int
     countOfProducts: int
     countOfCapabilities: int
+
 
 class ProductModel(BaseModel):
     id: Optional[str] = None
@@ -345,11 +376,13 @@ class ProductModel(BaseModel):
     createdByOrgId: Optional[int] = None
     isPublic: Optional[bool] = None
 
+
 # Form Execution Models
 class FormStatus(BaseModel):
     status: Optional[str] = None
     displayName: Optional[str] = None
     count: int
+
 
 class EntitySummary(BaseModel):
     entityId: int
@@ -357,9 +390,11 @@ class EntitySummary(BaseModel):
     totalCount: int
     statuses: List[FormStatus]
 
+
 class AdditionalInfo(BaseModel):
     name: Optional[str] = None
     value: List[str]
+
 
 class FormExecutionData(BaseModel):
     id: int
@@ -367,9 +402,11 @@ class FormExecutionData(BaseModel):
     entitySummary: List[EntitySummary]
     additionalInfo: List[AdditionalInfo]
 
+
 class FormExecutionSummaryResponse(BaseModel):
     message: Optional[str] = None
     data: FormExecutionData
+
 
 # Area Models
 class AreaData(BaseModel):
@@ -380,8 +417,8 @@ class AreaData(BaseModel):
     noOfIssues: int
     noOfUnassignedIssues: int
 
+
 class AreasNeedingAttentionResponse(BaseModel):
     totalCount: int
     message: Optional[str] = None
-    data: List[AreaData]    
-    
+    data: List[AreaData]

@@ -34,7 +34,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         start_time = time.time()
 
-        if request.url.path != "/": # ignore health checks
+        if request.url.path != "/":  # ignore health checks
             logger.debug(
                 {
                     "event": "request_received",
@@ -59,12 +59,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     "request_id": request_id,
                     "response_type": "streaming",
                 },
-                extra={"bold": True}
+                extra={"bold": True},
             )
             return response
 
         # For regular responses, log completion details
-        if request.url.path != "/": # ignore health checks
+        if request.url.path != "/":  # ignore health checks
             logger.debug(
                 {
                     "event": "request_completed",

@@ -429,7 +429,7 @@ async def run_tests(
                                             break
 
                                     tat = f"{(time.time() - start_time):.1f} s"  # Update tat after processing
-                                    
+
                                     if not tool_call_match:
                                         status = "Failure"
                                         if not summarization_analysis:

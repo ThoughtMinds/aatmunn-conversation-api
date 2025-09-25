@@ -1,23 +1,30 @@
 import contextvars
 import logging
 import sys
-
+from time import localtime
 import coloredlogs
 
-# Context variable to store request_id per request
+# Store request_id per request
 request_id_var = contextvars.ContextVar("request_id", default="-")
 
-# Create base logger
 base_logger = logging.getLogger("uvicorn")
-base_logger.setLevel(logging.INFO)
+base_logger.setLevel(logging.DEBUG)
 base_logger.propagate = False  # Avoid duplicate logs from parent/root logger
 
-# Clean existing handlers if re-running (optional)
 base_logger.handlers.clear()
 
+
+class LocalTimeColoredFormatter(coloredlogs.ColoredFormatter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure the converter uses local time
+        self.converter = localtime
+
+
 # Colored formatter
-log_formatter = coloredlogs.ColoredFormatter(
-    fmt="%(asctime)s %(levelname)s %(message)s %(funcName)s %(lineno)d %(filename)s request_id=%(request_id)s",
+log_formatter = LocalTimeColoredFormatter(
+    fmt="%(asctime)s %(message)s %(funcName)s %(lineno)d %(filename)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
     level_styles={
         "debug": {"color": "green"},
         "info": {"color": "cyan"},

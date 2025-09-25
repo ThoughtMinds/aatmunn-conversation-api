@@ -29,7 +29,7 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
         thread_id = initial_data.get("thread_id") or str(uuid4().hex)
         resume = initial_data.get("resume")
 
-        logger.warning(f"Task Execution Query: {query}, Thread ID: {thread_id}, Chained: {chained}")
+        logger.info(f"Task Execution Query: {query}, Thread ID: {thread_id}, Chained: {chained}", extra={"bold": True})
 
         config = {"configurable": {"thread_id": thread_id}}
 
@@ -96,7 +96,7 @@ async def websocket_task_execution(websocket: WebSocket, session: SessionDep):
                         approval_data = await asyncio.wait_for(websocket.receive_json(), timeout=300.0)
                         resume_value = approval_data.get("resume")
                         if resume_value is None:
-                            logger.warning(f"No resume value received for thread {thread_id}, cancelling")
+                            logger.critical(f"No resume value received for thread {thread_id}, cancelling", extra={"bold": True})
                             status = "error"
                             response_data = "No approval decision provided"
                             await websocket.send_json({"error": response_data})

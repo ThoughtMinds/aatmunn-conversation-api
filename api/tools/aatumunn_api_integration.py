@@ -410,7 +410,6 @@ def get_user_by_id(user_id: int = 1196) -> Optional[str]:
         response.raise_for_status()
 
         data = response.json()
-        logger.critical(data)
         user_response = schema.SingleUserTaskResponse(**data)
         formatted_user = format_user_string(user_response=user_response)
         return formatted_user

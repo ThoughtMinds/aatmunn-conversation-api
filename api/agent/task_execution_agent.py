@@ -71,8 +71,8 @@ MAX_CHAIN_ITERATIONS = 4
 
 
 def identify_actions(state: AgentState) -> AgentState:
-    logger.critical(
-        f"Performing normal Action Identification for query: {state['query']}"
+    logger.info(
+        f"Performing normal Action Identification for query: {state['query']}", extra={"bold": True}
     )
     response = llm_with_tools.invoke(state["query"])
     state["tool_calls"] = response.tool_calls or []
@@ -110,7 +110,7 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     state["iter_count"] = iter_count
 
     if iter_count >= MAX_CHAIN_ITERATIONS:
-        logger.warning(f"Max iterations ({MAX_CHAIN_ITERATIONS}) reached")
+        logger.warning(f"Max iterations ({MAX_CHAIN_ITERATIONS}) reached", extra={"bold": True})
         state["final_response"] = state["tool_response"] or NO_RESPONSE
         state["requires_approval"] = False
         return state
@@ -147,8 +147,8 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     # Check if the identified action was already executed
     action_key = {"name": tool_call.name, "parameters": tool_call.parameters}
     if action_key in already_executed:
-        logger.warning(
-            f"Action {tool_call.name} with parameters {tool_call.parameters} already executed, skipping"
+        logger.info(
+            f"Action {tool_call.name} with parameters {tool_call.parameters} already executed, skipping", extra={"bold": True}
         )
         state["final_response"] = state["tool_response"] or NO_RESPONSE
         state["requires_approval"] = False
@@ -189,7 +189,7 @@ def execute_approved_tools(state: AgentState) -> AgentState:
     state["tool_response"] = state.get("tool_response", "")
 
     if not state.get("user_approved", False):
-        logger.warning("Execution cancelled due to lack of user approval")
+        logger.critical("Execution cancelled due to lack of user approval", extra={"bold": True})
         state["final_response"] = "Task execution cancelled by user."
         state["requires_approval"] = False
         return state

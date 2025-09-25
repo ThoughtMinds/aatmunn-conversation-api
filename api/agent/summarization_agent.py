@@ -254,7 +254,7 @@ def moderate_content(state: AgentState) -> AgentState:
 
     logger.info(f"Content Moderation: {state['is_moderated']}")
     if state["is_moderated"]:
-        logger.critical(f"Flagged summary: {state['summarized_response']}")
+        logger.critical(f"Flagged summary: {state['summarized_response']}", extra={"bold": True})
 
     state["final_response"] = (
         state["summarized_response"] if content_valid else FALLBACK_SUMMARY_RESPONSE
@@ -265,7 +265,7 @@ def moderate_content(state: AgentState) -> AgentState:
 # Router function to decide between invoke_tools and chained_invoke_tools
 def tool_call_router(state: AgentState) -> str:
     is_chained = state["chained"]
-    logger.warning(f"Chained Tool Call: {is_chained}")
+    logger.info(f"Chained Tool Call: {is_chained}",extra={"bold": True})
 
     if is_chained:
         return "chained_invoke_tools"

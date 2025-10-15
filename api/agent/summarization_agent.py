@@ -39,8 +39,8 @@ class AgentState(TypedDict):
 
 
 tool_list = [
-    tools.aatumunn_api_integration.search_users,
-    tools.aatumunn_api_integration.update_user,
+    tools.aatumunn_api_integration.list_users,
+    tools.aatumunn_api_integration.search_user_by_name,
     tools.aatumunn_api_integration.get_user_by_id,
     tools.aatumunn_api_integration.get_navigation_points,
     tools.aatumunn_api_integration.get_navigation_points,

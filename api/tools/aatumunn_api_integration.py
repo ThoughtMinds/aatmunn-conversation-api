@@ -6,7 +6,7 @@ from langchain_core.tools import tool
 from api import schema
 
 __all__ = [
-    "search_users",
+    "list_users",
     "get_roles",
     "get_entities",
     "get_modules",
@@ -19,6 +19,7 @@ __all__ = [
     "get_form_execution_summary",
     "get_areas_needing_attention",
     "update_user",
+    "search_user_by_name"
 ]
 
 # Shared base API URL for customer4
@@ -89,7 +90,7 @@ def format_users_list(users_response: schema.UsersResponse) -> str:
 
 
 @tool
-def search_users(
+def list_users(
     size: int = 5,
     # search: str = "",
     # email: str = "",
@@ -130,6 +131,35 @@ def search_users(
 
 
 @tool
+def search_user_by_name(
+    name: str = "",
+) -> Optional[str]:
+    """
+    Searches for user by their name in the organization to retrieve their details. 
+
+    Args:
+        name (str): Name of the user to search
+
+    Returns:
+        Optional[str]: Formatted string of matching users, or None on error.
+    """
+    params = {
+        "orgId": settings.TASK_EXECUTION_ORG_ID,
+        "search": name,
+    }
+    try:
+        headers = get_auth_header()
+        response = requests.get(f"{BASE_API_URL}/users", params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        users_response = schema.UsersResponse(**data)
+        return format_users_list(users_response)
+    except requests.exceptions.RequestException as e:
+        print(f"Error making request: {e}")
+        return None
+
+
+@tool
 def update_user(
     user_id: int,
     first_name: Optional[str] = None,
@@ -152,8 +182,7 @@ def update_user(
     uuid: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Updates details of a specific user in the IIOP API (customer4).
-
+    Updates details of a specific user in the IIOP API (customer4) by passing user_id and detail to update
     This tool updates user details for a given user ID, using the organization ID from TASK_EXECUTION_ORG_ID.
     All fields except user_id are optional, allowing partial updates as supported by the API.
 

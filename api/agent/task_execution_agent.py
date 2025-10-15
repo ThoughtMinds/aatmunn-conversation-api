@@ -31,9 +31,10 @@ class AgentState(TypedDict):
 
 
 tool_list = [
-    tools.aatumunn_api_integration.search_users,
+    # tools.aatumunn_api_integration.list_users,
+    tools.aatumunn_api_integration.search_user_by_name,
     tools.aatumunn_api_integration.update_user,
-    tools.aatumunn_api_integration.get_user_by_id,
+    # tools.aatumunn_api_integration.get_user_by_id,
 ]
 
 
@@ -52,6 +53,9 @@ def list_tool_names():
 
 tool_list.append(list_tool_names)
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
+
+logger.error(TOOL_DESCRIPTION)
+
 tool_dict = {tool.name: tool for tool in tool_list}
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
 

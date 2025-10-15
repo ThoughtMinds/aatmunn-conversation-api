@@ -136,7 +136,8 @@ def search_user_by_name(
 ) -> Optional[str]:
     """
     Searches for user by their name in the organization to retrieve their details. 
-
+    Can also be worded as get user or the query mentions a name
+    
     Args:
         name (str): Name of the user to search
 

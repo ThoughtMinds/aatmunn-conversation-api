@@ -1,13 +1,14 @@
-from typing import Dict, TypedDict, Optional
-from pydantic import BaseModel
+import time
+from typing import Dict, TypedDict, Optional, List, Any
+from pydantic import BaseModel, validator
 from json import dumps
+from uuid import uuid4
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.types import interrupt, Command
+from langgraph.types import interrupt
 from api import db, llm, tools, schema
 from api.core.logging_config import logger
 from langchain_core.tools import tool
-from uuid import uuid4
 from api.core.config import settings
 
 
@@ -30,6 +31,38 @@ class AgentState(TypedDict):
     identified_actions: list
 
 
+class ExecutedAction(BaseModel):
+    name: str
+    parameters: Optional[Dict[str, Any]] = None
+    timestamp: float  # Unix timestamp
+
+    @validator("parameters", pre=True, always=True)
+    def normalize_params(cls, v):
+        # If parameters is None, convert to empty dict
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            raise ValueError("parameters must be a dict or None")
+        # Normalize keys to lowercase and sort keys for consistent comparison
+        return {k.lower(): v[k] for k in sorted(v)}
+
+
+class ActionContext(BaseModel):
+    previous_results: List[str] = []
+    already_executed: List[ExecutedAction] = []
+
+    def add_executed_action(self, name: str, parameters: Dict[str, Any]):
+        new_action = ExecutedAction(name=name, parameters=parameters, timestamp=time.time())
+        if not any(
+            (ea.name == new_action.name and ea.parameters == new_action.parameters)
+            for ea in self.already_executed
+        ):
+            self.already_executed.append(new_action)
+
+    def add_previous_result(self, result: str):
+        self.previous_results.append(result)
+
+
 tool_list = [
     # tools.aatumunn_api_integration.list_users,
     tools.aatumunn_api_integration.search_user_by_name,
@@ -38,23 +71,24 @@ tool_list = [
 ]
 
 
-@tool
-def list_tool_names():
-    """
-    Lists all available tools
+# @tool
+# def list_tool_names():
+#     """
+#     Lists all available tools
 
-    Returns:
-        str: Formatted string containing all tools.
-    """
-    result = tools.list_tool_names(tool_list)
-    logger.info(f"list_tool_names result: {result}")
-    return result
+#     Returns:
+#         str: Formatted string containing all tools.
+#     """
+#     result = tools.list_tool_names(tool_list)
+#     logger.info(f"list_tool_names result: {result}")
+#     return result
 
 
-tool_list.append(list_tool_names)
+# tool_list.append(list_tool_names)
+
 TOOL_DESCRIPTION = tools.render_text_description(tool_list)
 
-logger.error(TOOL_DESCRIPTION)
+logger.warning(TOOL_DESCRIPTION)
 
 tool_dict = {tool.name: tool for tool in tool_list}
 logger.info(f"[Task Execution Tools] {', '.join(tool_dict.keys())}")
@@ -63,6 +97,9 @@ tool_llm, chained_llm = llm.get_chat_model(
     model_name=settings.TASK_EXECUTION_CHAT_MODEL
 ), llm.get_chat_model(model_name=settings.CHAINED_TOOL_CALL_CHAT_MODEL)
 llm_with_tools = tool_llm.bind_tools(tool_list)
+
+# chained_llm_with_tools = chained_llm.bind_tools(tool_list)
+
 chained_tool_chain = llm.create_chain_for_task(
     task="chained tool call",
     llm=chained_llm,
@@ -113,27 +150,38 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     iter_count = state.get("iter_count", 0) + 1
     state["iter_count"] = iter_count
 
-    if iter_count >= MAX_CHAIN_ITERATIONS:
+    if iter_count > MAX_CHAIN_ITERATIONS:
         logger.warning(f"Max iterations ({MAX_CHAIN_ITERATIONS}) reached")
-        state["final_response"] = state["tool_response"] or NO_RESPONSE
+        state["final_response"] = state.get("tool_response") or NO_RESPONSE
         state["requires_approval"] = False
         return state
 
+    # Initialize or parse action_context with validation
     if "action_context" not in state or not isinstance(state["action_context"], dict):
-        state["action_context"] = {"previous_results": [], "already_executed": []}
+        action_context = ActionContext()
+    else:
+        try:
+            # Parse existing dict into ActionContext model
+            action_context = ActionContext.parse_obj(state["action_context"])
+        except Exception as e:
+            logger.error(f"Failed to parse action_context: {e}")
+            action_context = ActionContext()
 
-    # Filter out already executed actions
-    already_executed = state["action_context"].get("already_executed", [])
-    logger.info(f"Already executed actions: {already_executed}")
-
+    # Prepare input for LLM
     input_dict = {
         "query": state["query"],
-        "context": dumps(state["action_context"]),
+        "context": dumps({
+            "previous_results": action_context.previous_results,
+            "already_executed": [
+                {"name": a.name, "parameters": a.parameters} for a in action_context.already_executed
+            ],
+        }),
         "available_actions": TOOL_DESCRIPTION,
     }
     logger.debug(f"LLM input for chained_identify_actions: {input_dict}")
 
     try:
+        logger.error(input_dict)
         tool_call: schema.ChainedToolCall = chained_tool_chain.invoke(input_dict)
         logger.debug(f"LLM output: {tool_call}")
     except Exception as e:
@@ -144,20 +192,25 @@ def chained_identify_actions(state: AgentState) -> AgentState:
 
     if not tool_call.name:
         logger.info("No further chained tool calls identified")
-        state["final_response"] = state["tool_response"] or NO_RESPONSE
+        state["final_response"] = state.get("tool_response") or NO_RESPONSE
         state["requires_approval"] = False
         return state
 
-    # Check if the identified action was already executed
-    action_key = {"name": tool_call.name, "parameters": tool_call.parameters}
-    if action_key in already_executed:
+    # Normalize action key for duplicate detection
+    action_key = ExecutedAction(name=tool_call.name, parameters=tool_call.parameters, timestamp=time.time())
+
+    if any(
+        (ea.name == action_key.name and ea.parameters == action_key.parameters)
+        for ea in action_context.already_executed
+    ):
         logger.warning(
             f"Action {tool_call.name} with parameters {tool_call.parameters} already executed, skipping"
         )
-        state["final_response"] = state["tool_response"] or NO_RESPONSE
+        state["final_response"] = state.get("tool_response") or NO_RESPONSE
         state["requires_approval"] = False
         return state
 
+    # Prepare identified actions for approval
     state["identified_actions"] = [
         {
             "name": tool_call.name,
@@ -183,6 +236,9 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     }
     logger.info(f"Prepared chained actions for approval: {state['actions_to_review']}")
     interrupt(state["actions_to_review"])
+
+    # Update action_context in state as dict for persistence
+    state["action_context"] = action_context.dict()
     return state
 
 
@@ -210,6 +266,16 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             state["requires_approval"] = False
             return state
 
+        # Parse or initialize action_context
+        if "action_context" not in state or not isinstance(state["action_context"], dict):
+            action_context = ActionContext()
+        else:
+            try:
+                action_context = ActionContext.parse_obj(state["action_context"])
+            except Exception as e:
+                logger.error(f"Failed to parse action_context: {e}")
+                action_context = ActionContext()
+
         for tool_call in tool_calls_to_execute:
             name = tool_call["name"]
             args = tool_call.get("args") or tool_call.get("parameters")
@@ -226,21 +292,12 @@ def execute_approved_tools(state: AgentState) -> AgentState:
             state["tool_response"] += tool_response_str
 
             if state["chained"]:
-                if "action_context" not in state or not isinstance(
-                    state["action_context"], dict
-                ):
-                    state["action_context"] = {
-                        "previous_results": [],
-                        "already_executed": [],
-                    }
-                if "previous_results" not in state["action_context"]:
-                    state["action_context"]["previous_results"] = []
-                if "already_executed" not in state["action_context"]:
-                    state["action_context"]["already_executed"] = []
-                state["action_context"]["previous_results"].append(tool_response_str)
-                state["action_context"]["already_executed"].append(
-                    {"name": name, "parameters": args}
-                )
+                # Update action_context with results and executed actions
+                action_context.add_previous_result(tool_response_str)
+                action_context.add_executed_action(name, args)
+
+        # Update action_context in state as dict for persistence
+        state["action_context"] = action_context.dict()
 
         # Set final_response for non-chained calls
         if not state["chained"]:

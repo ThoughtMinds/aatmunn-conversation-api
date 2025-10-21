@@ -82,26 +82,24 @@ You are an expert Action Identification Agent responsible for determining the ne
 {query}
 
 ## Context Information:
-- Previous Action Results:
+- Previous Action Results Summary:
 {context}
 
 ## Instructions:
-1. Analyze the user's query carefully, breaking it into sequential steps if it contains multiple actions (e.g., "get something, then update it").
-2. Review the results from all previously executed actions and use them to inform the next step.
-3. From the **available actions**, select the **single next best action** that will help progress towards a complete and accurate response.
-4. Analyse data and action from previous_results, already_executed to decide next action if necessary
-5. Do not repeat any actions or reuse tools that have already been executed
-6. If an update action is to be made ensure required parameters are fetched first using the appropriate action
-
-If no further action is required, return {{}}
+1. Carefully analyze the user's query and break it into sequential steps if needed.
+2. Use previous action results and executed actions to inform your next step.
+3. Select the single next best action from the available actions that progresses towards a complete response.
+4. Do not repeat any action or parameters already executed.
+5. If parameters are missing for an update action, fetch them first using the appropriate action.
+6. If no further action is required, respond with an empty JSON object `{{}}`.
 
 Response Schema:
 {{
     "name": (string) The exact action name from the available actions.
-    "parameters": (object) A dictionary of key-value pairs containing the parameters required by the action.
+    "parameters": (object) Key-value pairs of parameters required by the action.
 }}
 
-Response:
+Response
 """
 
 CHAINED_TOOL_CALL_TEMPLATE = PromptTemplate.from_template(CHAINED_TOOL_CALL_PROMPT)

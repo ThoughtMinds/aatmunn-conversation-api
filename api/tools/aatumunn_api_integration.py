@@ -133,16 +133,15 @@ def list_users(
 @tool
 def search_user_by_name(
     name: str = "",
-) -> Optional[str]:
+) -> str :
     """
-    Searches for user by their name in the organization to retrieve their details. 
-    Can also be worded as get user or the query mentions a name
+    Searches for a user with given name
     
     Args:
         name (str): Name of the user to search
 
     Returns:
-        Optional[str]: Formatted string of matching users, or None on error.
+        str: User ID, Name, Email of the user
     """
     params = {
         "orgId": settings.TASK_EXECUTION_ORG_ID,
@@ -163,33 +162,25 @@ def search_user_by_name(
 @tool
 def update_user(
     user_id: int,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
-    middle_name: Optional[str] = None,
     email: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Updates details of a specific user in the IIOP API (customer4)
-    Update can only happen if user_id available along with detail to update
-    All fields except user_id are optional, allowing partial updates as supported by the API.
+    Updates details for user with given ID
+    All fields except user_id are optional
 
     Args:
-        user_id (int): The ID of the user to update.
-        first_name (Optional[str]): The user's first name.
-        last_name (Optional[str]): The user's last name.
-        middle_name (Optional[str]): The user's middle name.
-        phone (Optional[str]): The user's phone number.
-        email (Optional[str]): The user's email address.
+        user_id (int): User ID to be used for updation
+        email (str): Email address to update user records with
 
     Returns:
-        Optional[str]: A formatted string confirming the updated user ID, or None on error.
+        str: User ID of updated user or None if error
     """
     payload = schema.UserUpdateRequest(
         selectedProducts={"selectedEntities": []},
         selectedAreas={"selectedEntities": []},
-        firstName=first_name,
-        lastName=last_name,
-        middleName=middle_name,
+        firstName=None,
+        lastName=None,
+        middleName=None,
         type=None,
         jobTitle=None,
         empId=None,

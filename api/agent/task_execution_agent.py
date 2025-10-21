@@ -161,7 +161,6 @@ def chained_identify_actions(state: AgentState) -> AgentState:
         action_context = ActionContext()
     else:
         try:
-            # Parse existing dict into ActionContext model
             action_context = ActionContext.parse_obj(state["action_context"])
         except Exception as e:
             logger.error(f"Failed to parse action_context: {e}")
@@ -181,7 +180,6 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     logger.debug(f"LLM input for chained_identify_actions: {input_dict}")
 
     try:
-        logger.error(input_dict)
         tool_call: schema.ChainedToolCall = chained_tool_chain.invoke(input_dict)
         logger.debug(f"LLM output: {tool_call}")
     except Exception as e:
@@ -199,15 +197,16 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     # Normalize action key for duplicate detection
     action_key = ExecutedAction(name=tool_call.name, parameters=tool_call.parameters, timestamp=time.time())
 
+    # Check for duplicate action
     if any(
         (ea.name == action_key.name and ea.parameters == action_key.parameters)
         for ea in action_context.already_executed
     ):
         logger.warning(
-            f"Action {tool_call.name} with parameters {tool_call.parameters} already executed, skipping"
+            f"Action {tool_call.name} with parameters {tool_call.parameters} already executed, continuing to identify next actions"
         )
-        state["final_response"] = state.get("tool_response") or NO_RESPONSE
-        state["requires_approval"] = False
+        # Instead of exiting, continue to the next iteration to identify other actions
+        state["action_context"] = action_context.model_dump()
         return state
 
     # Prepare identified actions for approval
@@ -240,7 +239,6 @@ def chained_identify_actions(state: AgentState) -> AgentState:
     # Update action_context in state as dict for persistence
     state["action_context"] = action_context.dict()
     return state
-
 
 def execute_approved_tools(state: AgentState) -> AgentState:
     logger.info(

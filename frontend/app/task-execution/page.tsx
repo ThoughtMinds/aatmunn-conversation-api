@@ -68,9 +68,13 @@ export default function TaskExecutionPage() {
 
     setIsLoading(true);
     setApprovalDialogOpen(false);
+    setCurrentApprovalRequest(null); // Clear previous approval request
     setResult(null);
 
-    const url = `${API_BASE_URL.replace("http", "ws")}/api/task_execution/ws/task_execution/`;
+    const url = `${API_BASE_URL.replace(
+      "http",
+      "ws"
+    )}/api/task_execution/ws/task_execution/`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -110,6 +114,7 @@ export default function TaskExecutionPage() {
           });
           setIsLoading(false);
           setApprovalDialogOpen(false);
+          setCurrentApprovalRequest(null); // Clear approval request on error
           if (wsRef.current) {
             wsRef.current.close();
             wsRef.current = null;
@@ -123,6 +128,11 @@ export default function TaskExecutionPage() {
           setCurrentApprovalRequest(data.actions_to_review);
           setApprovalDialogOpen(true);
           setIsLoading(false);
+          toast({
+            title: "Action Approval Needed",
+            description: "Please review the proposed actions to continue.",
+            className: "bg-yellow-50 border-yellow-200 text-yellow-800",
+          });
         } else if (data.is_final) {
           console.log("Task completed successfully");
           toast({
@@ -133,6 +143,7 @@ export default function TaskExecutionPage() {
           setTaskName("");
           setIsLoading(false);
           setApprovalDialogOpen(false);
+          setCurrentApprovalRequest(null); // Clear approval request on completion
           if (wsRef.current) {
             wsRef.current.close();
             wsRef.current = null;
@@ -140,6 +151,13 @@ export default function TaskExecutionPage() {
           threadIdRef.current = null;
         } else {
           setIsLoading(true);
+          // Optional: Show feedback for ongoing processing
+          toast({
+            title: "Task in Progress",
+            description: "Processing next step of the task...",
+            className: "bg-blue-50 border-blue-200 text-blue-800",
+            duration: 3000,
+          });
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error, event.data);
@@ -148,6 +166,14 @@ export default function TaskExecutionPage() {
           description: "Failed to process server response",
           className: "bg-red-50 border-red-200 text-red-800",
         });
+        setIsLoading(false);
+        setApprovalDialogOpen(false);
+        setCurrentApprovalRequest(null);
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+        threadIdRef.current = null;
       }
     };
 
@@ -160,6 +186,7 @@ export default function TaskExecutionPage() {
       });
       setIsLoading(false);
       setApprovalDialogOpen(false);
+      setCurrentApprovalRequest(null);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -171,6 +198,17 @@ export default function TaskExecutionPage() {
       console.log("WebSocket closed:", event.code, event.reason);
       wsRef.current = null;
       setIsLoading(false);
+      setApprovalDialogOpen(false);
+      setCurrentApprovalRequest(null);
+      threadIdRef.current = null;
+      if (event.code !== 1000) {
+        // 1000 indicates normal closure
+        toast({
+          title: "Connection Closed",
+          description: "The task execution stream closed unexpectedly.",
+          className: "bg-yellow-50 border-yellow-200 text-yellow-800",
+        });
+      }
     };
   };
 
@@ -187,7 +225,10 @@ export default function TaskExecutionPage() {
       return;
     }
 
-    console.log("Sending approval: resume=true, thread_id=", threadIdRef.current);
+    console.log(
+      "Sending approval: resume=true, thread_id=",
+      threadIdRef.current
+    );
     setApprovalDialogOpen(false);
     setIsLoading(true);
 
@@ -202,7 +243,10 @@ export default function TaskExecutionPage() {
       return;
     }
 
-    console.log("Sending rejection: resume=false, thread_id=", threadIdRef.current);
+    console.log(
+      "Sending rejection: resume=false, thread_id=",
+      threadIdRef.current
+    );
     setApprovalDialogOpen(false);
 
     wsRef.current.send(
@@ -212,19 +256,22 @@ export default function TaskExecutionPage() {
 
   const copyOutput = () => {
     if (result?.response) {
-      navigator.clipboard.writeText(result.response).then(() => {
-        toast({
-          title: "Copied to clipboard",
-          description: "Task output has been copied to your clipboard",
+      navigator.clipboard
+        .writeText(result.response)
+        .then(() => {
+          toast({
+            title: "Copied to clipboard",
+            description: "Task output has been copied to your clipboard",
+          });
+        })
+        .catch((err) => {
+          console.error("Failed to copy to clipboard:", err);
+          toast({
+            title: "Copy Failed",
+            description: "Unable to copy to clipboard",
+            className: "bg-red-50 border-red-200 text-red-800",
+          });
         });
-      }).catch((err) => {
-        console.error("Failed to copy to clipboard:", err);
-        toast({
-          title: "Copy Failed",
-          description: "Unable to copy to clipboard",
-          className: "bg-red-50 border-red-200 text-red-800",
-        });
-      });
     }
   };
 
@@ -252,7 +299,8 @@ export default function TaskExecutionPage() {
     if (!result) return "Not Started";
 
     if (result.error) return "Failed";
-    if (result.requires_approval || result.interrupt) return "Awaiting Approval";
+    if (result.requires_approval || result.interrupt)
+      return "Awaiting Approval";
     if (result.is_final) return "Completed";
     return "Running";
   };
@@ -274,7 +322,9 @@ export default function TaskExecutionPage() {
           <Zap className="h-8 w-8 text-orange-500" />
           Task Execution
         </h1>
-        <p className="text-muted-foreground">AI powered task execution with approval workflow</p>
+        <p className="text-muted-foreground">
+          AI powered task execution with approval workflow
+        </p>
       </div>
 
       <Card>
@@ -283,7 +333,9 @@ export default function TaskExecutionPage() {
             <Play className="h-5 w-5" />
             Create New Task
           </CardTitle>
-          <CardDescription>Define and execute tasks with optional chained tool execution</CardDescription>
+          <CardDescription>
+            Define and execute tasks with optional chained tool execution
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -365,14 +417,17 @@ export default function TaskExecutionPage() {
               )}
             </CardTitle>
             <CardDescription>
-              Execution result for task: "{taskName}" {threadIdRef.current ? `(ID: ${threadIdRef.current})` : ''}
+              Execution result for task: "{taskName}"{" "}
+              {threadIdRef.current ? `(ID: ${threadIdRef.current})` : ""}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Task ID</Label>
-                <p className="text-sm font-mono break-all">{result.thread_id || "N/A"}</p>
+                <p className="text-sm font-mono break-all">
+                  {result.thread_id || "N/A"}
+                </p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Status</Label>
@@ -406,7 +461,9 @@ export default function TaskExecutionPage() {
                   Error Details
                 </Label>
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-800 whitespace-pre-wrap">{result.error}</p>
+                  <p className="text-sm text-red-800 whitespace-pre-wrap">
+                    {result.error}
+                  </p>
                 </div>
               </div>
             )}
@@ -427,13 +484,14 @@ export default function TaskExecutionPage() {
                 onClick={() => setApprovalDialogOpen(false)}
                 className="h-6 w-6 p-0"
               >
-                <span className="sr-only">Close</span>
-                ×
+                <span className="sr-only">Close</span>×
               </Button>
             </div>
 
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800 mb-2">{currentApprovalRequest.question}</p>
+              <p className="text-sm text-blue-800 mb-2">
+                {currentApprovalRequest.question}
+              </p>
               <p className="text-xs text-blue-700">
                 <strong>Original Query:</strong> {currentApprovalRequest.query}
               </p>
@@ -447,12 +505,16 @@ export default function TaskExecutionPage() {
                 {currentApprovalRequest.actions.map((action, index) => (
                   <div key={index} className="p-4 border rounded-lg bg-gray-50">
                     <div className="flex items-start justify-between mb-2">
-                      <p className="font-medium text-green-600 text-sm">{action.tool}</p>
+                      <p className="font-medium text-green-600 text-sm">
+                        {action.tool}
+                      </p>
                       <Badge variant="secondary" className="text-xs">
                         Action #{index + 1}
                       </Badge>
                     </div>
-                    <p className="text-xs text-gray-600 mb-3">{action.description}</p>
+                    <p className="text-xs text-gray-600 mb-3">
+                      {action.description}
+                    </p>
                     <details className="mb-2">
                       <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
                         View Parameters

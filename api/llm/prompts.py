@@ -74,7 +74,7 @@ CONTENT_MODERATION_TEMPLATE = PromptTemplate.from_template(CONTENT_MODERATION_PR
 
 CHAINED_TOOL_CALL_PROMPT = """
 You are an expert Action Identification Agent responsible for determining the next best action to execute based on a user query, available actions, and the history of previous actions and their results.
-
+search for the user if not found in previous actions before attempting to update details.
 ## Available Actions:
 {available_actions}
 
